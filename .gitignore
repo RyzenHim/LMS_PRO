@@ -1,0 +1,67 @@
+# ============================
+# Node dependencies (root + frontend + backend)
+# ============================
+node_modules/
+**/node_modules/
+
+# ============================
+# Environment files
+# ============================
+.env
+.env.local
+.env.development
+.env.production
+
+# ============================
+# Logs
+# ============================
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+logs
+*.log
+
+# ============================
+# OS files
+# ============================
+.DS_Store
+Thumbs.db
+
+# ============================
+# Build outputs (Vite + backend)
+# ============================
+dist/
+build/
+**/dist/
+**/build/
+
+# ============================
+# Vite cache
+# ============================
+.vite/
+
+# ============================
+# Coverage reports
+# ============================
+coverage/
+
+# ============================
+# Editor / IDE
+# ============================
+.vscode/
+.idea/
+*.swp
+
+# ============================
+# Runtime / temp files
+# ============================
+*.pid
+*.seed
+*.pid.lock
+tmp/
+
+# ============================
+# Optional: uploads (if you store files locally)
+# ============================
+uploads/
