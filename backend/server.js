@@ -1,33 +1,28 @@
-require('dotenv').config()
-const port = process.env.PORT
-console.log(port);
-const express = require("express")
+require('dotenv').config();
 
-const app = express()
-const mongoose = require('mongoose')
+const express = require("express");
+const mongoose = require("mongoose");
+
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+// Middleware
+app.use(express.json());
+
+// Database connection
 mongoose.connect(process.env.LINK)
-    .then(() => console.log("Database connected"))
-    .catch((err) => console.log(err))
+    .then(() => {
+        console.log("Database connected");
 
+        // Start server only after DB connects
+        app.listen(PORT, () => {
+            console.log(`Server started on port ${PORT}`);
+        });
+    })
+    .catch((err) => {
+        console.error("Database connection failed:", err);
+    });
 
-
-
-
-
-
-
-
-app.post("/signup", async (req, res) => {
-
-})
-
-
-
-
-
-
-
-
-
-
-app.listen(process.env.PORT, () => console.log("Server started at port :-", process.env.PORT))
+// Routes
+const userRouter = require('./src/routes/userRoute');
+app.use('/user', userRouter);

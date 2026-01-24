@@ -17,12 +17,12 @@ const userSchema = new mongoose.Schema({
         unique: false
     },
     role: {
-        type: string,
+        type: String,
         enum: ["student", "instructor", "admin"],
         default: "student"
     },
     isActive: {
-        type: boolean,
+        type: Boolean,
         default: "false"
     }
 }, { timestamps: true })
