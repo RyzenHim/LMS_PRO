@@ -1,19 +1,21 @@
-import { useState } from 'react'
+
 import './App.css'
-import Nav from './components/header/Nav'
+import theme from './theme';
+// import { Provider } from "react-redux";
+import { ThemeProvider } from "@mui/material/styles";
+import store from "./store";
+import AuthProvider from "./context/AuthContext";
 
-function App() {
-
+const App = ({ children }) => {
   return (
-    <>
+    // <Provider store={store}>
+    // <AuthProvider>
+    <ThemeProvider theme={theme}>
+      {children}
+    </ThemeProvider>
+    // </AuthProvider>
+    // </Provider>
+  );
+};
 
-      <Nav />
-      <div className='h-screen w-screen bg-gray-900'>
-        hey
-      </div>
-
-    </>
-  )
-}
-
-export default App
+export default App;
