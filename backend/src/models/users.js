@@ -21,6 +21,12 @@ const userSchema = new mongoose.Schema({
         enum: ["student", "instructor", "admin"],
         default: "student"
     },
+    theme: {
+        type: String,
+        enum: ["light", "dark"],
+        default: "light",
+    },
+
     isActive: {
         type: Boolean,
         default: "false"

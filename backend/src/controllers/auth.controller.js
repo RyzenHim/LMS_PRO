@@ -10,3 +10,15 @@ exports.signup = async (req, res) => {
         res.status(500).json({ message: "Internal server Error" })
     }
 }
+
+exports.theme = async (req, res) => {
+    try {
+
+
+    } catch (err) {
+
+    }
+
+
+
+}
