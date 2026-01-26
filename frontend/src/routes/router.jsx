@@ -1,7 +1,7 @@
 import AuthLayout from "../layouts/AuthLayout";
 import Login from '../pages/auth/Login'
 import Signup from '../pages/auth/Signup'
-const { createBrowserRouter } = require("react-router-dom");
+import { createBrowserRouter } from "react-router-dom";
 
 
 const router = createBrowserRouter([
@@ -24,12 +24,7 @@ const router = createBrowserRouter([
 
             },
         ],
-    },
-    {
-
     }
-
-
 
 
 ])

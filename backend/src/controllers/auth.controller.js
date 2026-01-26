@@ -11,14 +11,16 @@ exports.signup = async (req, res) => {
     }
 }
 
-exports.theme = async (req, res) => {
-    try {
+// exports.theme = async (req, res) => {
+//     try {
+//         const { mode } = req.body
+//         if (mode){
+
+//         }
+//     } catch (err) {
+
+//     }
 
 
-    } catch (err) {
 
-    }
-
-
-
-}
+// }
