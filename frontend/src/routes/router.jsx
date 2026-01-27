@@ -2,9 +2,17 @@ import AuthLayout from "../layouts/AuthLayout";
 import Login from '../pages/auth/Login'
 import Signup from '../pages/auth/Signup'
 import { createBrowserRouter } from "react-router-dom";
+import NotFound from "../pages/PageNotFound";
+import Landing from "../pages/Landing";
+import ProtectedRoute from "./ProtectedRoute";
 
 
 const router = createBrowserRouter([
+    {
+        path: "/",
+        element: <Landing />,
+    },
+
 
     {
         path: "/auth",
@@ -24,9 +32,101 @@ const router = createBrowserRouter([
 
             },
         ],
-    }
+    },
+    {
+        path: "/admin",
+        element: (
+            <ProtectedRoute>
+                <RoleRoute allowedRoles={["admin"]}>
+                    <AdminLayout />
+                </RoleRoute>
+            </ProtectedRoute>
+        ),
+        children: [
+            { index: true, element: <AdminDashboard /> },
+        ]
+
+    },
+
+    {
+        path: "*",
+        element: <NotFound />,
+    },
 
 
 ])
 
 export default router
+
+
+
+
+
+
+
+
+// frontend/src/
+//  ├─ api/
+//  │   └─ axios.js
+//  │
+//  ├─ services/
+//  │   ├─ authService.js
+//  │   ├─ adminService.js
+//  │   ├─ tutorService.js
+//  │   └─ studentService.js
+//  │
+//  ├─ store/
+//  │   ├─ index.js
+//  │   └─ auth/
+//  │       ├─ authSlice.js
+//  │       └─ authThunks.js
+//  │
+//  ├─ routes/
+//  │   └─ router.jsx
+//  │
+//  ├─ layouts/
+//  │   ├─ AuthLayout.jsx
+//  │   ├─ AdminLayout.jsx
+//  │   ├─ TutorLayout.jsx
+//  │   └─ StudentLayout.jsx
+//  │
+//  ├─ components/
+//  │   ├─ ProtectedRoute.jsx
+//  │   ├─ RoleRoute.jsx
+//  │   ├─ Sidebar.jsx
+//  │   ├─ Topbar.jsx
+//  │   └─ common/
+//  │
+//  ├─ pages/
+//  │   ├─ auth/
+//  │   │   ├─ Login.jsx
+//  │   │   └─ Signup.jsx
+//  │   │
+//  │   ├─ admin/
+//  │   │   ├─ Dashboard.jsx
+//  │   │   ├─ Users.jsx
+//  │   │   ├─ Tutors.jsx
+//  │   │   ├─ Courses.jsx
+//  │   │   └─ Reports.jsx
+//  │   │
+//  │   ├─ tutor/
+//  │   │   ├─ Dashboard.jsx
+//  │   │   ├─ MyCourses.jsx
+//  │   │   ├─ Students.jsx
+//  │   │   └─ Assignments.jsx
+//  │   │
+//  │   └─ student/
+//  │       ├─ Dashboard.jsx
+//  │       ├─ MyCourses.jsx
+//  │       ├─ Progress.jsx
+//  │       └─ Certificates.jsx
+//  │
+//  ├─ context/
+//  │   └─ ThemeContext.jsx
+//  │
+//  ├─ hooks/
+//  │   ├─ useAppDispatch.js
+//  │   └─ useAppSelector.js
+//  │
+//  ├─ main.jsx
+//  └─ index.css
