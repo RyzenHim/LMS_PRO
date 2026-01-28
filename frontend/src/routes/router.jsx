@@ -4,7 +4,6 @@ import { createBrowserRouter } from "react-router-dom";
 import NotFound from "../pages/PageNotFound";
 import Landing from "../pages/Landing";
 import ProtectedRoute from "./ProtectedRoute";
-import RoleRoute from "./RoleRoute";
 import AdminLayout from "../layouts/AdminLayout";
 import AdminDashboard from "../pages/admin/AdminDashboard";
 
@@ -37,9 +36,9 @@ const router = createBrowserRouter([
         path: "/admin",
         element: (
             <ProtectedRoute>
-                <RoleRoute allowedRoles={["admin"]}>
+                {/* <RoleRoute allowedRoles={["admin"]}> */}
                     <AdminLayout />
-                </RoleRoute>
+                {/* </RoleRoute> */}
             </ProtectedRoute>
         ),
         children: [

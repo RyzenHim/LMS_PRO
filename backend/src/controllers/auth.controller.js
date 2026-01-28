@@ -2,6 +2,9 @@ const User = require("../models/users")
 const jwt = require("jsonwebtoken")
 const bcrypt = require("bcryptjs")
 const secretKey = process.env.JWT_SECRET
+
+
+
 exports.signup = async (req, res) => {
     try {
         const { name, email, password, role } = req.body

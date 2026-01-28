@@ -32,7 +32,7 @@ const Login = () => {
             const loginData = await axiosInstance.post("/user/login",form)
             localStorage.setItem("token", loginData.data.token);
             console.log("Login success:", loginData);
-            navigate("/")
+            navigate("/admin")
 
         } catch (err) {
             setError(err.message || "Login Failed")
