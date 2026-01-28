@@ -4,8 +4,12 @@ import { createBrowserRouter } from "react-router-dom";
 import NotFound from "../pages/PageNotFound";
 import Landing from "../pages/Landing";
 import ProtectedRoute from "./ProtectedRoute";
-import AdminLayout from "../layouts/AdminLayout";
+import AdminLayout from "../layouts/adminLayout/Admin_Layout";
 import AdminDashboard from "../pages/admin/AdminDashboard";
+import AdminStudents from "../pages/admin/AdminStudents";
+import AdminTutors from "../pages/admin/AdminTutors";
+import AdminEmployees from "../pages/admin/AdminEmployees";
+import AdminCourses from "../pages/admin/AdminCourses";
 
 
 const router = createBrowserRouter([
@@ -25,11 +29,6 @@ const router = createBrowserRouter([
                 path: "login",
                 element: <Login />
             },
-            // {
-            //     path: "signup",
-            //     element: <Signup />
-
-            // },
         ],
     },
     {
@@ -43,6 +42,11 @@ const router = createBrowserRouter([
         ),
         children: [
             { index: true, element: <AdminDashboard /> },
+            {path:"students", element:<AdminStudents />},
+            {path:"tutors", element:<AdminTutors /> },
+            { path:"employees", element:<AdminEmployees />} ,
+            { path:"courses", element:<AdminCourses />} ,
+
         ]
     },
     {

@@ -26,6 +26,5 @@ mongoose.connect(process.env.LINK)
 const userRouter = require('./src/routes/userRoute');
 app.use('/user', userRouter);
 
-// const employeeRouter = require("./src/routes/employee.route");
-
-// app.use("/employees", employeeRouter);
+const employeeRouter = require("./src/routes/employee.route");
+app.use("/emp", employeeRouter);

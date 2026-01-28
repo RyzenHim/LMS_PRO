@@ -1,6 +1,14 @@
-const Employee = require("../models/employee");
+const { json } = require("zod");
+const Employee = require("../models/employee.model");
 
-
+exports.allEmployee = async (req, res) => {
+    try {
+        const allEmployes = await Employee.find()
+        return res.status(200).json(allEmployes)
+    } catch (error) {
+        return res.status(500).json({ message: "Internal Server Error" })
+    }
+}
 
 exports.addEmployee = async (req, res) => {
     try {
@@ -47,3 +55,16 @@ exports.addEmployee = async (req, res) => {
         });
     }
 };
+
+
+
+exports.updateEmployee = async (req, res) => {
+    try {
+        const { user } = req.user
+        console.log(user);
+
+
+    } catch (error) {
+        return res.status(500).json({ message: "internal server error" })
+    }
+}
