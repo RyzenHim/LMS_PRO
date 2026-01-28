@@ -1,5 +1,6 @@
 require('dotenv').config();
 
+
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors")
@@ -16,7 +17,6 @@ app.use(cors({
 mongoose.connect(process.env.LINK)
     .then(() => {
         console.log("Database connected");
-
         // Start server only after DB connects
         app.listen(PORT, () => {
             console.log(`Server started on port ${PORT}`);
@@ -29,3 +29,4 @@ mongoose.connect(process.env.LINK)
 // Routes
 const userRouter = require('./src/routes/userRoute');
 app.use('/user', userRouter);
+console.log("lets see");
