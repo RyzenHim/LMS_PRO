@@ -13,7 +13,6 @@ const userSchema = new mongoose.Schema(
             type: String,
             required: true,
             unique: true,
-            index: true,
             lowercase: true,
             trim: true
         },
@@ -21,7 +20,7 @@ const userSchema = new mongoose.Schema(
         password: {
             type: String,
             required: true,
-            select: false   // hide password by default
+            // select: false
         },
 
         role: {
@@ -46,7 +45,6 @@ const userSchema = new mongoose.Schema(
 
 
 
-// Hash password before save
 userSchema.pre("save", async function () {
     if (!this.isModified("password")) return;
 

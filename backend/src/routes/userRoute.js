@@ -1,10 +1,10 @@
 const express = require("express")
 const router = express.Router()
 const userController = require('../controllers/auth.controller')
+const authenticate = require("../middleware/auth.middleware")
 
 router.post('/signup', userController.signup)
-// router.put('/theme', userController.theme)
-// router.get("/admin/users", authMiddleware, allowRoles("admin"), controller);
+router.post('/login', userController.login)
 
 module.exports = router
 

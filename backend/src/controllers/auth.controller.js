@@ -1,5 +1,7 @@
 const User = require("../models/users")
-
+const jwt = require("jsonwebtoken")
+const bcrypt = require("bcryptjs")
+const secretKey = process.env.JWT_SECRET
 exports.signup = async (req, res) => {
     try {
         const { name, email, password, role } = req.body
@@ -35,22 +37,33 @@ exports.login = async (req, res) => {
         const { email, password } = req.body
         if (!email || !password) return res.status(400).json({ message: "Both field are required" })
         const existingUser = await User.findOne({ email })
-        if (!existingUser) return res.status(400).jsaon({ message: "User does not exist" })
-
+        if (!existingUser) return res.status(400).json({ message: "User does not exist" })
+        console.log("password", existingUser.password);
         const match = await bcrypt.compare(password, existingUser.password)
-        if (!match) {
+        if (match) {
+            const token = jwt.sign({
+                _id: existingUser._id,
+                email: existingUser.email
+            }, secretKey, { expiresIn: '1h' })
+            console.log("Loggd in ");
+
+            return res.status(200).json({ message: "Welcome", token })
+
+
+        } else {
             return res.status(400).json({ message: "Password is worng" })
+
         }
 
 
-
-
-
-
     } catch (error) {
-
+        console.error("Login Error:", error)
+        return res.status(500).json({ message: "Internal server error " })
     }
 }
+
+
+
 
 // exports.theme = async (req, res) => {
 //     try {

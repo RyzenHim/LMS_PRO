@@ -1,10 +1,12 @@
 import AuthLayout from "../layouts/AuthLayout";
 import Login from '../pages/auth/Login'
-import Signup from '../pages/auth/Signup'
 import { createBrowserRouter } from "react-router-dom";
 import NotFound from "../pages/PageNotFound";
 import Landing from "../pages/Landing";
 import ProtectedRoute from "./ProtectedRoute";
+import RoleRoute from "./RoleRoute";
+import AdminLayout from "../layouts/AdminLayout";
+import AdminDashboard from "../pages/admin/AdminDashboard";
 
 
 const router = createBrowserRouter([
@@ -12,8 +14,6 @@ const router = createBrowserRouter([
         path: "/",
         element: <Landing />,
     },
-
-
     {
         path: "/auth",
         element: <AuthLayout />,
@@ -26,11 +26,11 @@ const router = createBrowserRouter([
                 path: "login",
                 element: <Login />
             },
-            {
-                path: "signup",
-                element: <Signup />
+            // {
+            //     path: "signup",
+            //     element: <Signup />
 
-            },
+            // },
         ],
     },
     {
@@ -45,15 +45,11 @@ const router = createBrowserRouter([
         children: [
             { index: true, element: <AdminDashboard /> },
         ]
-
     },
-
     {
         path: "*",
         element: <NotFound />,
     },
-
-
 ])
 
 export default router
