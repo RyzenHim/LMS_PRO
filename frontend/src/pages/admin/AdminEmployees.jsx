@@ -1,41 +1,99 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Search, Plus } from "lucide-react";
+import AddEmployeeModal from "./modal/AddEmployeeModal";
+import axiosInstance from "../../api/axios";
+import Admin_EditEmployeeModal from "./modal/employee/Admin_EditEmployeeModal";
 
 const AdminEmployees = () => {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [allEmp, setAllEmp] = useState([]);
-  const [addEmp, setAddEmp] = useState();
+  const [openAdd, setOpenAdd] = useState(false);
+  const [openEdit, setOpenEdit] = useState(false);
+  const [selectedEmp, setSelectedEmp] = useState(null);
 
-  // TEMP data (replace with API later)
-  const employees = [
-    {
-      id: 1,
-      name: "Amit Sharma",
-      email: "amit@lms.com",
-      role: "Admin",
-      department: "Management",
-      status: "Active",
-    },
-    {
-      id: 2,
-      name: "Neha Verma",
-      email: "neha@lms.com",
-      role: "HR",
-      department: "Human Resources",
-      status: "Active",
-    },
-    {
-      id: 3,
-      name: "Rahul Singh",
-      email: "rahul@lms.com",
-      role: "Admin",
-      department: "Operations",
-      status: "Inactive",
-    },
-  ];
+  useEffect(() => {
+    const getAllEmp = async () => {
+      setLoading(true);
+      try {
+        const res = await axiosInstance.get("/emp/allEmp", {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
+        setAllEmp(res.data);
+      } catch (error) {
+        console.error("Error fetching employees", error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const filteredEmployees = employees.filter(
+    getAllEmp();
+  }, []);
+  const handleEdit = (emp) => {
+    setSelectedEmp(emp);
+    setOpenEdit(true);
+  };
+  const handleUpdateEmployee = async (data) => {
+    await axiosInstance.put(`/emp/${selectedEmp._id}`, data, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+    });
+
+    setAllEmp((prev) =>
+      prev.map((emp) =>
+        emp._id === selectedEmp._id ? { ...emp, ...data } : emp,
+      ),
+    );
+  };
+  const handleDelete = async (id) => {
+    try {
+      await axiosInstance.patch(
+        `/emp/${id}/toggle-status`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        },
+      );
+
+      setAllEmp((prev) =>
+        prev.map((emp) =>
+          emp._id === id ? { ...emp, isActive: !emp.isActive } : emp,
+        ),
+      );
+    } catch (error) {
+      console.error("Error toggling employee status", error);
+    }
+  };
+
+  const handleAddEmployee = async (data) => {
+    try {
+      const empData = {
+        name: data.name,
+        email: data.email,
+        department: data.department,
+        designation: data.role,
+        salary: Number(data.salary),
+      };
+
+      await axiosInstance.post("/emp/addEmp", empData, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+
+      setOpenAdd(false);
+      setAllEmp((prev) => [...prev, empData]); // quick UI update
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const filteredEmployees = allEmp.filter(
     (emp) =>
       emp.name.toLowerCase().includes(search.toLowerCase()) ||
       emp.email.toLowerCase().includes(search.toLowerCase()),
@@ -43,20 +101,21 @@ const AdminEmployees = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Employees</h1>
           <p className="text-sm text-gray-500">Manage admin & HR employees</p>
         </div>
 
-        <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">
+        <button
+          onClick={() => setOpenAdd(true)}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"
+        >
           <Plus size={18} />
           Add Employee
         </button>
       </div>
 
-      {/* Search */}
       <div className="bg-white rounded-xl border p-4">
         <div className="flex items-center gap-3">
           <Search className="text-gray-400" size={18} />
@@ -70,78 +129,111 @@ const AdminEmployees = () => {
         </div>
       </div>
 
-      {/* Table */}
       <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b">
-            <tr>
-              <th className="text-left px-6 py-3 font-medium text-gray-600">
-                Name
-              </th>
-              <th className="text-left px-6 py-3 font-medium text-gray-600">
-                Email
-              </th>
-              <th className="text-left px-6 py-3 font-medium text-gray-600">
-                Role
-              </th>
-              <th className="text-left px-6 py-3 font-medium text-gray-600">
-                Department
-              </th>
-              <th className="text-left px-6 py-3 font-medium text-gray-600">
-                Status
-              </th>
-              <th className="text-right px-6 py-3 font-medium text-gray-600">
-                Actions
-              </th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {filteredEmployees.map((emp) => (
-              <tr
-                key={emp.id}
-                className="border-b last:border-none hover:bg-gray-50"
-              >
-                <td className="px-6 py-4 font-medium text-gray-900">
-                  {emp.name}
-                </td>
-                <td className="px-6 py-4 text-gray-600">{emp.email}</td>
-                <td className="px-6 py-4">
-                  <span className="px-2 py-1 text-xs rounded-md bg-indigo-100 text-indigo-700">
-                    {emp.role}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-gray-600">{emp.department}</td>
-                <td className="px-6 py-4">
-                  <span
-                    className={`px-2 py-1 text-xs rounded-md ${
-                      emp.status === "Active"
-                        ? "bg-green-100 text-green-700"
-                        : "bg-red-100 text-red-700"
-                    }`}
-                  >
-                    {emp.status}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-right space-x-2">
-                  <button className="text-indigo-600 hover:underline text-sm">
-                    Edit
-                  </button>
-                  <button className="text-red-600 hover:underline text-sm">
-                    Disable
-                  </button>
-                </td>
+        {loading ? (
+          <div className="p-6 text-center text-gray-500">
+            Loading employees...
+          </div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b">
+              <tr>
+                <th className="px-4 py-3 text-left">Name</th>
+                <th className="px-4 py-3 text-left">Email</th>
+                <th className="px-4 py-3 text-left">Department</th>
+                <th className="px-4 py-3 text-left">Designation</th>
+                <th className="px-4 py-3 text-left">Salary</th>
+                <th className="px-4 py-3 text-left">Status</th>
+                <th className="px-4 py-3 text-left">Joining Date</th>
+                <th className="px-4 py-3 text-left">Created At</th>
+                <th className="px-4 py-3 text-left">Updated At</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
 
-        {filteredEmployees.length === 0 && (
-          <div className="p-6 text-center text-gray-500 text-sm">
+            <tbody>
+              {filteredEmployees.map((emp) => (
+                <tr
+                  key={emp._id}
+                  className="border-b last:border-none hover:bg-gray-50"
+                >
+                  <td className="px-4 py-3 font-medium">{emp.name}</td>
+
+                  <td className="px-4 py-3 text-gray-600">{emp.email}</td>
+
+                  <td className="px-4 py-3">{emp.department}</td>
+
+                  <td className="px-4 py-3">
+                    <span className="px-2 py-1 text-xs rounded-md bg-indigo-100 text-indigo-700">
+                      {emp.designation}
+                    </span>
+                  </td>
+
+                  <td className="px-4 py-3">₹{emp.salary}</td>
+
+                  <td className="px-4 py-3">
+                    <span
+                      className={`px-2 py-1 text-xs rounded-md ${
+                        emp.isActive
+                          ? "bg-green-100 text-green-700"
+                          : "bg-red-100 text-red-700"
+                      }`}
+                    >
+                      {emp.isActive ? "Active" : "Inactive"}
+                    </span>
+                  </td>
+
+                  <td className="px-4 py-3">
+                    {emp.joiningDate
+                      ? new Date(emp.joiningDate).toLocaleDateString()
+                      : "—"}
+                  </td>
+
+                  <td className="px-4 py-3 text-gray-500">
+                    {new Date(emp.createdAt).toLocaleString()}
+                  </td>
+
+                  <td className="px-4 py-3 text-gray-500">
+                    {new Date(emp.updatedAt).toLocaleString()}
+                  </td>
+                  <td className="px-4 py-3 text-right space-x-3">
+                    <button
+                      onClick={() => handleEdit(emp)}
+                      className="text-indigo-600 hover:underline text-sm"
+                    >
+                      Edit
+                    </button>
+
+                    <button
+                      onClick={() => handleDelete(emp._id)}
+                      className="text-red-600 hover:underline text-sm"
+                    >
+                      {emp.isActive ? "Disable" : "Enable"}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+
+        {!loading && filteredEmployees.length === 0 && (
+          <div className="p-6 text-center text-gray-500">
             No employees found
           </div>
         )}
       </div>
+
+      <AddEmployeeModal
+        open={openAdd}
+        onClose={() => setOpenAdd(false)}
+        onSubmit={handleAddEmployee}
+      />
+      <Admin_EditEmployeeModal
+        open={openEdit}
+        employee={selectedEmp}
+        onClose={() => setOpenEdit(false)}
+        onSubmit={handleUpdateEmployee}
+      />
     </div>
   );
 };

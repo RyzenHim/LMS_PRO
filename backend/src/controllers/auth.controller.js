@@ -46,7 +46,7 @@ exports.login = async (req, res) => {
         if (match) {
             const token = jwt.sign({
                 _id: existingUser._id,
-                email: existingUser.email
+                email: existingUser.role
             }, secretKey, { expiresIn: '1h' })
             console.log("Loggd in ");
 
