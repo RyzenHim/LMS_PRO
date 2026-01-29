@@ -1,6 +1,7 @@
 const Visitor = require("../models/visitor.model");
 const Employee = require("../models/employee.model")
-/* ---------------- CREATE ---------------- */
+
+
 exports.createVisitor = async (req, res) => {
     try {
         const { name, email, phone, source, note, course, status, createdBy } = req.body
@@ -25,15 +26,17 @@ exports.createVisitor = async (req, res) => {
     }
 };
 
-/* ---------------- READ ALL ---------------- */
 exports.getVisitors = async (req, res) => {
-    const visitors = await Visitor.find({ isDeleted: false })
-        .sort({ createdAt: -1 });
+    try {
+        const visitors = await Visitor.find({ isDeleted: false })
+            .sort({ createdAt: -1 });
 
-    res.json(visitors);
+        return res.status(200).json(visitors);
+    } catch (err) {
+        res.status(400).json({ message: err.message });
+    }
 };
 
-/* ---------------- READ ONE ---------------- */
 exports.getVisitorById = async (req, res) => {
     const visitor = await Visitor.findOne({
         _id: req.params.id,
@@ -47,7 +50,6 @@ exports.getVisitorById = async (req, res) => {
     res.json(visitor);
 };
 
-/* ---------------- UPDATE ---------------- */
 exports.updateVisitor = async (req, res) => {
     const visitor = await Visitor.findOneAndUpdate(
         { _id: req.params.id, isDeleted: false },
@@ -62,7 +64,6 @@ exports.updateVisitor = async (req, res) => {
     res.json(visitor);
 };
 
-/* ---------------- SOFT DELETE ---------------- */
 exports.softDeleteVisitor = async (req, res) => {
     const visitor = await Visitor.findByIdAndUpdate(
         req.params.id,
@@ -80,25 +81,28 @@ exports.softDeleteVisitor = async (req, res) => {
     res.json({ message: "Visitor moved to trash" });
 };
 
-/* ---------------- RESTORE ---------------- */
 exports.restoreVisitor = async (req, res) => {
-    const visitor = await Visitor.findByIdAndUpdate(
-        req.params.id,
-        {
-            isDeleted: false,
-            deletedAt: null,
-        },
-        { new: true }
-    );
+    try {
+        const visitor = await Visitor.findByIdAndUpdate(
+            req.params.id,
+            {
+                isDeleted: false,
+                deletedAt: null,
+            },
+            { new: true }
+        );
 
-    if (!visitor) {
-        return res.status(404).json({ message: "Visitor not found" });
+        if (!visitor) {
+            return res.status(404).json({ message: "Visitor not found" });
+        }
+
+        res.json(visitor);
+    } catch (error) {
+        return res.status(500).json({ message: "internal server error" });
+
     }
-
-    res.json(visitor);
 };
 
-/* ---------------- TRASH LIST ---------------- */
 exports.getDeletedVisitors = async (req, res) => {
     const visitors = await Visitor.find({ isDeleted: true })
         .sort({ deletedAt: -1 });
