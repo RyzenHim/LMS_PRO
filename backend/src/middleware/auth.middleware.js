@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const User = require("../models/users");
+const User = require("../models/authUsers.model");
 
 exports.authenticate = async (req, res, next) => {
     try {
@@ -50,22 +50,4 @@ exports.authenticate = async (req, res, next) => {
     }
 };
 
-
-exports.allowRoles = (...allowedRoles) => {
-    return (req, res, next) => {
-        if (!req.user || !req.user.role) {
-            return res.status(403).json({
-                message: "Access denied",
-            });
-        }
-
-        if (!allowedRoles.includes(req.user.role)) {
-            return res.status(403).json({
-                message: "You do not have permission to perform this action",
-            });
-        }
-
-        next();
-    };
-};
 

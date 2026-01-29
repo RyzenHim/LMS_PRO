@@ -1,5 +1,5 @@
 import AuthLayout from "../layouts/AuthLayout";
-import Login from '../pages/auth/Login'
+import Login from "../pages/auth/Login";
 import { createBrowserRouter } from "react-router-dom";
 import NotFound from "../pages/PageNotFound";
 import Landing from "../pages/Landing";
@@ -10,59 +10,52 @@ import AdminStudents from "../pages/admin/AdminStudents";
 import AdminTutors from "../pages/admin/AdminTutors";
 import AdminEmployees from "../pages/admin/AdminEmployees";
 import AdminCourses from "../pages/admin/AdminCourses";
-
+import Visitor from "../pages/visitor/Visitor";
 
 const router = createBrowserRouter([
-    {
-        path: "/",
-        element: <Landing />,
-    },
-    {
-        path: "/auth",
-        element: <AuthLayout />,
-        children: [
-            {
-                index: true,
-                element: <Login />
-            },
-            {
-                path: "login",
-                element: <Login />
-            },
-        ],
-    },
-    {
-        path: "/admin",
-        element: (
-            <ProtectedRoute>
-                {/* <RoleRoute allowedRoles={["admin"]}> */}
-                    <AdminLayout />
-                {/* </RoleRoute> */}
-            </ProtectedRoute>
-        ),
-        children: [
-            { index: true, element: <AdminDashboard /> },
-            {path:"students", element:<AdminStudents />},
-            {path:"tutors", element:<AdminTutors /> },
-            { path:"employees", element:<AdminEmployees />} ,
-            { path:"courses", element:<AdminCourses />} ,
+  {
+    path: "/",
+    element: <Landing />,
+  },
+  {
+    path: "/auth",
+    element: <AuthLayout />,
+    children: [
+      {
+        index: true,
+        element: <Login />,
+      },
+      {
+        path: "login",
+        element: <Login />,
+      },
+    ],
+  },
+  {
+    path: "/admin",
+    element: (
+      <ProtectedRoute>
+        {/* <RoleRoute allowedRoles={["admin"]}> */}
+        <AdminLayout />
+        {/* </RoleRoute> */}
+      </ProtectedRoute>
+    ),
+    children: [
+      { index: true, element: <AdminDashboard /> },
+      { path: "students", element: <AdminStudents /> },
+      { path: "tutors", element: <AdminTutors /> },
+      { path: "employees", element: <AdminEmployees /> },
+      { path: "courses", element: <AdminCourses /> },
+      { path: "visitor", element: <Visitor /> },
+    ],
+  },
+  {
+    path: "*",
+    element: <NotFound />,
+  },
+]);
 
-        ]
-    },
-    {
-        path: "*",
-        element: <NotFound />,
-    },
-])
-
-export default router
-
-
-
-
-
-
-
+export default router;
 
 // frontend/src/
 //  ├─ api/

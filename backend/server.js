@@ -28,3 +28,13 @@ app.use('/user', userRouter);
 
 const employeeRouter = require("./src/routes/employee.route");
 app.use("/emp", employeeRouter);
+
+
+const studentRouter = require('./src/routes/student.routes')
+app.use("/students", studentRouter);
+
+const tutorRouter = require('./src/routes/tutor.routes')
+app.use("/tutors", tutorRouter);
+
+const visitorRouter = require('./src/routes/visitor.routes')
+app.use('/visitor', visitorRouter)

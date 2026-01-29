@@ -36,33 +36,28 @@ const AdminEmployees = () => {
     setOpenEdit(true);
   };
   const handleUpdateEmployee = async (data) => {
-    await axiosInstance.put(`/emp/${selectedEmp._id}`, data, {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-    });
-
-    setAllEmp((prev) =>
-      prev.map((emp) =>
-        emp._id === selectedEmp._id ? { ...emp, ...data } : emp,
-      ),
-    );
-  };
-  const handleDelete = async (id) => {
     try {
-      await axiosInstance.patch(
-        `/emp/${id}/toggle-status`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        },
-      );
+      const res = await axiosInstance.put(`/emp/${selectedEmp._id}`, data);
 
       setAllEmp((prev) =>
         prev.map((emp) =>
-          emp._id === id ? { ...emp, isActive: !emp.isActive } : emp,
+          emp._id === selectedEmp._id ? res.data.employee : emp,
+        ),
+      );
+
+      setOpenEdit(false);
+    } catch (error) {
+      console.error("Update failed", error);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      const res = await axiosInstance.patch(`/emp/${id}/toggle-status`);
+
+      setAllEmp((prev) =>
+        prev.map((emp) =>
+          emp._id === id ? { ...emp, isActive: res.data.isActive } : emp,
         ),
       );
     } catch (error) {
@@ -80,16 +75,13 @@ const AdminEmployees = () => {
         salary: Number(data.salary),
       };
 
-      await axiosInstance.post("/emp/addEmp", empData, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      });
+      const res = await axiosInstance.post("/emp/addEmp", empData);
+
+      setAllEmp((prev) => [...prev, res.data.employee]);
 
       setOpenAdd(false);
-      setAllEmp((prev) => [...prev, empData]); // quick UI update
     } catch (error) {
-      console.error(error);
+      console.error("Add employee failed", error);
     }
   };
 

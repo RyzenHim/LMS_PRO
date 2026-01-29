@@ -5,7 +5,8 @@ import {
   GraduationCap,
   UserCog,
   icons,
-  BookOpen 
+  BookOpen,
+  UserPlus,
 } from "lucide-react";
 
 const AdminSidebar = () => {
@@ -29,18 +30,22 @@ const AdminSidebar = () => {
       name: "Employees",
       icon: UserCog,
       path: "/admin/employees",
-    },{
-        name:"courses",
-        icon:BookOpen ,
-        path:"/admin/courses"
-    }
+    },
+    {
+      name: "courses",
+      icon: BookOpen,
+      path: "/admin/courses",
+    },
+    {
+      name: "Visitor",
+      icon: UserPlus,
+      path: "/admin/visitor",
+    },
   ];
 
   return (
     <aside className="w-64 bg-slate-900 text-white fixed h-screen">
-      <div className="p-6 text-xl font-semibold">
-        LMS Admin
-      </div>
+      <div className="p-6 text-xl font-semibold">LMS Admin</div>
 
       <nav className="mt-6 space-y-1">
         {menu.map((item, index) => {
@@ -52,7 +57,7 @@ const AdminSidebar = () => {
               className={({ isActive }) =>
                 `flex items-center px-6 py-3 text-sm
                  ${
-                   isActive 
+                   isActive
                      ? "bg-slate-800 text-white"
                      : "text-slate-300 hover:bg-slate-800 hover:text-white"
                  }`
