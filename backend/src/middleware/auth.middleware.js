@@ -1,7 +1,7 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/authUsers.model");
 
-exports.authenticate = async (req, res, next) => {
+const authenticate = async (req, res, next) => {
     try {
         const authHeader = req.headers.authorization;
 
@@ -36,12 +36,13 @@ exports.authenticate = async (req, res, next) => {
             });
         }
 
-        req.user = {
-            id: decoded.id,
-            role: decoded.role,
-        };
-
-        next();
+        const existingUser = await User.findOne({ email: decode.email }).select("-password");
+        if (!existingUser) {
+            return res.status(400).json({ message: "User not found in db, auth page backend" })
+        }
+        console.log("existingUser from auth", existingUser);
+        req.user = existingUser
+        next()
     } catch (error) {
         console.error("Auth middleware error:", error);
         return res.status(500).json({
@@ -51,3 +52,4 @@ exports.authenticate = async (req, res, next) => {
 };
 
 
+module.exports = authenticate;

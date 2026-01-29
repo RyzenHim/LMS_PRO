@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import axiosInstance from "../../../api/axios";
 
-const AddVisitorModal = ({ open, onClose, onSuccess }) => {
+const EditVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -9,14 +9,29 @@ const AddVisitorModal = ({ open, onClose, onSuccess }) => {
     source: "other",
     course: "",
     note: "",
+    status: "new",
   });
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  if (!open) return null;
+  /* ---------------- PREFILL FORM ---------------- */
+  useEffect(() => {
+    if (visitor) {
+      setForm({
+        name: visitor.name || "",
+        email: visitor.email || "",
+        phone: visitor.phone || "",
+        source: visitor.source || "other",
+        course: visitor.course || "",
+        note: visitor.note || "",
+        status: visitor.status || "new",
+      });
+    }
+  }, [visitor]);
 
-  /* ---------------- HANDLERS ---------------- */
+  if (!open || !visitor) return null;
+
   const handleChange = (e) => {
     setForm((prev) => ({
       ...prev,
@@ -34,30 +49,17 @@ const AddVisitorModal = ({ open, onClose, onSuccess }) => {
       return;
     }
 
-    if (!form.course) {
-      setError("Please select a course");
-      return;
-    }
-
     try {
       setLoading(true);
 
-      const res = await axiosInstance.post("/visitor/add", form);
+      const res = await axiosInstance.put(`/visitor/${visitor._id}`, form);
 
       if (res?.data) {
         onSuccess(res.data);
         onClose();
-        setForm({
-          name: "",
-          email: "",
-          phone: "",
-          source: "other",
-          course: "",
-          note: "",
-        });
       }
     } catch (err) {
-      setError(err?.response?.data?.message || "Failed to add visitor");
+      setError(err?.response?.data?.message || "Failed to update visitor");
     } finally {
       setLoading(false);
     }
@@ -67,14 +69,13 @@ const AddVisitorModal = ({ open, onClose, onSuccess }) => {
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
       <div className="bg-white w-full max-w-lg rounded shadow-lg p-6">
-        <h2 className="text-xl font-semibold mb-4">Add Visitor</h2>
+        <h2 className="text-xl font-semibold mb-4">Edit Visitor</h2>
 
         {error && <p className="text-red-600 mb-3">{error}</p>}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <input
             name="name"
-            placeholder="Full Name"
             value={form.name}
             onChange={handleChange}
             required
@@ -83,7 +84,6 @@ const AddVisitorModal = ({ open, onClose, onSuccess }) => {
 
           <input
             name="email"
-            placeholder="Email (optional)"
             value={form.email}
             onChange={handleChange}
             className="w-full border p-2 rounded"
@@ -91,7 +91,6 @@ const AddVisitorModal = ({ open, onClose, onSuccess }) => {
 
           <input
             name="phone"
-            placeholder="Phone (min 10 digits)"
             value={form.phone}
             onChange={handleChange}
             required
@@ -125,9 +124,19 @@ const AddVisitorModal = ({ open, onClose, onSuccess }) => {
             <option value="Machine Learning">Machine Learning</option>
           </select>
 
+          <select
+            name="status"
+            value={form.status}
+            onChange={handleChange}
+            className="w-full border p-2 rounded"
+          >
+            <option value="new">New</option>
+            <option value="contacted">Contacted</option>
+            <option value="converted">Converted</option>
+          </select>
+
           <textarea
             name="note"
-            placeholder="Counselor notes"
             value={form.note}
             onChange={handleChange}
             className="w-full border p-2 rounded"
@@ -148,7 +157,7 @@ const AddVisitorModal = ({ open, onClose, onSuccess }) => {
               disabled={loading}
               className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
             >
-              {loading ? "Saving..." : "Add Visitor"}
+              {loading ? "Updating..." : "Update Visitor"}
             </button>
           </div>
         </form>
@@ -157,4 +166,4 @@ const AddVisitorModal = ({ open, onClose, onSuccess }) => {
   );
 };
 
-export default AddVisitorModal;
+export default EditVisitorModal;

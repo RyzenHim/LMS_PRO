@@ -29,6 +29,7 @@ const visitorSchema = new mongoose.Schema(
             default: "other",
         },
         status: {
+            type: String,
             enum: ["new", "contacted", "converted"],
             default: "new"
         },
@@ -38,7 +39,7 @@ const visitorSchema = new mongoose.Schema(
         createdBy: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",
-            required: true,
+            // required: true,
         },
 
         isDeleted: {

@@ -1,5 +1,5 @@
-const Visitor = require("../models/visotor.model");
-
+const Visitor = require("../models/visitor.model");
+const Employee = require("../models/employee.model")
 /* ---------------- CREATE ---------------- */
 exports.createVisitor = async (req, res) => {
     try {
@@ -14,8 +14,9 @@ exports.createVisitor = async (req, res) => {
 
 
         const visitor = await Visitor.create({
-            ...req.body,
-            createdBy: req.user._id,
+            ...req.body
+
+            // createdBy: req.user._id,
         });
 
         res.status(201).json(visitor);
@@ -103,4 +104,36 @@ exports.getDeletedVisitors = async (req, res) => {
         .sort({ deletedAt: -1 });
 
     res.json(visitors);
+};
+
+
+
+exports.convertToStudent = async (req, res) => {
+    try {
+        const visitor = await Visitor.findById(req.params.id);
+
+        if (!visitor) {
+            return res.status(404).json({ message: "Visitor not found" });
+        }
+
+        if (visitor.status === "converted") {
+            return res.status(400).json({ message: "Already converted" });
+        }
+
+        const student = await Employee.create({
+            name: visitor.name,
+            email: visitor.email,
+            phone: visitor.phone,
+            course: visitor.course,
+            joinedFromVisitor: visitor._id,
+        });
+
+        visitor.status = "converted";
+        visitor.studentId = student._id;
+        await visitor.save();
+
+        res.json({ visitor, student });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
 };
