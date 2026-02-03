@@ -9,6 +9,7 @@ const PORT = process.env.PORT || 5000;
 
 app.use(express.json());
 app.use(cors({
+    origin: "http://localhost:5174",
     origin: "http://localhost:5173",
     credentials: true,
 }))
@@ -38,3 +39,9 @@ app.use("/tutors", tutorRouter);
 
 const visitorRouter = require('./src/routes/visitor.routes')
 app.use('/visitor', visitorRouter)
+
+const courseRouter = require('./src/routes/course.routes')
+app.use('/courses', courseRouter)
+
+const skillRouter = require('./src/routes/skill.routes')
+app.use('/skills', skillRouter)

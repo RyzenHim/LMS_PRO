@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const employeeSchema = new mongoose.Schema(
+const tutorSchema = new mongoose.Schema(
     {
         name: {
             type: String,
@@ -16,24 +16,39 @@ const employeeSchema = new mongoose.Schema(
             trim: true
         },
 
-        department: {
+        phone: {
+            type: String,
+            trim: true
+        },
+
+        expertise: {
             type: String,
             required: true
         },
 
-        designation: {
-            type: String,
-            required: true
-        },
-
-        salary: {
+        experience: {
             type: Number,
-            required: true
+            default: 0
+        },
+
+        qualification: {
+            type: String,
+            trim: true
+        },
+
+        bio: {
+            type: String,
+            trim: true
         },
 
         joiningDate: {
             type: Date,
             default: Date.now
+        },
+
+        salary: {
+            type: Number,
+            default: 0
         },
 
         isActive: {
@@ -53,4 +68,5 @@ const employeeSchema = new mongoose.Schema(
     { timestamps: true }
 );
 
-module.exports = mongoose.model("Employee", employeeSchema);
+module.exports = mongoose.model("Tutor", tutorSchema);
+

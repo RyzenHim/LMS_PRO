@@ -1,111 +1,331 @@
-import React, { useState } from "react";
-import { Search } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Search, Plus, Eye, Edit, Trash2, RotateCcw } from "lucide-react";
+import { tutorService } from "../../services/tutorService";
+import AddTutorModal from "./modal/AddTutorModal";
+import EditTutorModal from "./modal/EditTutorModal";
+import ViewTutorModal from "./modal/ViewTutorModal";
+import ConfirmDeleteModal from "./modal/ConfirmDeleteModal";
 
 const AdminTutors = () => {
   const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [tutors, setTutors] = useState([]);
+  const [deletedTutors, setDeletedTutors] = useState([]);
+  const [activeTab, setActiveTab] = useState("active");
+  const [openAdd, setOpenAdd] = useState(false);
+  const [openEdit, setOpenEdit] = useState(false);
+  const [openView, setOpenView] = useState(false);
+  const [openDelete, setOpenDelete] = useState(false);
+  const [selectedTutor, setSelectedTutor] = useState(null);
 
-  const tutors = [
-    {
-      id: 1,
-      name: "Ankit Verma",
-      email: "ankit@tutor.com",
-      expertise: "React",
-      status: "Active",
-    },
-    {
-      id: 2,
-      name: "Sneha Gupta",
-      email: "sneha@tutor.com",
-      expertise: "Node.js",
-      status: "Inactive",
-    },
-  ];
+  useEffect(() => {
+    fetchTutors();
+    fetchDeletedTutors();
+  }, []);
 
-  const filteredTutors = tutors.filter(
-    (t) =>
-      t.name.toLowerCase().includes(search.toLowerCase()) ||
-      t.email.toLowerCase().includes(search.toLowerCase())
-  );
+  const fetchTutors = async () => {
+    setLoading(true);
+    try {
+      const res = await tutorService.getAll();
+      setTutors(res.data || []);
+    } catch (error) {
+      console.error("Error fetching tutors", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchDeletedTutors = async () => {
+    try {
+      const res = await tutorService.getDeleted();
+      setDeletedTutors(res.data || []);
+    } catch (error) {
+      console.error("Error fetching deleted tutors", error);
+    }
+  };
+
+  const handleAddTutor = async (data) => {
+    try {
+      const res = await tutorService.create(data);
+      setTutors((prev) => [res.data.tutor, ...prev]);
+      setOpenAdd(false);
+    } catch (error) {
+      console.error("Add tutor failed", error);
+      alert(error.response?.data?.message || "Failed to add tutor");
+    }
+  };
+
+  const handleEdit = (tutor) => {
+    setSelectedTutor(tutor);
+    setOpenEdit(true);
+  };
+
+  const handleUpdateTutor = async (data) => {
+    try {
+      const res = await tutorService.update(selectedTutor._id, data);
+      setTutors((prev) =>
+        prev.map((t) => (t._id === selectedTutor._id ? res.data.tutor : t))
+      );
+      setOpenEdit(false);
+      setSelectedTutor(null);
+    } catch (error) {
+      console.error("Update failed", error);
+      alert(error.response?.data?.message || "Failed to update tutor");
+    }
+  };
+
+  const handleView = (tutor) => {
+    setSelectedTutor(tutor);
+    setOpenView(true);
+  };
+
+  const handleDeleteClick = (tutor) => {
+    setSelectedTutor(tutor);
+    setOpenDelete(true);
+  };
+
+  const handleDelete = async () => {
+    try {
+      await tutorService.softDelete(selectedTutor._id);
+      setTutors((prev) => prev.filter((t) => t._id !== selectedTutor._id));
+      fetchDeletedTutors();
+      setOpenDelete(false);
+      setSelectedTutor(null);
+    } catch (error) {
+      console.error("Delete failed", error);
+      alert(error.response?.data?.message || "Failed to delete tutor");
+    }
+  };
+
+  const handleRestore = async (id) => {
+    try {
+      await tutorService.restore(id);
+      setDeletedTutors((prev) => prev.filter((t) => t._id !== id));
+      fetchTutors();
+    } catch (error) {
+      console.error("Restore failed", error);
+      alert(error.response?.data?.message || "Failed to restore tutor");
+    }
+  };
+
+  const handleToggleStatus = async (id) => {
+    try {
+      const res = await tutorService.toggleStatus(id);
+      setTutors((prev) =>
+        prev.map((t) => (t._id === id ? { ...t, isActive: res.data.isActive } : t))
+      );
+    } catch (error) {
+      console.error("Toggle status failed", error);
+      alert(error.response?.data?.message || "Failed to toggle status");
+    }
+  };
+
+  const filteredTutors =
+    activeTab === "active"
+      ? tutors.filter(
+          (t) =>
+            t.name?.toLowerCase().includes(search.toLowerCase()) ||
+            t.email?.toLowerCase().includes(search.toLowerCase()) ||
+            t.expertise?.toLowerCase().includes(search.toLowerCase())
+        )
+      : deletedTutors.filter(
+          (t) =>
+            t.name?.toLowerCase().includes(search.toLowerCase()) ||
+            t.email?.toLowerCase().includes(search.toLowerCase())
+        );
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-900">
-          Tutors
-        </h1>
-        <p className="text-sm text-gray-500">
-          Manage instructors & tutors
-        </p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
+            Tutors
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Manage instructors & tutors
+          </p>
+        </div>
+
+        {activeTab === "active" && (
+          <button
+            onClick={() => setOpenAdd(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"
+          >
+            <Plus size={18} />
+            Add Tutor
+          </button>
+        )}
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-4 border-b dark:border-gray-700">
+        <button
+          onClick={() => setActiveTab("active")}
+          className={`pb-2 px-2 ${
+            activeTab === "active"
+              ? "border-b-2 border-indigo-600 font-medium text-indigo-600"
+              : "text-gray-500 dark:text-gray-400"
+          }`}
+        >
+          Active ({tutors.length})
+        </button>
+        <button
+          onClick={() => setActiveTab("trash")}
+          className={`pb-2 px-2 ${
+            activeTab === "trash"
+              ? "border-b-2 border-red-600 font-medium text-red-600"
+              : "text-gray-500 dark:text-gray-400"
+          }`}
+        >
+          Trash ({deletedTutors.length})
+        </button>
       </div>
 
       {/* Search */}
-      <div className="bg-white rounded-xl border p-4 flex items-center gap-3">
+      <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-4 flex items-center gap-3">
         <Search size={18} className="text-gray-400" />
         <input
           type="text"
           placeholder="Search tutors..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full outline-none text-sm"
+          className="w-full outline-none text-sm dark:bg-gray-800 dark:text-white"
         />
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl border overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b">
-            <tr>
-              <th className="px-6 py-3 text-left">Name</th>
-              <th className="px-6 py-3 text-left">Email</th>
-              <th className="px-6 py-3 text-left">Expertise</th>
-              <th className="px-6 py-3 text-left">Status</th>
-              <th className="px-6 py-3 text-right">Actions</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {filteredTutors.map((t) => (
-              <tr
-                key={t.id}
-                className="border-b last:border-none hover:bg-gray-50"
-              >
-                <td className="px-6 py-4 font-medium">
-                  {t.name}
-                </td>
-                <td className="px-6 py-4 text-gray-600">
-                  {t.email}
-                </td>
-                <td className="px-6 py-4">
-                  {t.expertise}
-                </td>
-                <td className="px-6 py-4">
-                  <span
-                    className={`px-2 py-1 text-xs rounded-md ${
-                      t.status === "Active"
-                        ? "bg-green-100 text-green-700"
-                        : "bg-red-100 text-red-700"
-                    }`}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 overflow-hidden">
+        {loading ? (
+          <div className="p-6 text-center text-gray-500">Loading tutors...</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 dark:bg-gray-700 border-b dark:border-gray-600">
+                <tr>
+                  <th className="px-6 py-3 text-left text-gray-700 dark:text-gray-300">Name</th>
+                  <th className="px-6 py-3 text-left text-gray-700 dark:text-gray-300">Email</th>
+                  <th className="px-6 py-3 text-left text-gray-700 dark:text-gray-300">Phone</th>
+                  <th className="px-6 py-3 text-left text-gray-700 dark:text-gray-300">Expertise</th>
+                  <th className="px-6 py-3 text-left text-gray-700 dark:text-gray-300">Experience</th>
+                  <th className="px-6 py-3 text-left text-gray-700 dark:text-gray-300">Qualification</th>
+                  <th className="px-6 py-3 text-left text-gray-700 dark:text-gray-300">Salary</th>
+                  <th className="px-6 py-3 text-left text-gray-700 dark:text-gray-300">Is Active</th>
+                  <th className="px-6 py-3 text-right text-gray-700 dark:text-gray-300">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredTutors.map((t) => (
+                  <tr
+                    key={t._id}
+                    className="border-b dark:border-gray-700 last:border-none hover:bg-gray-50 dark:hover:bg-gray-700"
                   >
-                    {t.status}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-right">
-                  <button className="text-indigo-600 hover:underline text-sm">
-                    View
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                    <td className="px-6 py-4 font-medium dark:text-white">{t.name}</td>
+                    <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{t.email}</td>
+                    <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{t.phone || "—"}</td>
+                    <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{t.expertise}</td>
+                    <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{t.experience || 0} years</td>
+                    <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{t.qualification || "—"}</td>
+                    <td className="px-6 py-4 text-gray-600 dark:text-gray-300">₹{t.salary || 0}</td>
+                    <td className="px-6 py-4">
+                      <span
+                        className={`px-2 py-1 text-xs rounded-md ${
+                          t.isActive
+                            ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
+                            : "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"
+                        }`}
+                      >
+                        {t.isActive ? "Yes" : "No"}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right space-x-2">
+                      {activeTab === "active" ? (
+                        <>
+                          <button
+                            onClick={() => handleView(t)}
+                            className="text-indigo-600 hover:underline text-sm dark:text-indigo-400"
+                            title="View"
+                          >
+                            <Eye size={16} className="inline" />
+                          </button>
+                          <button
+                            onClick={() => handleEdit(t)}
+                            className="text-blue-600 hover:underline text-sm dark:text-blue-400"
+                            title="Edit"
+                          >
+                            <Edit size={16} className="inline" />
+                          </button>
+                          <button
+                            onClick={() => handleToggleStatus(t._id)}
+                            className="text-yellow-600 hover:underline text-sm dark:text-yellow-400"
+                            title="Toggle Status"
+                          >
+                            {t.isActive ? "Disable" : "Enable"}
+                          </button>
+                          <button
+                            onClick={() => handleDeleteClick(t)}
+                            className="text-red-600 hover:underline text-sm dark:text-red-400"
+                            title="Delete"
+                          >
+                            <Trash2 size={16} className="inline" />
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => handleRestore(t._id)}
+                          className="text-green-600 hover:underline text-sm dark:text-green-400 flex items-center gap-1"
+                          title="Restore"
+                        >
+                          <RotateCcw size={16} />
+                          Restore
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
 
-        {filteredTutors.length === 0 && (
+        {!loading && filteredTutors.length === 0 && (
           <div className="p-6 text-center text-gray-500 text-sm">
             No tutors found
           </div>
         )}
       </div>
+
+      {/* Modals */}
+      <AddTutorModal
+        open={openAdd}
+        onClose={() => setOpenAdd(false)}
+        onSubmit={handleAddTutor}
+      />
+      <EditTutorModal
+        open={openEdit}
+        tutor={selectedTutor}
+        onClose={() => {
+          setOpenEdit(false);
+          setSelectedTutor(null);
+        }}
+        onSubmit={handleUpdateTutor}
+      />
+      <ViewTutorModal
+        open={openView}
+        tutor={selectedTutor}
+        onClose={() => {
+          setOpenView(false);
+          setSelectedTutor(null);
+        }}
+      />
+      <ConfirmDeleteModal
+        open={openDelete}
+        onClose={() => {
+          setOpenDelete(false);
+          setSelectedTutor(null);
+        }}
+        onConfirm={handleDelete}
+        title={selectedTutor?.name}
+      />
     </div>
   );
 };

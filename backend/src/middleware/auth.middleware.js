@@ -28,7 +28,7 @@ const authenticate = async (req, res, next) => {
             });
         }
 
-        const user = await User.findById(decoded.id);
+        const user = await User.findById(decoded._id).select("-password");
 
         if (!user) {
             return res.status(401).json({
@@ -36,13 +36,8 @@ const authenticate = async (req, res, next) => {
             });
         }
 
-        const existingUser = await User.findOne({ email: decode.email }).select("-password");
-        if (!existingUser) {
-            return res.status(400).json({ message: "User not found in db, auth page backend" })
-        }
-        console.log("existingUser from auth", existingUser);
-        req.user = existingUser
-        next()
+        req.user = user;
+        next();
     } catch (error) {
         console.error("Auth middleware error:", error);
         return res.status(500).json({

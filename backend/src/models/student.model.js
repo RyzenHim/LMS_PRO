@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const employeeSchema = new mongoose.Schema(
+const studentSchema = new mongoose.Schema(
     {
         name: {
             type: String,
@@ -16,24 +16,44 @@ const employeeSchema = new mongoose.Schema(
             trim: true
         },
 
-        department: {
+        phone: {
+            type: String,
+            trim: true
+        },
+
+        course: {
             type: String,
             required: true
         },
 
-        designation: {
-            type: String,
-            required: true
-        },
-
-        salary: {
-            type: Number,
-            required: true
-        },
-
-        joiningDate: {
+        enrollmentDate: {
             type: Date,
             default: Date.now
+        },
+
+        status: {
+            type: String,
+            enum: ["active", "inactive", "suspended"],
+            default: "active"
+        },
+
+        address: {
+            type: String,
+            trim: true
+        },
+
+        dateOfBirth: {
+            type: Date
+        },
+
+        guardianName: {
+            type: String,
+            trim: true
+        },
+
+        guardianPhone: {
+            type: String,
+            trim: true
         },
 
         isActive: {
@@ -53,4 +73,5 @@ const employeeSchema = new mongoose.Schema(
     { timestamps: true }
 );
 
-module.exports = mongoose.model("Employee", employeeSchema);
+module.exports = mongoose.model("Student", studentSchema);
+

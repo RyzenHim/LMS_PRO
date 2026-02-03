@@ -5,6 +5,8 @@ const authenticate = require("../middleware/auth.middleware")
 
 router.post('/signup', userController.signup)
 router.post('/login', userController.login)
+router.get('/me', authenticate, userController.getCurrentUser)
+router.put('/profile', authenticate, userController.updateProfile)
 
 module.exports = router
 

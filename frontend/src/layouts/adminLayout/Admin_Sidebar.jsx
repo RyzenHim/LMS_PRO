@@ -4,6 +4,9 @@ import {
   Users,
   GraduationCap,
   UserCog,
+  BookOpen,
+  Tag,
+  UserRound,
 } from "lucide-react";
 
 const AdminSidebar = () => {
@@ -28,10 +31,25 @@ const AdminSidebar = () => {
       icon: UserCog,
       path: "/admin/employees",
     },
+    {
+      name: "Courses",
+      icon: BookOpen,
+      path: "/admin/courses",
+    },
+    {
+      name: "Skills",
+      icon: Tag,
+      path: "/admin/skills",
+    },
+    {
+      name: "Visitors",
+      icon: UserRound,
+      path: "/admin/visitor",
+    },
   ];
 
   return (
-    <aside className="w-64 bg-slate-900 text-white fixed h-screen">
+    <aside className="w-64 bg-slate-900 dark:bg-gray-800 text-white fixed h-screen">
       <div className="p-6 text-xl font-semibold">
         LMS Admin
       </div>
@@ -44,11 +62,11 @@ const AdminSidebar = () => {
               key={index}
               to={item.path}
               className={({ isActive }) =>
-                `flex items-center px-6 py-3 text-sm
+                `flex items-center px-6 py-3 text-sm transition-colors
                  ${
                    isActive
-                     ? "bg-slate-800 text-white"
-                     : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                     ? "bg-slate-800 dark:bg-gray-700 text-white"
+                     : "text-slate-300 hover:bg-slate-800 dark:hover:bg-gray-700 hover:text-white"
                  }`
               }
             >

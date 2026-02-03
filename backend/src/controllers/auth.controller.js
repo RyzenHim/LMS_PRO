@@ -46,16 +46,85 @@ exports.login = async (req, res) => {
         if (match) {
             const token = jwt.sign({
                 _id: existingUser._id,
-                email: existingUser.role
+                email: existingUser.email,
+                role: existingUser.role
             }, secretKey, { expiresIn: '1h' })
             console.log("Loggd in ");
-            return res.status(200).json({ message: "Welcome", token })
+            return res.status(200).json({ 
+                message: "Welcome", 
+                token,
+                user: {
+                    _id: existingUser._id,
+                    name: existingUser.name,
+                    email: existingUser.email,
+                    role: existingUser.role,
+                    theme: existingUser.theme,
+                    isActive: existingUser.isActive
+                }
+            })
         } else {
             return res.status(400).json({ message: "Password is worng" })
         }
     } catch (error) {
         console.error("Login Error:", error)
         return res.status(500).json({ message: "Internal server error " })
+    }
+}
+
+exports.getCurrentUser = async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id).select("-password");
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+        res.status(200).json(user);
+    } catch (error) {
+        console.error("Get current user error:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+}
+
+exports.updateProfile = async (req, res) => {
+    try {
+        const { name, password, currentPassword } = req.body;
+        const user = await User.findById(req.user._id);
+
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        if (name) {
+            user.name = name;
+        }
+
+        if (password) {
+            if (!currentPassword) {
+                return res.status(400).json({ message: "Current password is required to change password" });
+            }
+
+            const match = await bcrypt.compare(currentPassword, user.password);
+            if (!match) {
+                return res.status(400).json({ message: "Current password is incorrect" });
+            }
+
+            if (password.length < 6) {
+                return res.status(400).json({ message: "Password must be at least 6 characters long" });
+            }
+
+            user.password = password; // Will be hashed by pre-save hook
+        }
+
+        await user.save();
+
+        const updatedUser = await User.findById(user._id).select("-password");
+
+        res.status(200).json({
+            message: "Profile updated successfully",
+            user: updatedUser
+        });
+    } catch (error) {
+        console.error("Update profile error:", error);
+        res.status(500).json({ message: "Internal server error" });
     }
 }
 

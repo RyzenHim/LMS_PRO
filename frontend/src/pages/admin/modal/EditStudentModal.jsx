@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
-const AddStudentModal = ({ open, onClose, onSubmit }) => {
+const EditStudentModal = ({ open, onClose, student, onSubmit }) => {
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -12,6 +12,22 @@ const AddStudentModal = ({ open, onClose, onSubmit }) => {
     guardianPhone: "",
     status: "active",
   });
+
+  useEffect(() => {
+    if (student) {
+      setForm({
+        name: student.name || "",
+        email: student.email || "",
+        phone: student.phone || "",
+        course: student.course || "",
+        address: student.address || "",
+        dateOfBirth: student.dateOfBirth ? new Date(student.dateOfBirth).toISOString().split('T')[0] : "",
+        guardianName: student.guardianName || "",
+        guardianPhone: student.guardianPhone || "",
+        status: student.status || "active",
+      });
+    }
+  }, [student]);
 
   if (!open) return null;
 
@@ -25,24 +41,13 @@ const AddStudentModal = ({ open, onClose, onSubmit }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     onSubmit?.(form);
-    setForm({
-      name: "",
-      email: "",
-      phone: "",
-      course: "",
-      address: "",
-      dateOfBirth: "",
-      guardianName: "",
-      guardianPhone: "",
-      status: "active",
-    });
   };
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 overflow-y-auto">
       <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-2xl my-8">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          Add Student
+          Edit Student
         </h2>
 
         <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto">
@@ -185,7 +190,7 @@ const AddStudentModal = ({ open, onClose, onSubmit }) => {
               type="submit"
               className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
             >
-              Add Student
+              Update Student
             </button>
           </div>
         </form>
@@ -194,4 +199,5 @@ const AddStudentModal = ({ open, onClose, onSubmit }) => {
   );
 };
 
-export default AddStudentModal;
+export default EditStudentModal;
+

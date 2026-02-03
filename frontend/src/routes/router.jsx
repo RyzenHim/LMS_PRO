@@ -10,6 +10,8 @@ import AdminStudents from "../pages/admin/AdminStudents";
 import AdminTutors from "../pages/admin/AdminTutors";
 import AdminEmployees from "../pages/admin/AdminEmployees";
 import AdminCourses from "../pages/admin/AdminCourses";
+import AdminProfile from "../pages/admin/AdminProfile";
+import AdminSkills from "../pages/admin/AdminSkills";
 import Visitor from "../pages/visitor/Visitor";
 
 const router = createBrowserRouter([
@@ -46,6 +48,8 @@ const router = createBrowserRouter([
       { path: "tutors", element: <AdminTutors /> },
       { path: "employees", element: <AdminEmployees /> },
       { path: "courses", element: <AdminCourses /> },
+      { path: "skills", element: <AdminSkills /> },
+      { path: "profile", element: <AdminProfile /> },
       { path: "visitor", element: <Visitor /> },
     ],
   },
