@@ -59,6 +59,15 @@ const AddCourseModal = ({ open, onClose, onSubmit }) => {
     });
   };
 
+  const handleSkillToggle = (skillId) => {
+    setForm((prev) => ({
+      ...prev,
+      skills: prev.skills.includes(skillId)
+        ? prev.skills.filter((id) => id !== skillId)
+        : [...prev.skills, skillId],
+    }));
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     onSubmit?.(form);

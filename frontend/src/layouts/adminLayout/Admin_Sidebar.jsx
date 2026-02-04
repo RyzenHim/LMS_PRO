@@ -49,8 +49,8 @@ const AdminSidebar = () => {
   ];
 
   return (
-    <aside className="w-64 bg-slate-900 dark:bg-gray-800 text-white fixed h-screen">
-      <div className="p-6 text-xl font-semibold">
+    <aside className="w-64 bg-[#112D4E] dark:bg-[#0a1f3a] text-white fixed h-screen shadow-lg">
+      <div className="p-6 text-xl font-semibold text-[#DBE2EF]">
         LMS Admin
       </div>
 
@@ -65,8 +65,8 @@ const AdminSidebar = () => {
                 `flex items-center px-6 py-3 text-sm transition-colors
                  ${
                    isActive
-                     ? "bg-slate-800 dark:bg-gray-700 text-white"
-                     : "text-slate-300 hover:bg-slate-800 dark:hover:bg-gray-700 hover:text-white"
+                     ? "bg-[#3F72AF] text-white border-l-4 border-[#DBE2EF]"
+                     : "text-[#DBE2EF] hover:bg-[#3F72AF] hover:text-white"
                  }`
               }
             >

@@ -14,15 +14,15 @@ const AdminTopbar = () => {
   };
 
   return (
-    <header className="h-16 bg-white dark:bg-gray-800 border-b dark:border-gray-700 flex items-center justify-between px-6">
-      <h1 className="text-lg font-medium text-gray-800 dark:text-white">
+    <header className="h-16 bg-white dark:bg-[#112D4E] border-b dark:border-[#3F72AF] flex items-center justify-between px-6 shadow-sm">
+      <h1 className="text-lg font-medium text-[#112D4E] dark:text-[#DBE2EF]">
         Admin Panel
       </h1>
 
       <div className="flex items-center gap-4">
         <button
           onClick={toggleTheme}
-          className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
+          className="p-2 rounded-lg hover:bg-[#DBE2EF] dark:hover:bg-[#3F72AF] text-[#3F72AF] dark:text-[#DBE2EF] transition-colors"
           title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
         >
           {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
@@ -30,19 +30,19 @@ const AdminTopbar = () => {
 
         <Link
           to="/admin/profile"
-          className="flex items-center gap-2 px-3 py-1 text-sm rounded-md border dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
+          className="flex items-center gap-2 px-3 py-1 text-sm rounded-md border dark:border-[#3F72AF] hover:bg-[#DBE2EF] dark:hover:bg-[#3F72AF] text-[#3F72AF] dark:text-[#DBE2EF] transition-colors"
         >
           <User size={16} />
           Profile
         </Link>
 
-        <span className="text-sm text-gray-600 dark:text-gray-300">
+        <span className="text-sm text-[#3F72AF] dark:text-[#DBE2EF]">
           Admin
         </span>
 
         <button
           onClick={handleLogout}
-          className="flex items-center gap-2 px-3 py-1 text-sm rounded-md border dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
+          className="flex items-center gap-2 px-3 py-1 text-sm rounded-md border dark:border-[#3F72AF] hover:bg-[#DBE2EF] dark:hover:bg-[#3F72AF] text-[#3F72AF] dark:text-[#DBE2EF] transition-colors"
         >
           <LogOut size={16} />
           Logout

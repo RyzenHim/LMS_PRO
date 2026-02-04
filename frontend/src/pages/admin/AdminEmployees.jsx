@@ -150,10 +150,10 @@ const AdminEmployees = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
+          <h1 className="text-2xl font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
             Employees
           </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className="text-sm text-[#3F72AF] dark:text-[#DBE2EF]">
             Manage admin & HR employees
           </p>
         </div>
@@ -161,7 +161,7 @@ const AdminEmployees = () => {
         {activeTab === "active" && (
           <button
             onClick={() => setOpenAdd(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#3F72AF] text-white hover:bg-[#112D4E] dark:bg-[#3F72AF] dark:hover:bg-[#DBE2EF] dark:hover:text-[#112D4E] transition-colors shadow-md"
           >
             <Plus size={18} />
             Add Employee
@@ -170,43 +170,43 @@ const AdminEmployees = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-4 border-b dark:border-gray-700">
+      <div className="flex gap-4 border-b border-[#DBE2EF] dark:border-[#3F72AF]">
         <button
           onClick={() => setActiveTab("active")}
-          className={`pb-2 px-2 ${
+          className={`pb-2 px-2 transition-colors ${
             activeTab === "active"
-              ? "border-b-2 border-indigo-600 font-medium text-indigo-600"
-              : "text-gray-500 dark:text-gray-400"
+              ? "border-b-2 border-[#3F72AF] font-medium text-[#3F72AF] dark:text-[#DBE2EF] dark:border-[#DBE2EF]"
+              : "text-[#3F72AF] dark:text-[#DBE2EF]"
           }`}
         >
           Active ({allEmp.length})
         </button>
         <button
           onClick={() => setActiveTab("trash")}
-          className={`pb-2 px-2 ${
+          className={`pb-2 px-2 transition-colors ${
             activeTab === "trash"
-              ? "border-b-2 border-red-600 font-medium text-red-600"
-              : "text-gray-500 dark:text-gray-400"
+              ? "border-b-2 border-red-600 font-medium text-red-600 dark:text-red-400 dark:border-red-400"
+              : "text-[#3F72AF] dark:text-[#DBE2EF]"
           }`}
         >
           Trash ({deletedEmployees.length})
         </button>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-4">
+      <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-4 shadow-sm">
         <div className="flex items-center gap-3">
-          <Search className="text-gray-400" size={18} />
+          <Search className="text-[#3F72AF] dark:text-[#DBE2EF]" size={18} />
           <input
             type="text"
             placeholder="Search by name, email, or department"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full outline-none text-sm dark:bg-gray-800 dark:text-white"
+            className="w-full outline-none text-sm bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
           />
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] shadow-lg overflow-hidden">
         {loading ? (
           <div className="p-6 text-center text-gray-500">
             Loading employees...
@@ -214,18 +214,18 @@ const AdminEmployees = () => {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 dark:bg-gray-700 border-b dark:border-gray-600">
+              <thead className="bg-[#DBE2EF] dark:bg-[#3F72AF] border-b border-[#DBE2EF] dark:border-[#3F72AF]">
                 <tr>
-                  <th className="px-4 py-3 text-left text-gray-700 dark:text-gray-300">Name</th>
-                  <th className="px-4 py-3 text-left text-gray-700 dark:text-gray-300">Email</th>
-                  <th className="px-4 py-3 text-left text-gray-700 dark:text-gray-300">Department</th>
-                  <th className="px-4 py-3 text-left text-gray-700 dark:text-gray-300">Designation</th>
-                  <th className="px-4 py-3 text-left text-gray-700 dark:text-gray-300">Salary</th>
-                  <th className="px-4 py-3 text-left text-gray-700 dark:text-gray-300">Status</th>
-                  <th className="px-4 py-3 text-left text-gray-700 dark:text-gray-300">Joining Date</th>
-                  <th className="px-4 py-3 text-left text-gray-700 dark:text-gray-300">Created At</th>
-                  <th className="px-4 py-3 text-left text-gray-700 dark:text-gray-300">Updated At</th>
-                  <th className="px-4 py-3 text-left text-gray-700 dark:text-gray-300">Actions</th>
+                  <th className="px-4 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Name</th>
+                  <th className="px-4 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Email</th>
+                  <th className="px-4 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Department</th>
+                  <th className="px-4 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Designation</th>
+                  <th className="px-4 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Salary</th>
+                  <th className="px-4 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Status</th>
+                  <th className="px-4 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Joining Date</th>
+                  <th className="px-4 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Created At</th>
+                  <th className="px-4 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Updated At</th>
+                  <th className="px-4 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Actions</th>
                 </tr>
               </thead>
 
@@ -233,17 +233,17 @@ const AdminEmployees = () => {
                 {filteredEmployees.map((emp) => (
                   <tr
                     key={emp._id}
-                    className="border-b dark:border-gray-700 last:border-none hover:bg-gray-50 dark:hover:bg-gray-700"
+                    className="border-b border-[#DBE2EF] dark:border-[#3F72AF] last:border-none hover:bg-[#DBE2EF] dark:hover:bg-[#0a1f3a] transition-colors"
                   >
-                    <td className="px-4 py-3 font-medium dark:text-white">{emp.name}</td>
-                    <td className="px-4 py-3 text-gray-600 dark:text-gray-300">{emp.email}</td>
-                    <td className="px-4 py-3 dark:text-white">{emp.department}</td>
+                    <td className="px-4 py-3 font-medium text-[#112D4E] dark:text-[#DBE2EF]">{emp.name}</td>
+                    <td className="px-4 py-3 text-[#3F72AF] dark:text-[#DBE2EF]">{emp.email}</td>
+                    <td className="px-4 py-3 text-[#112D4E] dark:text-[#DBE2EF]">{emp.department}</td>
                     <td className="px-4 py-3">
-                      <span className="px-2 py-1 text-xs rounded-md bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300">
+                      <span className="px-2 py-1 text-xs rounded-md bg-[#DBE2EF] dark:bg-[#3F72AF] text-[#112D4E] dark:text-[#DBE2EF]">
                         {emp.designation}
                       </span>
                     </td>
-                    <td className="px-4 py-3 dark:text-white">₹{emp.salary}</td>
+                    <td className="px-4 py-3 text-[#112D4E] dark:text-[#DBE2EF]">₹{emp.salary}</td>
                     <td className="px-4 py-3">
                       <span
                         className={`px-2 py-1 text-xs rounded-md ${
@@ -255,15 +255,15 @@ const AdminEmployees = () => {
                         {emp.isActive ? "Active" : "Inactive"}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-gray-500 dark:text-gray-300">
+                    <td className="px-4 py-3 text-[#3F72AF] dark:text-[#DBE2EF]">
                       {emp.joiningDate
                         ? new Date(emp.joiningDate).toLocaleDateString()
                         : "—"}
                     </td>
-                    <td className="px-4 py-3 text-gray-500 dark:text-gray-300">
+                    <td className="px-4 py-3 text-[#3F72AF] dark:text-[#DBE2EF]">
                       {new Date(emp.createdAt).toLocaleString()}
                     </td>
-                    <td className="px-4 py-3 text-gray-500 dark:text-gray-300">
+                    <td className="px-4 py-3 text-[#3F72AF] dark:text-[#DBE2EF]">
                       {new Date(emp.updatedAt).toLocaleString()}
                     </td>
                     <td className="px-4 py-3 text-right space-x-2">
@@ -271,28 +271,28 @@ const AdminEmployees = () => {
                         <>
                           <button
                             onClick={() => handleView(emp)}
-                            className="text-indigo-600 hover:underline text-sm dark:text-indigo-400"
+                            className="text-[#3F72AF] hover:text-[#112D4E] dark:text-[#DBE2EF] dark:hover:text-white text-sm transition-colors"
                             title="View"
                           >
                             <Eye size={16} className="inline" />
                           </button>
                           <button
                             onClick={() => handleEdit(emp)}
-                            className="text-blue-600 hover:underline text-sm dark:text-blue-400"
+                            className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-sm transition-colors"
                             title="Edit"
                           >
                             <Edit size={16} className="inline" />
                           </button>
                           <button
                             onClick={() => handleToggleStatus(emp._id)}
-                            className="text-yellow-600 hover:underline text-sm dark:text-yellow-400"
+                            className="text-yellow-600 hover:text-yellow-700 dark:text-yellow-400 dark:hover:text-yellow-300 text-sm transition-colors"
                             title="Toggle Status"
                           >
                             {emp.isActive ? "Disable" : "Enable"}
                           </button>
                           <button
                             onClick={() => handleDeleteClick(emp)}
-                            className="text-red-600 hover:underline text-sm dark:text-red-400"
+                            className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-sm transition-colors"
                             title="Delete"
                           >
                             <Trash2 size={16} className="inline" />
@@ -301,7 +301,7 @@ const AdminEmployees = () => {
                       ) : (
                         <button
                           onClick={() => handleRestore(emp._id)}
-                          className="text-green-600 hover:underline text-sm dark:text-green-400 flex items-center gap-1"
+                          className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 text-sm flex items-center gap-1 transition-colors"
                           title="Restore"
                         >
                           <RotateCcw size={16} />
@@ -317,7 +317,7 @@ const AdminEmployees = () => {
         )}
 
         {!loading && filteredEmployees.length === 0 && (
-          <div className="p-6 text-center text-gray-500">
+          <div className="p-6 text-center text-[#3F72AF] dark:text-[#DBE2EF]">
             No employees found
           </div>
         )}

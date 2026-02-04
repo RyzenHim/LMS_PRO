@@ -138,10 +138,10 @@ const AdminStudents = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
+          <h1 className="text-2xl font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
             Students
           </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className="text-sm text-[#3F72AF] dark:text-[#DBE2EF]">
             Manage enrolled students
           </p>
         </div>
@@ -149,7 +149,7 @@ const AdminStudents = () => {
         {activeTab === "active" && (
           <button
             onClick={() => setOpenAdd(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#3F72AF] text-white hover:bg-[#112D4E] dark:bg-[#3F72AF] dark:hover:bg-[#DBE2EF] dark:hover:text-[#112D4E] transition-colors shadow-md"
           >
             <Plus size={18} />
             Add Student
@@ -158,23 +158,23 @@ const AdminStudents = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-4 border-b dark:border-gray-700">
+      <div className="flex gap-4 border-b border-[#DBE2EF] dark:border-[#3F72AF]">
         <button
           onClick={() => setActiveTab("active")}
-          className={`pb-2 px-2 ${
+          className={`pb-2 px-2 transition-colors ${
             activeTab === "active"
-              ? "border-b-2 border-indigo-600 font-medium text-indigo-600"
-              : "text-gray-500 dark:text-gray-400"
+              ? "border-b-2 border-[#3F72AF] font-medium text-[#3F72AF] dark:text-[#DBE2EF] dark:border-[#DBE2EF]"
+              : "text-[#3F72AF] dark:text-[#DBE2EF]"
           }`}
         >
           Active ({students.length})
         </button>
         <button
           onClick={() => setActiveTab("trash")}
-          className={`pb-2 px-2 ${
+          className={`pb-2 px-2 transition-colors ${
             activeTab === "trash"
-              ? "border-b-2 border-red-600 font-medium text-red-600"
-              : "text-gray-500 dark:text-gray-400"
+              ? "border-b-2 border-red-600 font-medium text-red-600 dark:text-red-400 dark:border-red-400"
+              : "text-[#3F72AF] dark:text-[#DBE2EF]"
           }`}
         >
           Trash ({deletedStudents.length})
@@ -182,46 +182,46 @@ const AdminStudents = () => {
       </div>
 
       {/* Search */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-4 flex items-center gap-3">
-        <Search size={18} className="text-gray-400" />
+      <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-4 flex items-center gap-3 shadow-sm">
+        <Search size={18} className="text-[#3F72AF] dark:text-[#DBE2EF]" />
         <input
           type="text"
           placeholder="Search students..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full outline-none text-sm dark:bg-gray-800 dark:text-white"
+          className="w-full outline-none text-sm bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
         />
       </div>
 
       {/* Table */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 overflow-hidden">
+      <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] overflow-hidden shadow-lg">
         {loading ? (
           <div className="p-6 text-center text-gray-500">Loading students...</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 dark:bg-gray-700 border-b dark:border-gray-600">
+              <thead className="bg-[#DBE2EF] dark:bg-[#3F72AF] border-b border-[#DBE2EF] dark:border-[#3F72AF]">
                 <tr>
-                  <th className="px-6 py-3 text-left text-gray-700 dark:text-gray-300">Name</th>
-                  <th className="px-6 py-3 text-left text-gray-700 dark:text-gray-300">Email</th>
-                  <th className="px-6 py-3 text-left text-gray-700 dark:text-gray-300">Phone</th>
-                  <th className="px-6 py-3 text-left text-gray-700 dark:text-gray-300">Course</th>
-                  <th className="px-6 py-3 text-left text-gray-700 dark:text-gray-300">Status</th>
-                  <th className="px-6 py-3 text-left text-gray-700 dark:text-gray-300">Enrollment Date</th>
-                  <th className="px-6 py-3 text-left text-gray-700 dark:text-gray-300">Is Active</th>
-                  <th className="px-6 py-3 text-right text-gray-700 dark:text-gray-300">Actions</th>
+                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Name</th>
+                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Email</th>
+                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Phone</th>
+                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Course</th>
+                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Status</th>
+                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Enrollment Date</th>
+                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Is Active</th>
+                  <th className="px-6 py-3 text-right text-[#112D4E] dark:text-[#DBE2EF]">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredStudents.map((s) => (
                   <tr
                     key={s._id}
-                    className="border-b dark:border-gray-700 last:border-none hover:bg-gray-50 dark:hover:bg-gray-700"
+                    className="border-b border-[#DBE2EF] dark:border-[#3F72AF] last:border-none hover:bg-[#DBE2EF] dark:hover:bg-[#0a1f3a] transition-colors"
                   >
-                    <td className="px-6 py-4 font-medium dark:text-white">{s.name}</td>
-                    <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{s.email}</td>
-                    <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{s.phone || "—"}</td>
-                    <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{s.course}</td>
+                    <td className="px-6 py-4 font-medium text-[#112D4E] dark:text-[#DBE2EF]">{s.name}</td>
+                    <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">{s.email}</td>
+                    <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">{s.phone || "—"}</td>
+                    <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">{s.course}</td>
                     <td className="px-6 py-4">
                       <span
                         className={`px-2 py-1 text-xs rounded-md capitalize ${
@@ -235,7 +235,7 @@ const AdminStudents = () => {
                         {s.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-gray-600 dark:text-gray-300">
+                    <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
                       {s.enrollmentDate
                         ? new Date(s.enrollmentDate).toLocaleDateString()
                         : "—"}
@@ -256,28 +256,28 @@ const AdminStudents = () => {
                         <>
                           <button
                             onClick={() => handleView(s)}
-                            className="text-indigo-600 hover:underline text-sm dark:text-indigo-400"
+                            className="text-[#3F72AF] hover:text-[#112D4E] dark:text-[#DBE2EF] dark:hover:text-white text-sm transition-colors"
                             title="View"
                           >
                             <Eye size={16} className="inline" />
                           </button>
                           <button
                             onClick={() => handleEdit(s)}
-                            className="text-blue-600 hover:underline text-sm dark:text-blue-400"
+                            className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-sm transition-colors"
                             title="Edit"
                           >
                             <Edit size={16} className="inline" />
                           </button>
                           <button
                             onClick={() => handleToggleStatus(s._id)}
-                            className="text-yellow-600 hover:underline text-sm dark:text-yellow-400"
+                            className="text-yellow-600 hover:text-yellow-700 dark:text-yellow-400 dark:hover:text-yellow-300 text-sm transition-colors"
                             title="Toggle Status"
                           >
                             {s.isActive ? "Disable" : "Enable"}
                           </button>
                           <button
                             onClick={() => handleDeleteClick(s)}
-                            className="text-red-600 hover:underline text-sm dark:text-red-400"
+                            className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-sm transition-colors"
                             title="Delete"
                           >
                             <Trash2 size={16} className="inline" />
@@ -286,7 +286,7 @@ const AdminStudents = () => {
                       ) : (
                         <button
                           onClick={() => handleRestore(s._id)}
-                          className="text-green-600 hover:underline text-sm dark:text-green-400 flex items-center gap-1"
+                          className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 text-sm flex items-center gap-1 transition-colors"
                           title="Restore"
                         >
                           <RotateCcw size={16} />
@@ -302,7 +302,7 @@ const AdminStudents = () => {
         )}
 
         {!loading && filteredStudents.length === 0 && (
-          <div className="p-6 text-center text-gray-500 text-sm">
+          <div className="p-6 text-center text-[#3F72AF] dark:text-[#DBE2EF] text-sm">
             No students found
           </div>
         )}

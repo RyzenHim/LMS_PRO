@@ -129,7 +129,7 @@ const AdminProfile = () => {
 
   if (loading) {
     return (
-      <div className="p-6 text-center text-gray-500 dark:text-gray-400">
+      <div className="p-6 text-center text-[#3F72AF] dark:text-[#DBE2EF]">
         Loading profile...
       </div>
     );
@@ -146,10 +146,10 @@ const AdminProfile = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
+        <h1 className="text-2xl font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
           Profile Settings
         </h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
+        <p className="text-sm text-[#3F72AF] dark:text-[#DBE2EF]">
           Manage your account information
         </p>
       </div>
@@ -163,41 +163,41 @@ const AdminProfile = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Profile Info Card */}
         <div className="lg:col-span-1">
-          <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
+          <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-6 shadow-lg">
             <div className="flex flex-col items-center text-center">
-              <div className="w-24 h-24 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center mb-4">
-                <User size={40} className="text-indigo-600 dark:text-indigo-300" />
+              <div className="w-24 h-24 rounded-full bg-[#DBE2EF] dark:bg-[#3F72AF] flex items-center justify-center mb-4">
+                <User size={40} className="text-[#3F72AF] dark:text-[#DBE2EF]" />
               </div>
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+              <h2 className="text-xl font-semibold text-[#112D4E] dark:text-[#DBE2EF] mb-2">
                 {user.name}
               </h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+              <p className="text-sm text-[#3F72AF] dark:text-[#DBE2EF] mb-6">
                 {user.email}
               </p>
 
               <div className="w-full space-y-4">
                 <div className="flex items-center gap-3 text-sm">
-                  <Mail size={16} className="text-gray-400" />
-                  <span className="text-gray-600 dark:text-gray-300">
+                  <Mail size={16} className="text-[#3F72AF] dark:text-[#DBE2EF]" />
+                  <span className="text-[#112D4E] dark:text-[#DBE2EF]">
                     {user.email}
                   </span>
                 </div>
 
                 <div className="flex items-center gap-3 text-sm">
-                  <Shield size={16} className="text-gray-400" />
-                  <span className="text-gray-600 dark:text-gray-300 capitalize">
+                  <Shield size={16} className="text-[#3F72AF] dark:text-[#DBE2EF]" />
+                  <span className="text-[#112D4E] dark:text-[#DBE2EF] capitalize">
                     {user.role}
                   </span>
                 </div>
 
                 <div className="flex items-center gap-3 text-sm">
-                  <Calendar size={16} className="text-gray-400" />
-                  <span className="text-gray-600 dark:text-gray-300">
+                  <Calendar size={16} className="text-[#3F72AF] dark:text-[#DBE2EF]" />
+                  <span className="text-[#112D4E] dark:text-[#DBE2EF]">
                     Joined {new Date(user.createdAt).toLocaleDateString()}
                   </span>
                 </div>
 
-                <div className="pt-4 border-t dark:border-gray-700">
+                <div className="pt-4 border-t border-[#DBE2EF] dark:border-[#3F72AF]">
                   <span
                     className={`px-3 py-1 text-xs rounded-full ${
                       user.isActive
@@ -215,15 +215,15 @@ const AdminProfile = () => {
 
         {/* Edit Form */}
         <div className="lg:col-span-2">
-          <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">
+          <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-6 shadow-lg">
+            <h3 className="text-lg font-semibold text-[#112D4E] dark:text-[#DBE2EF] mb-6">
               Edit Profile
             </h3>
 
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Name Field */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
                   Full Name *
                 </label>
                 <input
@@ -232,10 +232,10 @@ const AdminProfile = () => {
                   value={form.name}
                   onChange={handleChange}
                   required
-                  className={`w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
+                  className={`w-full px-4 py-2 border rounded-lg bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:border-[#3F72AF] dark:text-[#DBE2EF] ${
                     errors.name
                       ? "border-red-500 dark:border-red-500"
-                      : "border-gray-300 dark:border-gray-600"
+                      : "border-[#DBE2EF] dark:border-[#3F72AF]"
                   }`}
                 />
                 {errors.name && (
@@ -247,48 +247,48 @@ const AdminProfile = () => {
 
               {/* Email Field (Read-only) */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
                   Email
                 </label>
                 <input
                   type="email"
                   value={user.email}
                   disabled
-                  className="w-full px-4 py-2 border rounded-lg bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-400 cursor-not-allowed"
+                  className="w-full px-4 py-2 border rounded-lg bg-[#DBE2EF] dark:bg-[#0a1f3a] dark:border-[#3F72AF] dark:text-[#DBE2EF] cursor-not-allowed"
                 />
-                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                <p className="mt-1 text-xs text-[#3F72AF] dark:text-[#DBE2EF]">
                   Email cannot be changed
                 </p>
               </div>
 
               {/* Role Field (Read-only) */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
                   Role
                 </label>
                 <input
                   type="text"
                   value={user.role}
                   disabled
-                  className="w-full px-4 py-2 border rounded-lg bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-400 cursor-not-allowed capitalize"
+                  className="w-full px-4 py-2 border rounded-lg bg-[#DBE2EF] dark:bg-[#0a1f3a] dark:border-[#3F72AF] dark:text-[#DBE2EF] cursor-not-allowed capitalize"
                 />
-                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                <p className="mt-1 text-xs text-[#3F72AF] dark:text-[#DBE2EF]">
                   Role cannot be changed
                 </p>
               </div>
 
               {/* Password Section */}
-              <div className="pt-6 border-t dark:border-gray-700">
-                <h4 className="text-md font-medium text-gray-900 dark:text-white mb-4">
+              <div className="pt-6 border-t border-[#DBE2EF] dark:border-[#3F72AF]">
+                <h4 className="text-md font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-4">
                   Change Password
                 </h4>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                <p className="text-sm text-[#3F72AF] dark:text-[#DBE2EF] mb-4">
                   Leave blank if you don't want to change your password
                 </p>
 
                 {/* Current Password */}
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
                     Current Password
                   </label>
                   <input
@@ -296,10 +296,10 @@ const AdminProfile = () => {
                     name="currentPassword"
                     value={form.currentPassword}
                     onChange={handleChange}
-                    className={`w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
+                    className={`w-full px-4 py-2 border rounded-lg bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:border-[#3F72AF] dark:text-[#DBE2EF] ${
                       errors.currentPassword
                         ? "border-red-500 dark:border-red-500"
-                        : "border-gray-300 dark:border-gray-600"
+                        : "border-[#DBE2EF] dark:border-[#3F72AF]"
                     }`}
                   />
                   {errors.currentPassword && (
@@ -311,7 +311,7 @@ const AdminProfile = () => {
 
                 {/* New Password */}
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
                     New Password
                   </label>
                   <input
@@ -319,10 +319,10 @@ const AdminProfile = () => {
                     name="password"
                     value={form.password}
                     onChange={handleChange}
-                    className={`w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
+                    className={`w-full px-4 py-2 border rounded-lg bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:border-[#3F72AF] dark:text-[#DBE2EF] ${
                       errors.password
                         ? "border-red-500 dark:border-red-500"
-                        : "border-gray-300 dark:border-gray-600"
+                        : "border-[#DBE2EF] dark:border-[#3F72AF]"
                     }`}
                   />
                   {errors.password && (
@@ -334,7 +334,7 @@ const AdminProfile = () => {
 
                 {/* Confirm Password */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
                     Confirm New Password
                   </label>
                   <input
@@ -342,10 +342,10 @@ const AdminProfile = () => {
                     name="confirmPassword"
                     value={form.confirmPassword}
                     onChange={handleChange}
-                    className={`w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
+                    className={`w-full px-4 py-2 border rounded-lg bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:border-[#3F72AF] dark:text-[#DBE2EF] ${
                       errors.confirmPassword
                         ? "border-red-500 dark:border-red-500"
-                        : "border-gray-300 dark:border-gray-600"
+                        : "border-[#DBE2EF] dark:border-[#3F72AF]"
                     }`}
                   />
                   {errors.confirmPassword && (
@@ -361,7 +361,7 @@ const AdminProfile = () => {
                 <button
                   type="submit"
                   disabled={updating}
-                  className="flex items-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center gap-2 px-6 py-2 bg-[#3F72AF] text-white rounded-lg hover:bg-[#112D4E] dark:bg-[#3F72AF] dark:hover:bg-[#DBE2EF] dark:hover:text-[#112D4E] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   <Save size={18} />
                   {updating ? "Updating..." : "Save Changes"}
