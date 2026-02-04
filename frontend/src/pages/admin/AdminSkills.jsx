@@ -71,7 +71,7 @@ const AdminSkills = () => {
     try {
       const res = await skillService.update(selectedSkill._id, form);
       setSkills((prev) =>
-        prev.map((s) => (s._id === selectedSkill._id ? res.data.skill : s))
+        prev.map((s) => (s._id === selectedSkill._id ? res.data.skill : s)),
       );
       setOpenEdit(false);
       setSelectedSkill(null);
@@ -115,7 +115,9 @@ const AdminSkills = () => {
     try {
       const res = await skillService.toggleStatus(id);
       setSkills((prev) =>
-        prev.map((s) => (s._id === id ? { ...s, isActive: res.data.isActive } : s))
+        prev.map((s) =>
+          s._id === id ? { ...s, isActive: res.data.isActive } : s,
+        ),
       );
     } catch (error) {
       console.error("Toggle status failed", error);
@@ -129,12 +131,12 @@ const AdminSkills = () => {
           (s) =>
             s.name?.toLowerCase().includes(search.toLowerCase()) ||
             s.category?.toLowerCase().includes(search.toLowerCase()) ||
-            s.description?.toLowerCase().includes(search.toLowerCase())
+            s.description?.toLowerCase().includes(search.toLowerCase()),
         )
       : deletedSkills.filter(
           (s) =>
             s.name?.toLowerCase().includes(search.toLowerCase()) ||
-            s.category?.toLowerCase().includes(search.toLowerCase())
+            s.category?.toLowerCase().includes(search.toLowerCase()),
         );
 
   return (
@@ -160,7 +162,6 @@ const AdminSkills = () => {
         )}
       </div>
 
-      {/* Tabs */}
       <div className="flex gap-4 border-b border-[#DBE2EF] dark:border-[#3F72AF]">
         <button
           onClick={() => setActiveTab("active")}
@@ -184,7 +185,6 @@ const AdminSkills = () => {
         </button>
       </div>
 
-      {/* Search */}
       <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-4 flex items-center gap-3 shadow-sm">
         <Search size={18} className="text-[#3F72AF] dark:text-[#DBE2EF]" />
         <input
@@ -196,7 +196,6 @@ const AdminSkills = () => {
         />
       </div>
 
-      {/* Table */}
       <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] overflow-hidden shadow-lg">
         {loading ? (
           <div className="p-6 text-center text-gray-500">Loading skills...</div>
@@ -205,11 +204,21 @@ const AdminSkills = () => {
             <table className="w-full text-sm">
               <thead className="bg-[#DBE2EF] dark:bg-[#3F72AF] border-b border-[#DBE2EF] dark:border-[#3F72AF]">
                 <tr>
-                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Name</th>
-                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Category</th>
-                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Description</th>
-                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Is Active</th>
-                  <th className="px-6 py-3 text-right text-[#112D4E] dark:text-[#DBE2EF]">Actions</th>
+                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                    Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                    Category
+                  </th>
+                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                    Description
+                  </th>
+                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                    Is Active
+                  </th>
+                  <th className="px-6 py-3 text-right text-[#112D4E] dark:text-[#DBE2EF]">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -218,9 +227,15 @@ const AdminSkills = () => {
                     key={s._id}
                     className="border-b border-[#DBE2EF] dark:border-[#3F72AF] last:border-none hover:bg-[#DBE2EF] dark:hover:bg-[#0a1f3a] transition-colors"
                   >
-                    <td className="px-6 py-4 font-medium text-[#112D4E] dark:text-[#DBE2EF] capitalize">{s.name}</td>
-                    <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">{s.category || "—"}</td>
-                    <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">{s.description || "—"}</td>
+                    <td className="px-6 py-4 font-medium text-[#112D4E] dark:text-[#DBE2EF] capitalize">
+                      {s.name}
+                    </td>
+                    <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
+                      {s.category || "—"}
+                    </td>
+                    <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
+                      {s.description || "—"}
+                    </td>
                     <td className="px-6 py-4">
                       <span
                         className={`px-2 py-1 text-xs rounded-md ${
@@ -282,7 +297,6 @@ const AdminSkills = () => {
         )}
       </div>
 
-      {/* Add Modal */}
       {openAdd && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-[#112D4E] rounded-xl p-6 w-full max-w-md shadow-2xl border border-[#DBE2EF] dark:border-[#3F72AF]">
@@ -315,7 +329,9 @@ const AdminSkills = () => {
                 <input
                   type="text"
                   value={form.category}
-                  onChange={(e) => setForm({ ...form, category: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, category: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-[#DBE2EF] dark:border-[#3F72AF] rounded-lg bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
                 />
               </div>
@@ -325,7 +341,9 @@ const AdminSkills = () => {
                 </label>
                 <textarea
                   value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, description: e.target.value })
+                  }
                   rows="3"
                   className="w-full px-3 py-2 border border-[#DBE2EF] dark:border-[#3F72AF] rounded-lg bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
                 />
@@ -353,7 +371,6 @@ const AdminSkills = () => {
         </div>
       )}
 
-      {/* Edit Modal */}
       {openEdit && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-[#112D4E] rounded-xl p-6 w-full max-w-md shadow-2xl border border-[#DBE2EF] dark:border-[#3F72AF]">
@@ -386,7 +403,9 @@ const AdminSkills = () => {
                 <input
                   type="text"
                   value={form.category}
-                  onChange={(e) => setForm({ ...form, category: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, category: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-[#DBE2EF] dark:border-[#3F72AF] rounded-lg bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
                 />
               </div>
@@ -396,7 +415,9 @@ const AdminSkills = () => {
                 </label>
                 <textarea
                   value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, description: e.target.value })
+                  }
                   rows="3"
                   className="w-full px-3 py-2 border border-[#DBE2EF] dark:border-[#3F72AF] rounded-lg bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
                 />

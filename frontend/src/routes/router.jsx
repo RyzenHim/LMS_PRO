@@ -13,6 +13,7 @@ import AdminCourses from "../pages/admin/AdminCourses";
 import AdminProfile from "../pages/admin/AdminProfile";
 import AdminSkills from "../pages/admin/AdminSkills";
 import Visitor from "../pages/visitor/Visitor";
+import AdminBatches from "../pages/admin/AdminBatches";
 
 const router = createBrowserRouter([
   {
@@ -51,6 +52,7 @@ const router = createBrowserRouter([
       { path: "skills", element: <AdminSkills /> },
       { path: "profile", element: <AdminProfile /> },
       { path: "visitor", element: <Visitor /> },
+      { path: "batches", element: <AdminBatches /> },
     ],
   },
   {

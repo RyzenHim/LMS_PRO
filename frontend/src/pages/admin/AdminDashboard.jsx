@@ -1,10 +1,5 @@
 import React from "react";
-import {
-  GraduationCap,
-  Users,
-  UserCog,
-  BookOpen,
-} from "lucide-react";
+import { GraduationCap, Users, UserCog, BookOpen } from "lucide-react";
 
 const stats = [
   {
@@ -32,7 +27,6 @@ const stats = [
 const AdminDashboard = () => {
   return (
     <div className="space-y-8">
-      {/* Header */}
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">
           Admin Dashboard
@@ -42,7 +36,6 @@ const AdminDashboard = () => {
         </p>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((item, index) => {
           const Icon = item.icon;
@@ -52,9 +45,7 @@ const AdminDashboard = () => {
               className="bg-white rounded-xl border p-6 flex items-center justify-between"
             >
               <div>
-                <p className="text-sm text-gray-500">
-                  {item.title}
-                </p>
+                <p className="text-sm text-gray-500">{item.title}</p>
                 <p className="text-2xl font-semibold text-gray-900">
                   {item.value}
                 </p>
@@ -68,7 +59,6 @@ const AdminDashboard = () => {
         })}
       </div>
 
-      {/* Activity */}
       <div className="bg-white rounded-xl border p-6">
         <h2 className="text-lg font-medium text-gray-900 mb-4">
           Recent Activity

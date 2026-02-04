@@ -55,7 +55,8 @@ const AdminProfile = () => {
       }
 
       if (!form.currentPassword) {
-        newErrors.currentPassword = "Current password is required to change password";
+        newErrors.currentPassword =
+          "Current password is required to change password";
       }
 
       if (form.password !== form.confirmPassword) {
@@ -73,7 +74,6 @@ const AdminProfile = () => {
       ...form,
       [name]: value,
     });
-    // Clear error when user starts typing
     if (errors[name]) {
       setErrors({
         ...errors,
@@ -137,9 +137,7 @@ const AdminProfile = () => {
 
   if (!user) {
     return (
-      <div className="p-6 text-center text-red-500">
-        Failed to load profile
-      </div>
+      <div className="p-6 text-center text-red-500">Failed to load profile</div>
     );
   }
 
@@ -161,12 +159,14 @@ const AdminProfile = () => {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Profile Info Card */}
         <div className="lg:col-span-1">
           <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-6 shadow-lg">
             <div className="flex flex-col items-center text-center">
               <div className="w-24 h-24 rounded-full bg-[#DBE2EF] dark:bg-[#3F72AF] flex items-center justify-center mb-4">
-                <User size={40} className="text-[#3F72AF] dark:text-[#DBE2EF]" />
+                <User
+                  size={40}
+                  className="text-[#3F72AF] dark:text-[#DBE2EF]"
+                />
               </div>
               <h2 className="text-xl font-semibold text-[#112D4E] dark:text-[#DBE2EF] mb-2">
                 {user.name}
@@ -177,21 +177,30 @@ const AdminProfile = () => {
 
               <div className="w-full space-y-4">
                 <div className="flex items-center gap-3 text-sm">
-                  <Mail size={16} className="text-[#3F72AF] dark:text-[#DBE2EF]" />
+                  <Mail
+                    size={16}
+                    className="text-[#3F72AF] dark:text-[#DBE2EF]"
+                  />
                   <span className="text-[#112D4E] dark:text-[#DBE2EF]">
                     {user.email}
                   </span>
                 </div>
 
                 <div className="flex items-center gap-3 text-sm">
-                  <Shield size={16} className="text-[#3F72AF] dark:text-[#DBE2EF]" />
+                  <Shield
+                    size={16}
+                    className="text-[#3F72AF] dark:text-[#DBE2EF]"
+                  />
                   <span className="text-[#112D4E] dark:text-[#DBE2EF] capitalize">
                     {user.role}
                   </span>
                 </div>
 
                 <div className="flex items-center gap-3 text-sm">
-                  <Calendar size={16} className="text-[#3F72AF] dark:text-[#DBE2EF]" />
+                  <Calendar
+                    size={16}
+                    className="text-[#3F72AF] dark:text-[#DBE2EF]"
+                  />
                   <span className="text-[#112D4E] dark:text-[#DBE2EF]">
                     Joined {new Date(user.createdAt).toLocaleDateString()}
                   </span>
@@ -213,7 +222,6 @@ const AdminProfile = () => {
           </div>
         </div>
 
-        {/* Edit Form */}
         <div className="lg:col-span-2">
           <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-6 shadow-lg">
             <h3 className="text-lg font-semibold text-[#112D4E] dark:text-[#DBE2EF] mb-6">
@@ -221,7 +229,6 @@ const AdminProfile = () => {
             </h3>
 
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Name Field */}
               <div>
                 <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
                   Full Name *
@@ -245,7 +252,6 @@ const AdminProfile = () => {
                 )}
               </div>
 
-              {/* Email Field (Read-only) */}
               <div>
                 <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
                   Email
@@ -261,7 +267,6 @@ const AdminProfile = () => {
                 </p>
               </div>
 
-              {/* Role Field (Read-only) */}
               <div>
                 <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
                   Role
@@ -277,7 +282,6 @@ const AdminProfile = () => {
                 </p>
               </div>
 
-              {/* Password Section */}
               <div className="pt-6 border-t border-[#DBE2EF] dark:border-[#3F72AF]">
                 <h4 className="text-md font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-4">
                   Change Password
@@ -286,7 +290,6 @@ const AdminProfile = () => {
                   Leave blank if you don't want to change your password
                 </p>
 
-                {/* Current Password */}
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
                     Current Password
@@ -309,7 +312,6 @@ const AdminProfile = () => {
                   )}
                 </div>
 
-                {/* New Password */}
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
                     New Password
@@ -332,7 +334,6 @@ const AdminProfile = () => {
                   )}
                 </div>
 
-                {/* Confirm Password */}
                 <div>
                   <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
                     Confirm New Password
@@ -356,7 +357,6 @@ const AdminProfile = () => {
                 </div>
               </div>
 
-              {/* Submit Button */}
               <div className="flex justify-end pt-4">
                 <button
                   type="submit"

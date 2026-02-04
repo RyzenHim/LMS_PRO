@@ -45,3 +45,7 @@ app.use('/courses', courseRouter)
 
 const skillRouter = require('./src/routes/skill.routes')
 app.use('/skills', skillRouter)
+
+const batchRoutes = require("./src/routes/batch.route");
+
+app.use("/batch", batchRoutes);

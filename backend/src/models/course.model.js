@@ -23,6 +23,11 @@ const courseSchema = new mongoose.Schema({
         ref: "Tutor"
     },
 
+    skills: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Skill"
+    }],
+
     tutorName: {
         type: String,
         trim: true
@@ -34,7 +39,7 @@ const courseSchema = new mongoose.Schema({
     },
 
     duration: {
-        type: Number, // in hours
+        type: Number,
         default: 0
     },
 
@@ -54,11 +59,6 @@ const courseSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
-
-    skills: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Skill"
-    }],
 
     startDate: {
         type: Date

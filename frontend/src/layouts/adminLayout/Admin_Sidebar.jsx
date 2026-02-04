@@ -7,6 +7,7 @@ import {
   BookOpen,
   Tag,
   UserRound,
+  Layers,
 } from "lucide-react";
 
 const AdminSidebar = () => {
@@ -37,6 +38,11 @@ const AdminSidebar = () => {
       path: "/admin/courses",
     },
     {
+      name: "Batches",
+      icon: Layers,
+      path: "/admin/batches",
+    },
+    {
       name: "Skills",
       icon: Tag,
       path: "/admin/skills",
@@ -50,9 +56,7 @@ const AdminSidebar = () => {
 
   return (
     <aside className="w-64 bg-[#112D4E] dark:bg-[#0a1f3a] text-white fixed h-screen shadow-lg">
-      <div className="p-6 text-xl font-semibold text-[#DBE2EF]">
-        LMS Admin
-      </div>
+      <div className="p-6 text-xl font-semibold text-[#DBE2EF]">LMS Admin</div>
 
       <nav className="mt-6 space-y-1">
         {menu.map((item, index) => {
