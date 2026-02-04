@@ -17,7 +17,6 @@ const visitorSchema = new mongoose.Schema(
         phone: {
             type: Number,
             trim: true,
-
         },
         course: {
             type: String,
@@ -30,11 +29,25 @@ const visitorSchema = new mongoose.Schema(
         },
         status: {
             type: String,
-            enum: ["new", "contacted", "converted"],
+            enum: ["new", "contacted", "converted", "not-interested", "follow-up"],
             default: "new"
         },
         note: {
             type: String,
+        },
+        notInterestedReason: {
+            type: String,
+        },
+        followUpDate: {
+            type: Date,
+        },
+        conversionType: {
+            type: String,
+            enum: ["student", "tutor", "employee", null],
+            default: null
+        },
+        convertedToId: {
+            type: mongoose.Schema.Types.ObjectId,
         },
         createdBy: {
             type: mongoose.Schema.Types.ObjectId,
