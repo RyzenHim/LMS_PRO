@@ -20,6 +20,11 @@ const studentSchema = new mongoose.Schema(
             type: String,
             trim: true
         },
+        adhaar: {
+            type: String,
+            trim: true,
+            unique: true
+        },
 
         course: {
             type: String,

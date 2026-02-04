@@ -7,6 +7,7 @@ import {
   Trash2,
   RotateCcw,
   Users,
+  UserCog,
 } from "lucide-react";
 
 import { batchService } from "../../services/batchService";
@@ -15,6 +16,8 @@ import AddBatchModal from "./modal/batch/AddBatchModal";
 import EditBatchModal from "./modal/batch/EditBatchModal";
 import ViewBatchModal from "./modal/batch/ViewBatchModal";
 import ConfirmDeleteModal from "./modal/batch/ConfirmDeleteModal";
+// import ManageBatchStudentsModal from "./modal/batch/ManageBatchStudentsModal";
+import ManageBatchStudentsModal from "./modal/ManageBatchStudentsModal";
 
 const AdminBatches = () => {
   const [search, setSearch] = useState("");
@@ -29,6 +32,7 @@ const AdminBatches = () => {
   const [openEdit, setOpenEdit] = useState(false);
   const [openView, setOpenView] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
+  const [openManageStudents, setOpenManageStudents] = useState(false);
 
   const [selectedBatch, setSelectedBatch] = useState(null);
 
@@ -270,11 +274,11 @@ const AdminBatches = () => {
                     </td>
 
                     <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
-                      {batch.course?.title || batch.courseTitle || "—"}
+                      {batch.course?.title || "—"}
                     </td>
 
                     <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
-                      {batch.tutor?.name || batch.tutorName || "—"}
+                      {batch.tutor?.name || "—"}
                     </td>
 
                     <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
@@ -289,8 +293,9 @@ const AdminBatches = () => {
                         : "—"}
                     </td>
 
+                    {/* ✅ UPDATED: show studentsCount from backend */}
                     <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
-                      {batch.studentsCount || batch.students?.length || 0}
+                      {batch.studentsCount ?? 0}
                     </td>
 
                     <td className="px-6 py-4">
@@ -328,6 +333,17 @@ const AdminBatches = () => {
                             title="View"
                           >
                             <Eye size={16} className="inline" />
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              setSelectedBatch(batch);
+                              setOpenManageStudents(true);
+                            }}
+                            className="text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 text-sm transition-colors"
+                            title="Manage Students"
+                          >
+                            <UserCog size={16} className="inline" />
                           </button>
 
                           <button
@@ -413,6 +429,18 @@ const AdminBatches = () => {
         }}
         onConfirm={handleDelete}
         title={selectedBatch?.name}
+      />
+
+      <ManageBatchStudentsModal
+        open={openManageStudents}
+        batch={selectedBatch}
+        onClose={async () => {
+          setOpenManageStudents(false);
+          setSelectedBatch(null);
+
+          // ✅ refresh batches after managing students so count updates
+          await fetchBatches();
+        }}
       />
     </div>
   );

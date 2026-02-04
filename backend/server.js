@@ -49,3 +49,8 @@ app.use('/skills', skillRouter)
 const batchRoutes = require("./src/routes/batch.route");
 
 app.use("/batch", batchRoutes);
+
+
+const batchStudentMapRoutes = require("./src/routes/batchStudentMap.route");
+
+app.use("/batch-student-map", batchStudentMapRoutes);

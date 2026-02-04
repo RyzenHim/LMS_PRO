@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { X } from "lucide-react";
-import { courseService } from "../../../services/courseService";
-import { tutorService } from "../../../services/tutorService";
+import { courseService } from "../../../../services/courseService";
+import { tutorService } from "../../../../services/tutorService";
 
 const AddBatchModal = ({ open, onClose, onSubmit }) => {
   const [loading, setLoading] = useState(false);

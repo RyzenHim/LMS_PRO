@@ -1,4 +1,5 @@
 const Batch = require("../models/batch.model");
+const BatchStudentMap = require("../models/batchStudentMap.model");
 
 exports.getAllBatches = async (req, res) => {
     try {
@@ -138,5 +139,51 @@ exports.toggleBatchStatus = async (req, res) => {
         });
     } catch (error) {
         return res.status(500).json({ message: "Internal Server Error" });
+    }
+};
+
+
+
+exports.allBatchesWithCount = async (req, res) => {
+    try {
+        const batches = await Batch.find({ isDeleted: false })
+            .populate("course", "title")
+            .populate("tutor", "name")
+            .sort({ createdAt: -1 })
+            .lean();
+
+        const batchIds = batches.map((b) => b._id);
+
+        // count students for each batch
+        const counts = await BatchStudentMap.aggregate([
+            {
+                $match: {
+                    batch: { $in: batchIds },
+                    status: "active",
+                    isDeleted: false,
+                },
+            },
+            {
+                $group: {
+                    _id: "$batch",
+                    count: { $sum: 1 },
+                },
+            },
+        ]);
+
+        const countMap = {};
+        counts.forEach((c) => {
+            countMap[c._id.toString()] = c.count;
+        });
+
+        const final = batches.map((b) => ({
+            ...b,
+            studentsCount: countMap[b._id.toString()] || 0,
+        }));
+
+        return res.status(200).json(final);
+    } catch (error) {
+        console.error("allBatchesWithCount error:", error);
+        return res.status(500).json({ message: "Internal server error" });
     }
 };

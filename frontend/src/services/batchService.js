@@ -2,7 +2,7 @@ import axiosInstance from "../api/axios";
 
 export const batchService = {
   // Active batches
-  getAll: () => axiosInstance.get("/batch"),
+  getAll: () => axiosInstance.get("/batch/all"),
 
   // Deleted batches
   getDeleted: () => axiosInstance.get("/batch/deleted"),

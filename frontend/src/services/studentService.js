@@ -9,5 +9,10 @@ export const studentService = {
   toggleStatus: (id) => axiosInstance.patch(`/students/${id}/toggle-status`),
   softDelete: (id) => axiosInstance.delete(`/students/${id}`),
   restore: (id) => axiosInstance.patch(`/students/${id}/restore`),
+    // getAll: () => axiosInstance.get("/student"),
+  getDeleted: () => axiosInstance.get("/student/deleted"),
+  getById: (id) => axiosInstance.get(`/student/${id}`),
 };
+
+
 

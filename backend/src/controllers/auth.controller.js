@@ -50,8 +50,8 @@ exports.login = async (req, res) => {
                 role: existingUser.role
             }, secretKey, { expiresIn: '1h' })
             console.log("Loggd in ");
-            return res.status(200).json({ 
-                message: "Welcome", 
+            return res.status(200).json({
+                message: "Welcome",
                 token,
                 user: {
                     _id: existingUser._id,
@@ -111,7 +111,7 @@ exports.updateProfile = async (req, res) => {
                 return res.status(400).json({ message: "Password must be at least 6 characters long" });
             }
 
-            user.password = password; // Will be hashed by pre-save hook
+            user.password = password;
         }
 
         await user.save();
