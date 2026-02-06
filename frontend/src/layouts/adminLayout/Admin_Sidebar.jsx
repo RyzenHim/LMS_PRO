@@ -8,6 +8,7 @@ import {
   Tag,
   UserRound,
   Layers,
+  IndianRupee,
 } from "lucide-react";
 
 const AdminSidebar = () => {
@@ -46,6 +47,11 @@ const AdminSidebar = () => {
       name: "Skills",
       icon: Tag,
       path: "/admin/skills",
+    },
+    {
+      name: "Fees",
+      icon: IndianRupee,
+      path: "/admin/fees",
     },
     {
       name: "Visitors",

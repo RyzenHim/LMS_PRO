@@ -2,7 +2,6 @@ const Batch = require("../models/batch.model");
 const Student = require("../models/student.model");
 const BatchStudentMap = require("../models/batchStudentMap.model");
 
-// ✅ Get all students in a batch
 exports.getStudentsOfBatch = async (req, res) => {
     try {
         const { batchId } = req.params;
@@ -22,7 +21,6 @@ exports.getStudentsOfBatch = async (req, res) => {
     }
 };
 
-// ✅ Get all batches of a student
 exports.getBatchesOfStudent = async (req, res) => {
     try {
         const { studentId } = req.params;
@@ -44,7 +42,6 @@ exports.getBatchesOfStudent = async (req, res) => {
     }
 };
 
-// ✅ Add students to batch (bulk)
 exports.addStudentsToBatch = async (req, res) => {
     try {
         const { batchId } = req.params;
@@ -60,7 +57,6 @@ exports.addStudentsToBatch = async (req, res) => {
             return res.status(404).json({ message: "Batch not found" });
         }
 
-        // Optional: prevent adding into inactive batch
         // if (!batch.isActive) {
         //   return res.status(400).json({ message: "Batch is disabled" });
         // }
@@ -77,7 +73,6 @@ exports.addStudentsToBatch = async (req, res) => {
             return res.status(400).json({ message: "No valid students found" });
         }
 
-        // Prepare docs
         const docs = validStudentIds.map((studentId) => ({
             batch: batch._id,
             student: studentId,
@@ -88,18 +83,12 @@ exports.addStudentsToBatch = async (req, res) => {
             joinedAt: new Date(),
         }));
 
-        /**
-         * insertMany ordered:false:
-         * - if duplicate mapping exists, it will skip that and continue
-         */
         let inserted = 0;
 
         try {
             const result = await BatchStudentMap.insertMany(docs, { ordered: false });
             inserted = result.length;
         } catch (err) {
-            // duplicates will throw error but still insert others
-            // We ignore duplicates safely.
             if (err?.writeErrors) {
                 inserted = docs.length - err.writeErrors.length;
             } else {

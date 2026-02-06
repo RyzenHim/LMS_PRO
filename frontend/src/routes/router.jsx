@@ -14,6 +14,7 @@ import AdminProfile from "../pages/admin/AdminProfile";
 import AdminSkills from "../pages/admin/AdminSkills";
 import Visitor from "../pages/visitor/Visitor";
 import AdminBatches from "../pages/admin/AdminBatches";
+import AdminFees from "../pages/admin/AdminFees";
 
 const router = createBrowserRouter([
   {
@@ -53,6 +54,7 @@ const router = createBrowserRouter([
       { path: "profile", element: <AdminProfile /> },
       { path: "visitor", element: <Visitor /> },
       { path: "batches", element: <AdminBatches /> },
+      { path: "fees", element: <AdminFees /> },
     ],
   },
   {
