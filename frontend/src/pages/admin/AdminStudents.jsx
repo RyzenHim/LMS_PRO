@@ -27,7 +27,7 @@ const AdminStudents = () => {
     setLoading(true);
     try {
       const res = await studentService.getAll();
-      setStudents(res.data || []);
+      setStudents(res.data.students || []);
     } catch (error) {
       console.error("Error fetching students", error);
     } finally {
@@ -64,7 +64,7 @@ const AdminStudents = () => {
     try {
       const res = await studentService.update(selectedStudent._id, data);
       setStudents((prev) =>
-        prev.map((s) => (s._id === selectedStudent._id ? res.data.student : s))
+        prev.map((s) => (s._id === selectedStudent._id ? res.data.student : s)),
       );
       setOpenEdit(false);
       setSelectedStudent(null);
@@ -112,7 +112,9 @@ const AdminStudents = () => {
     try {
       const res = await studentService.toggleStatus(id);
       setStudents((prev) =>
-        prev.map((s) => (s._id === id ? { ...s, isActive: res.data.isActive } : s))
+        prev.map((s) =>
+          s._id === id ? { ...s, isActive: res.data.isActive } : s,
+        ),
       );
     } catch (error) {
       console.error("Toggle status failed", error);
@@ -126,12 +128,12 @@ const AdminStudents = () => {
           (s) =>
             s.name?.toLowerCase().includes(search.toLowerCase()) ||
             s.email?.toLowerCase().includes(search.toLowerCase()) ||
-            s.course?.toLowerCase().includes(search.toLowerCase())
+            s.course?.toLowerCase().includes(search.toLowerCase()),
         )
       : deletedStudents.filter(
           (s) =>
             s.name?.toLowerCase().includes(search.toLowerCase()) ||
-            s.email?.toLowerCase().includes(search.toLowerCase())
+            s.email?.toLowerCase().includes(search.toLowerCase()),
         );
 
   return (
@@ -181,7 +183,6 @@ const AdminStudents = () => {
         </button>
       </div>
 
-      {/* Search */}
       <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-4 flex items-center gap-3 shadow-sm">
         <Search size={18} className="text-[#3F72AF] dark:text-[#DBE2EF]" />
         <input
@@ -193,23 +194,40 @@ const AdminStudents = () => {
         />
       </div>
 
-      {/* Table */}
       <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] overflow-hidden shadow-lg">
         {loading ? (
-          <div className="p-6 text-center text-gray-500">Loading students...</div>
+          <div className="p-6 text-center text-gray-500">
+            Loading students...
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-[#DBE2EF] dark:bg-[#3F72AF] border-b border-[#DBE2EF] dark:border-[#3F72AF]">
                 <tr>
-                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Name</th>
-                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Email</th>
-                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Phone</th>
-                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Course</th>
-                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Status</th>
-                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Enrollment Date</th>
-                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Is Active</th>
-                  <th className="px-6 py-3 text-right text-[#112D4E] dark:text-[#DBE2EF]">Actions</th>
+                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                    Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                    Email
+                  </th>
+                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                    Phone
+                  </th>
+                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                    Course
+                  </th>
+                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                    Enrollment Date
+                  </th>
+                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                    Is Active
+                  </th>
+                  <th className="px-6 py-3 text-right text-[#112D4E] dark:text-[#DBE2EF]">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -218,18 +236,26 @@ const AdminStudents = () => {
                     key={s._id}
                     className="border-b border-[#DBE2EF] dark:border-[#3F72AF] last:border-none hover:bg-[#DBE2EF] dark:hover:bg-[#0a1f3a] transition-colors"
                   >
-                    <td className="px-6 py-4 font-medium text-[#112D4E] dark:text-[#DBE2EF]">{s.name}</td>
-                    <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">{s.email}</td>
-                    <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">{s.phone || "—"}</td>
-                    <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">{s.course}</td>
+                    <td className="px-6 py-4 font-medium text-[#112D4E] dark:text-[#DBE2EF]">
+                      {s.name}
+                    </td>
+                    <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
+                      {s.email}
+                    </td>
+                    <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
+                      {s.phone || "—"}
+                    </td>
+                    <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
+                      {s.course}
+                    </td>
                     <td className="px-6 py-4">
                       <span
                         className={`px-2 py-1 text-xs rounded-md capitalize ${
                           s.status === "active"
                             ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
                             : s.status === "suspended"
-                            ? "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"
-                            : "bg-gray-100 text-gray-700 dark:bg-gray-600 dark:text-gray-300"
+                              ? "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"
+                              : "bg-gray-100 text-gray-700 dark:bg-gray-600 dark:text-gray-300"
                         }`}
                       >
                         {s.status}
@@ -308,7 +334,6 @@ const AdminStudents = () => {
         )}
       </div>
 
-      {/* Modals */}
       <AddStudentModal
         open={openAdd}
         onClose={() => setOpenAdd(false)}

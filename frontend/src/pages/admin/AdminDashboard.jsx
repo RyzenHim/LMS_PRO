@@ -1,30 +1,48 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { GraduationCap, Users, UserCog, BookOpen } from "lucide-react";
-
-const stats = [
-  {
-    title: "Total Students",
-    value: 1245,
-    icon: GraduationCap,
-  },
-  {
-    title: "Total Tutors",
-    value: 48,
-    icon: Users,
-  },
-  {
-    title: "Employees",
-    value: 12,
-    icon: UserCog,
-  },
-  {
-    title: "Courses",
-    value: 32,
-    icon: BookOpen,
-  },
-];
+import { adminDashBoardService } from "../../services/adminDashBoardService";
 
 const AdminDashboard = () => {
+  const [totalStudents, setTotalStudents] = useState(0);
+  cost[(totalTutors, setTotalTutors)] = useState(0);
+
+  useEffect(() => {
+    const getTotalStudents = async () => {
+      try {
+        const getData = await adminDashBoardService.totalStudents();
+        setTotalStudents(getData.data.totalStudents);
+        console.log(getData.data.totalStudents);
+      } catch (error) {
+        console.log(error);
+      }
+    };
+
+    getTotalStudents();
+  }, []);
+
+  const stats = [
+    {
+      title: "Total Students",
+      value: totalStudents,
+      icon: GraduationCap,
+    },
+    {
+      title: "Total Tutors",
+      value: 48,
+      icon: Users,
+    },
+    {
+      title: "Employees",
+      value: 12,
+      icon: UserCog,
+    },
+    {
+      title: "Courses",
+      value: 32,
+      icon: BookOpen,
+    },
+  ];
+
   return (
     <div className="space-y-8">
       <div>

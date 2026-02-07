@@ -3,7 +3,9 @@ const Student = require('../models/student.model');
 exports.allStudents = async (req, res) => {
     try {
         const students = await Student.find({ isDeleted: false }).sort({ createdAt: -1 });
-        res.status(200).json(students);
+        const totalStudents = await Student.countDocuments()
+        console.log(totalStudents);
+        res.status(200).json({ students, totalStudents });
     } catch (error) {
         console.error("Get students error:", error);
         res.status(500).json({ message: "Internal server error" });

@@ -3,7 +3,8 @@ const Tutor = require("../models/tutor.model");
 exports.allTutors = async (req, res) => {
     try {
         const tutors = await Tutor.find({ isDeleted: false }).sort({ createdAt: -1 });
-        res.status(200).json(tutors);
+        const totalTutors = await Tutor.countDocuments()
+        res.status(200).json({ tutors, totalTutors });
     } catch (error) {
         console.error("Get tutors error:", error);
         res.status(500).json({ message: "Internal server error" });
