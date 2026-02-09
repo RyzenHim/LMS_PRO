@@ -1,16 +1,35 @@
 import React, { useState, useEffect } from "react";
-import { Search, Plus, Eye, Edit, Trash2, RotateCcw, BookOpen } from "lucide-react";
+import {
+  Search,
+  Plus,
+  Eye,
+  Edit,
+  Trash2,
+  RotateCcw,
+  BookOpen,
+} from "lucide-react";
 import { courseService } from "../../services/courseService";
 import AddCourseModal from "./modal/AddCourseModal";
 import EditCourseModal from "./modal/EditCourseModal";
 import ViewCourseModal from "./modal/ViewCourseModal";
 import ConfirmDeleteModal from "./modal/ConfirmDeleteModal";
+import Pagination from "../../components/Pagination";
+import SortHeader from "../../components/SortHeader";
 
 const AdminCourses = () => {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [courses, setCourses] = useState([]);
   const [deletedCourses, setDeletedCourses] = useState([]);
+  const [page, setPage] = useState(1);
+  const [trashPage, setTrashPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [trashTotalPages, setTrashTotalPages] = useState(1);
+  const [sortBy, setSortBy] = useState("createdAt");
+  const [sortOrder, setSortOrder] = useState("desc");
+  const [filters, setFilters] = useState({});
+  const [filterField, setFilterField] = useState("status");
+  const [filterValue, setFilterValue] = useState("");
   const [activeTab, setActiveTab] = useState("active");
   const [openAdd, setOpenAdd] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
@@ -20,14 +39,25 @@ const AdminCourses = () => {
 
   useEffect(() => {
     fetchCourses();
+  }, [page, search, sortBy, sortOrder, JSON.stringify(filters)]);
+
+  useEffect(() => {
     fetchDeletedCourses();
-  }, []);
+  }, [trashPage, search, sortBy, sortOrder, activeTab, JSON.stringify(filters)]);
 
   const fetchCourses = async () => {
     setLoading(true);
     try {
-      const res = await courseService.getAll();
-      setCourses(res.data || []);
+      const res = await courseService.getAll({
+        page,
+        limit: 10,
+        search,
+        sortBy,
+        sortOrder,
+        ...filters,
+      });
+      setCourses(res.data.courses || []);
+      setTotalPages(res.data.totalPages || 1);
     } catch (error) {
       console.error("Error fetching courses", error);
     } finally {
@@ -37,8 +67,16 @@ const AdminCourses = () => {
 
   const fetchDeletedCourses = async () => {
     try {
-      const res = await courseService.getDeleted();
-      setDeletedCourses(res.data || []);
+      const res = await courseService.getDeleted({
+        page: trashPage,
+        limit: 10,
+        search,
+        sortBy,
+        sortOrder,
+        ...filters,
+      });
+      setDeletedCourses(res.data.courses || []);
+      setTrashTotalPages(res.data.totalPages || 1);
     } catch (error) {
       console.error("Error fetching deleted courses", error);
     }
@@ -64,7 +102,7 @@ const AdminCourses = () => {
     try {
       const res = await courseService.update(selectedCourse._id, data);
       setCourses((prev) =>
-        prev.map((c) => (c._id === selectedCourse._id ? res.data.course : c))
+        prev.map((c) => (c._id === selectedCourse._id ? res.data.course : c)),
       );
       setOpenEdit(false);
       setSelectedCourse(null);
@@ -112,7 +150,9 @@ const AdminCourses = () => {
     try {
       const res = await courseService.toggleStatus(id);
       setCourses((prev) =>
-        prev.map((c) => (c._id === id ? { ...c, isActive: res.data.isActive } : c))
+        prev.map((c) =>
+          c._id === id ? { ...c, isActive: res.data.isActive } : c,
+        ),
       );
     } catch (error) {
       console.error("Toggle status failed", error);
@@ -120,20 +160,7 @@ const AdminCourses = () => {
     }
   };
 
-  const filteredCourses =
-    activeTab === "active"
-      ? courses.filter(
-          (c) =>
-            c.title?.toLowerCase().includes(search.toLowerCase()) ||
-            c.category?.toLowerCase().includes(search.toLowerCase()) ||
-            c.tutorName?.toLowerCase().includes(search.toLowerCase()) ||
-            c.tutor?.name?.toLowerCase().includes(search.toLowerCase())
-        )
-      : deletedCourses.filter(
-          (c) =>
-            c.title?.toLowerCase().includes(search.toLowerCase()) ||
-            c.category?.toLowerCase().includes(search.toLowerCase())
-        );
+  const filteredCourses = activeTab === "active" ? courses : deletedCourses;
 
   return (
     <div className="space-y-6">
@@ -189,31 +216,121 @@ const AdminCourses = () => {
           type="text"
           placeholder="Search courses..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPage(1);
+            setTrashPage(1);
+          }}
           className="w-full outline-none text-sm bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
         />
+      </div>
+
+      <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-4 flex flex-wrap items-center gap-3 shadow-sm">
+        <select
+          value={filterField}
+          onChange={(e) => setFilterField(e.target.value)}
+          className="text-sm border rounded-lg px-2 py-1 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
+        >
+          <option value="status">Status</option>
+          <option value="level">Level</option>
+          <option value="category">Category</option>
+          <option value="isActive">Is Active</option>
+          <option value="price">Price</option>
+          <option value="duration">Duration</option>
+        </select>
+        <input
+          value={filterValue}
+          onChange={(e) => setFilterValue(e.target.value)}
+          placeholder="Filter value"
+          className="text-sm border rounded-lg px-2 py-1 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
+        />
+        <button
+          onClick={addFilter}
+          className="px-3 py-1 rounded-lg bg-[#3F72AF] text-white text-sm"
+        >
+          Add Filter
+        </button>
+        <button
+          onClick={clearFilters}
+          className="px-3 py-1 rounded-lg border text-sm"
+        >
+          Clear Filters
+        </button>
+        <div className="flex flex-wrap gap-2">
+          {Object.keys(filters).map((key) => (
+            <button
+              key={key}
+              onClick={() => removeFilter(key)}
+              className="px-2 py-1 text-xs rounded-lg bg-[#DBE2EF] dark:bg-[#0a1f3a]"
+            >
+              {key}: {String(filters[key])} ×
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Table */}
       <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] overflow-hidden shadow-lg">
         {loading ? (
-          <div className="p-6 text-center text-gray-500">Loading courses...</div>
+          <div className="p-6 text-center text-gray-500">
+            Loading courses...
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-[#DBE2EF] dark:bg-[#3F72AF] border-b border-[#DBE2EF] dark:border-[#3F72AF]">
                 <tr>
-                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Course</th>
-                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Category</th>
-                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Tutor</th>
-                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Price</th>
-                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Duration</th>
-                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Level</th>
-                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Students</th>
-                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Skills</th>
-                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Status</th>
-                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Is Active</th>
-                  <th className="px-6 py-3 text-right text-[#112D4E] dark:text-[#DBE2EF]">Actions</th>
+                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                    <SortHeader
+                      label="Course"
+                      field="title"
+                      sortBy={sortBy}
+                      sortOrder={sortOrder}
+                      onSort={handleSort}
+                    />
+                  </th>
+                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                    Category
+                  </th>
+                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                    Tutor
+                  </th>
+                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                    <SortHeader
+                      label="Price"
+                      field="price"
+                      sortBy={sortBy}
+                      sortOrder={sortOrder}
+                      onSort={handleSort}
+                    />
+                  </th>
+                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                    <SortHeader
+                      label="Duration"
+                      field="duration"
+                      sortBy={sortBy}
+                      sortOrder={sortOrder}
+                      onSort={handleSort}
+                    />
+                  </th>
+                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                    Level
+                  </th>
+                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                    Students
+                  </th>
+                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                    Skills
+                  </th>
+                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                    Is Active
+                  </th>
+                  <th className="px-6 py-3 text-right text-[#112D4E] dark:text-[#DBE2EF]">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -226,14 +343,24 @@ const AdminCourses = () => {
                       <BookOpen size={16} className="text-[#3F72AF]" />
                       {course.title}
                     </td>
-                    <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">{course.category}</td>
+                    <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
+                      {course.category}
+                    </td>
                     <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
                       {course.tutorName || course.tutor?.name || "—"}
                     </td>
-                    <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">₹{course.price || 0}</td>
-                    <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">{course.duration || 0} hrs</td>
-                    <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF] capitalize">{course.level}</td>
-                    <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">{course.studentsEnrolled || 0}</td>
+                    <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
+                      ₹{course.price || 0}
+                    </td>
+                    <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
+                      {course.duration || 0} hrs
+                    </td>
+                    <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF] capitalize">
+                      {course.level}
+                    </td>
+                    <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
+                      {course.studentsEnrolled || 0}
+                    </td>
                     <td className="px-6 py-4">
                       <div className="flex flex-wrap gap-1">
                         {course.skills && course.skills.length > 0 ? (
@@ -246,7 +373,9 @@ const AdminCourses = () => {
                             </span>
                           ))
                         ) : (
-                          <span className="text-[#3F72AF] dark:text-[#DBE2EF] text-xs">—</span>
+                          <span className="text-[#3F72AF] dark:text-[#DBE2EF] text-xs">
+                            —
+                          </span>
                         )}
                         {course.skills && course.skills.length > 2 && (
                           <span className="text-xs text-[#3F72AF] dark:text-[#DBE2EF]">
@@ -261,8 +390,8 @@ const AdminCourses = () => {
                           course.status === "published"
                             ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
                             : course.status === "archived"
-                            ? "bg-gray-100 text-gray-700 dark:bg-gray-600 dark:text-gray-300"
-                            : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300"
+                              ? "bg-gray-100 text-gray-700 dark:bg-gray-600 dark:text-gray-300"
+                              : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300"
                         }`}
                       >
                         {course.status}
@@ -336,6 +465,14 @@ const AdminCourses = () => {
         )}
       </div>
 
+      <Pagination
+        page={activeTab === "active" ? page : trashPage}
+        totalPages={activeTab === "active" ? totalPages : trashTotalPages}
+        onPageChange={(p) =>
+          activeTab === "active" ? setPage(p) : setTrashPage(p)
+        }
+      />
+
       {/* Modals */}
       <AddCourseModal
         open={openAdd}
@@ -373,3 +510,37 @@ const AdminCourses = () => {
 };
 
 export default AdminCourses;
+  const handleSort = (field) => {
+    if (sortBy === field) {
+      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(field);
+      setSortOrder("asc");
+    }
+    setPage(1);
+    setTrashPage(1);
+  };
+
+  const addFilter = () => {
+    if (!filterField || !filterValue) return;
+    setFilters((prev) => ({ ...prev, [filterField]: filterValue }));
+    setFilterValue("");
+    setPage(1);
+    setTrashPage(1);
+  };
+
+  const removeFilter = (field) => {
+    setFilters((prev) => {
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+    setPage(1);
+    setTrashPage(1);
+  };
+
+  const clearFilters = () => {
+    setFilters({});
+    setPage(1);
+    setTrashPage(1);
+  };

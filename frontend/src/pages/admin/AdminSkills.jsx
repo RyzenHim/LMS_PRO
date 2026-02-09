@@ -2,12 +2,23 @@ import React, { useState, useEffect } from "react";
 import { Search, Plus, Edit, Trash2, RotateCcw } from "lucide-react";
 import { skillService } from "../../services/skillService";
 import ConfirmDeleteModal from "./modal/ConfirmDeleteModal";
+import Pagination from "../../components/Pagination";
+import SortHeader from "../../components/SortHeader";
 
 const AdminSkills = () => {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [skills, setSkills] = useState([]);
   const [deletedSkills, setDeletedSkills] = useState([]);
+  const [page, setPage] = useState(1);
+  const [trashPage, setTrashPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [trashTotalPages, setTrashTotalPages] = useState(1);
+  const [sortBy, setSortBy] = useState("name");
+  const [sortOrder, setSortOrder] = useState("asc");
+  const [filters, setFilters] = useState({});
+  const [filterField, setFilterField] = useState("category");
+  const [filterValue, setFilterValue] = useState("");
   const [activeTab, setActiveTab] = useState("active");
   const [openAdd, setOpenAdd] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
@@ -21,14 +32,25 @@ const AdminSkills = () => {
 
   useEffect(() => {
     fetchSkills();
+  }, [page, search, sortBy, sortOrder]);
+
+  useEffect(() => {
     fetchDeletedSkills();
-  }, []);
+  }, [trashPage, search, sortBy, sortOrder, activeTab]);
 
   const fetchSkills = async () => {
     setLoading(true);
     try {
-      const res = await skillService.getAll();
-      setSkills(res.data || []);
+      const res = await skillService.getAll({
+        page,
+        limit: 10,
+        search,
+        sortBy,
+        sortOrder,
+        ...filters,
+      });
+      setSkills(res.data.skills || []);
+      setTotalPages(res.data.totalPages || 1);
     } catch (error) {
       console.error("Error fetching skills", error);
     } finally {
@@ -38,8 +60,16 @@ const AdminSkills = () => {
 
   const fetchDeletedSkills = async () => {
     try {
-      const res = await skillService.getDeleted();
-      setDeletedSkills(res.data || []);
+      const res = await skillService.getDeleted({
+        page: trashPage,
+        limit: 10,
+        search,
+        sortBy,
+        sortOrder,
+        ...filters,
+      });
+      setDeletedSkills(res.data.skills || []);
+      setTrashTotalPages(res.data.totalPages || 1);
     } catch (error) {
       console.error("Error fetching deleted skills", error);
     }
@@ -125,19 +155,7 @@ const AdminSkills = () => {
     }
   };
 
-  const filteredSkills =
-    activeTab === "active"
-      ? skills.filter(
-          (s) =>
-            s.name?.toLowerCase().includes(search.toLowerCase()) ||
-            s.category?.toLowerCase().includes(search.toLowerCase()) ||
-            s.description?.toLowerCase().includes(search.toLowerCase()),
-        )
-      : deletedSkills.filter(
-          (s) =>
-            s.name?.toLowerCase().includes(search.toLowerCase()) ||
-            s.category?.toLowerCase().includes(search.toLowerCase()),
-        );
+  const filteredSkills = activeTab === "active" ? skills : deletedSkills;
 
   return (
     <div className="space-y-6">
@@ -191,9 +209,54 @@ const AdminSkills = () => {
           type="text"
           placeholder="Search skills..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPage(1);
+            setTrashPage(1);
+          }}
           className="w-full outline-none text-sm bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
         />
+      </div>
+
+      <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-4 flex flex-wrap items-center gap-3 shadow-sm">
+        <select
+          value={filterField}
+          onChange={(e) => setFilterField(e.target.value)}
+          className="text-sm border rounded-lg px-2 py-1 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
+        >
+          <option value="category">Category</option>
+          <option value="isActive">Is Active</option>
+          <option value="name">Name</option>
+        </select>
+        <input
+          value={filterValue}
+          onChange={(e) => setFilterValue(e.target.value)}
+          placeholder="Filter value"
+          className="text-sm border rounded-lg px-2 py-1 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
+        />
+        <button
+          onClick={addFilter}
+          className="px-3 py-1 rounded-lg bg-[#3F72AF] text-white text-sm"
+        >
+          Add Filter
+        </button>
+        <button
+          onClick={clearFilters}
+          className="px-3 py-1 rounded-lg border text-sm"
+        >
+          Clear Filters
+        </button>
+        <div className="flex flex-wrap gap-2">
+          {Object.keys(filters).map((key) => (
+            <button
+              key={key}
+              onClick={() => removeFilter(key)}
+              className="px-2 py-1 text-xs rounded-lg bg-[#DBE2EF] dark:bg-[#0a1f3a]"
+            >
+              {key}: {String(filters[key])} ×
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] overflow-hidden shadow-lg">
@@ -205,7 +268,13 @@ const AdminSkills = () => {
               <thead className="bg-[#DBE2EF] dark:bg-[#3F72AF] border-b border-[#DBE2EF] dark:border-[#3F72AF]">
                 <tr>
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
-                    Name
+                    <SortHeader
+                      label="Name"
+                      field="name"
+                      sortBy={sortBy}
+                      sortOrder={sortOrder}
+                      onSort={handleSort}
+                    />
                   </th>
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
                     Category
@@ -296,6 +365,14 @@ const AdminSkills = () => {
           </div>
         )}
       </div>
+
+      <Pagination
+        page={activeTab === "active" ? page : trashPage}
+        totalPages={activeTab === "active" ? totalPages : trashTotalPages}
+        onPageChange={(p) =>
+          activeTab === "active" ? setPage(p) : setTrashPage(p)
+        }
+      />
 
       {openAdd && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
@@ -460,3 +537,37 @@ const AdminSkills = () => {
 };
 
 export default AdminSkills;
+  const handleSort = (field) => {
+    if (sortBy === field) {
+      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(field);
+      setSortOrder("asc");
+    }
+    setPage(1);
+    setTrashPage(1);
+  };
+
+  const addFilter = () => {
+    if (!filterField || !filterValue) return;
+    setFilters((prev) => ({ ...prev, [filterField]: filterValue }));
+    setFilterValue("");
+    setPage(1);
+    setTrashPage(1);
+  };
+
+  const removeFilter = (field) => {
+    setFilters((prev) => {
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+    setPage(1);
+    setTrashPage(1);
+  };
+
+  const clearFilters = () => {
+    setFilters({});
+    setPage(1);
+    setTrashPage(1);
+  };

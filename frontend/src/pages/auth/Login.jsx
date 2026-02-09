@@ -124,7 +124,7 @@ const Login = () => {
           to="/auth/signup"
           className="text-indigo-600 hover:underline font-medium"
         >
-          Send enquiry
+          Send enquiry  
         </Link>
       </p>
     </div>

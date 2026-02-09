@@ -54,8 +54,8 @@ const EditCourseModal = ({ open, onClose, course, onSubmit }) => {
 
   const fetchTutors = async () => {
     try {
-      const res = await tutorService.getAll();
-      setTutors(res.data || []);
+      const res = await tutorService.getAll({ limit: 100 });
+      setTutors(res.data.tutors || []);
     } catch (error) {
       console.error("Error fetching tutors", error);
     }
@@ -63,8 +63,8 @@ const EditCourseModal = ({ open, onClose, course, onSubmit }) => {
 
   const fetchSkills = async () => {
     try {
-      const res = await skillService.getAll();
-      setSkills(res.data || []);
+      const res = await skillService.getAll({ limit: 100 });
+      setSkills(res.data.skills || []);
     } catch (error) {
       console.error("Error fetching skills", error);
     }
@@ -94,6 +94,9 @@ const EditCourseModal = ({ open, onClose, course, onSubmit }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (!form.price || Number(form.price) <= 0) {
+      return alert("Course price is required and must be greater than 0");
+    }
     onSubmit?.(form);
   };
 
@@ -169,7 +172,7 @@ const EditCourseModal = ({ open, onClose, course, onSubmit }) => {
 
             <div>
               <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                Price
+                Price *
               </label>
               <input
                 name="price"
@@ -177,7 +180,8 @@ const EditCourseModal = ({ open, onClose, course, onSubmit }) => {
                 value={form.price}
                 onChange={handleChange}
                 placeholder="0"
-                min="0"
+                min="1"
+                required
                 className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               />
             </div>

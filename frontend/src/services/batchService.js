@@ -1,9 +1,9 @@
 import axiosInstance from "../api/axios";
 
 export const batchService = {
-  getAll: () => axiosInstance.get("/batch/all"),
+  getAll: (params) => axiosInstance.get("/batch/all", { params }),
 
-  getDeleted: () => axiosInstance.get("/batch/deleted"),
+  getDeleted: (params) => axiosInstance.get("/batch/deleted", { params }),
 
   create: (data) => axiosInstance.post("/batch", data),
 

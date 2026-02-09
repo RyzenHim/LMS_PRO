@@ -86,7 +86,7 @@ exports.getCurrentUser = async (req, res) => {
 
 exports.updateProfile = async (req, res) => {
     try {
-        const { name, password, currentPassword } = req.body;
+        const { name, password, currentPassword, theme } = req.body;
         const user = await User.findById(req.user._id);
 
         if (!user) {
@@ -95,6 +95,13 @@ exports.updateProfile = async (req, res) => {
 
         if (name) {
             user.name = name;
+        }
+
+        if (theme !== undefined) {
+            if (!["light", "dark"].includes(theme)) {
+                return res.status(400).json({ message: "Invalid theme value" });
+            }
+            user.theme = theme;
         }
 
         if (password) {
@@ -128,6 +135,73 @@ exports.updateProfile = async (req, res) => {
     }
 }
 
+exports.forgotPassword = async (req, res) => {
+    try {
+        const { email } = req.body;
+        if (!email) {
+            return res.status(400).json({ message: "Email is required" });
+        }
+
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        const token = jwt.sign(
+            { _id: user._id, email: user.email, type: "reset" },
+            secretKey,
+            { expiresIn: "30m" }
+        );
+
+        // NOTE: Integrate email sending here. For now, return token for dev/testing.
+        return res.status(200).json({
+            message: "Password reset link sent to your email",
+            token,
+        });
+    } catch (error) {
+        console.error("Forgot password error:", error);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+exports.resetPassword = async (req, res) => {
+    try {
+        const { token } = req.params;
+        const { password } = req.body;
+
+        if (!token) {
+            return res.status(400).json({ message: "Reset token is required" });
+        }
+
+        if (!password || password.length < 6) {
+            return res.status(400).json({ message: "Password must be at least 6 characters long" });
+        }
+
+        let decoded;
+        try {
+            decoded = jwt.verify(token, secretKey);
+        } catch (err) {
+            return res.status(400).json({ message: "Invalid or expired reset token" });
+        }
+
+        if (decoded.type !== "reset") {
+            return res.status(400).json({ message: "Invalid reset token" });
+        }
+
+        const user = await User.findById(decoded._id);
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        user.password = password;
+        await user.save();
+
+        return res.status(200).json({ message: "Password reset successfully" });
+    } catch (error) {
+        console.error("Reset password error:", error);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+};
 
 
 

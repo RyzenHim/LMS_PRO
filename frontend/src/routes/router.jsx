@@ -1,5 +1,7 @@
 import AuthLayout from "../layouts/AuthLayout";
 import Login from "../pages/auth/Login";
+import ForgotPassword from "../pages/auth/ForgotPassword";
+import ResetPassword from "../pages/auth/ResetPassword";
 import { createBrowserRouter } from "react-router-dom";
 import NotFound from "../pages/PageNotFound";
 import Landing from "../pages/Landing";
@@ -32,6 +34,14 @@ const router = createBrowserRouter([
       {
         path: "login",
         element: <Login />,
+      },
+      {
+        path: "forgot-password",
+        element: <ForgotPassword />,
+      },
+      {
+        path: "reset-password/:token",
+        element: <ResetPassword />,
       },
     ],
   },

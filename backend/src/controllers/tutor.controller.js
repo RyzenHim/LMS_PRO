@@ -1,10 +1,43 @@
 const Tutor = require("../models/tutor.model");
 
+const parseListParams = (req) => {
+    const page = Math.max(parseInt(req.query.page || "1", 10), 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit || "10", 10), 1), 100);
+    const skip = (page - 1) * limit;
+    const sortBy = req.query.sortBy || "createdAt";
+    const sortOrder = req.query.sortOrder === "asc" ? 1 : -1;
+    const search = (req.query.search || "").trim();
+    return { page, limit, skip, sortBy, sortOrder, search };
+};
+
 exports.allTutors = async (req, res) => {
     try {
-        const tutors = await Tutor.find({ isDeleted: false }).sort({ createdAt: -1 });
-        const totalTutors = await Tutor.countDocuments()
-        res.status(200).json({ tutors, totalTutors });
+        const { page, limit, skip, sortBy, sortOrder, search } = parseListParams(req);
+        const searchQuery = search
+            ? {
+                $or: [
+                    { name: { $regex: search, $options: "i" } },
+                    { email: { $regex: search, $options: "i" } },
+                    { expertise: { $regex: search, $options: "i" } },
+                ],
+            }
+            : {};
+
+        const filter = { isDeleted: false, ...searchQuery };
+        const totalTutors = await Tutor.countDocuments(filter);
+        const tutors = await Tutor.find(filter)
+            .sort({ [sortBy]: sortOrder })
+            .skip(skip)
+            .limit(limit);
+        console.log(totalTutors);
+
+        res.status(200).json({
+            tutors,
+            totalTutors,
+            page,
+            limit,
+            totalPages: Math.ceil(totalTutors / limit),
+        });
     } catch (error) {
         console.error("Get tutors error:", error);
         res.status(500).json({ message: "Internal server error" });
@@ -160,9 +193,29 @@ exports.restoreTutor = async (req, res) => {
 
 exports.getDeletedTutors = async (req, res) => {
     try {
-        const tutors = await Tutor.find({ isDeleted: true })
-            .sort({ deletedAt: -1 });
-        res.status(200).json(tutors);
+        const { page, limit, skip, sortBy, sortOrder, search } = parseListParams(req);
+        const searchQuery = search
+            ? {
+                $or: [
+                    { name: { $regex: search, $options: "i" } },
+                    { email: { $regex: search, $options: "i" } },
+                    { expertise: { $regex: search, $options: "i" } },
+                ],
+            }
+            : {};
+        const filter = { isDeleted: true, ...searchQuery };
+        const totalTutors = await Tutor.countDocuments(filter);
+        const tutors = await Tutor.find(filter)
+            .sort({ [sortBy]: sortOrder })
+            .skip(skip)
+            .limit(limit);
+        res.status(200).json({
+            tutors,
+            totalTutors,
+            page,
+            limit,
+            totalPages: Math.ceil(totalTutors / limit),
+        });
     } catch (error) {
         console.error("Get deleted tutors error:", error);
         res.status(500).json({ message: "Internal server error" });

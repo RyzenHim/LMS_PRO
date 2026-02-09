@@ -1,8 +1,8 @@
 import axiosInstance from "../api/axios";
 
 export const feesService = {
-  getAll: () => axiosInstance.get("/fees/all"),
-  getDeleted: () => axiosInstance.get("/fees/trash/list"),
+  getAll: (params) => axiosInstance.get("/fees/all", { params }),
+  getDeleted: (params) => axiosInstance.get("/fees/trash/list", { params }),
   getById: (id) => axiosInstance.get(`/fees/${id}`),
 
   create: (data) => axiosInstance.post("/fees/add", data),

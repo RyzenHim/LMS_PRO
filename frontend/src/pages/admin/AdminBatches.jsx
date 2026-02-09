@@ -18,6 +18,8 @@ import ViewBatchModal from "./modal/batch/ViewBatchModal";
 import ConfirmDeleteModal from "./modal/batch/ConfirmDeleteModal";
 // import ManageBatchStudentsModal from "./modal/batch/ManageBatchStudentsModal";
 import ManageBatchStudentsModal from "./modal/ManageBatchStudentsModal";
+import Pagination from "../../components/Pagination";
+import SortHeader from "../../components/SortHeader";
 
 const AdminBatches = () => {
   const [search, setSearch] = useState("");
@@ -25,6 +27,15 @@ const AdminBatches = () => {
 
   const [batches, setBatches] = useState([]);
   const [deletedBatches, setDeletedBatches] = useState([]);
+  const [page, setPage] = useState(1);
+  const [trashPage, setTrashPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [trashTotalPages, setTrashTotalPages] = useState(1);
+  const [sortBy, setSortBy] = useState("createdAt");
+  const [sortOrder, setSortOrder] = useState("desc");
+  const [filters, setFilters] = useState({});
+  const [filterField, setFilterField] = useState("status");
+  const [filterValue, setFilterValue] = useState("");
 
   const [activeTab, setActiveTab] = useState("active");
 
@@ -38,14 +49,25 @@ const AdminBatches = () => {
 
   useEffect(() => {
     fetchBatches();
+  }, [page, search, sortBy, sortOrder, JSON.stringify(filters)]);
+
+  useEffect(() => {
     fetchDeletedBatches();
-  }, []);
+  }, [trashPage, search, sortBy, sortOrder, activeTab, JSON.stringify(filters)]);
 
   const fetchBatches = async () => {
     setLoading(true);
     try {
-      const res = await batchService.getAll();
-      setBatches(res.data || []);
+      const res = await batchService.getAll({
+        page,
+        limit: 10,
+        search,
+        sortBy,
+        sortOrder,
+        ...filters,
+      });
+      setBatches(res.data.batches || []);
+      setTotalPages(res.data.totalPages || 1);
     } catch (error) {
       console.error("Error fetching batches", error);
     } finally {
@@ -55,8 +77,16 @@ const AdminBatches = () => {
 
   const fetchDeletedBatches = async () => {
     try {
-      const res = await batchService.getDeleted();
-      setDeletedBatches(res.data || []);
+      const res = await batchService.getDeleted({
+        page: trashPage,
+        limit: 10,
+        search,
+        sortBy,
+        sortOrder,
+        ...filters,
+      });
+      setDeletedBatches(res.data.batches || []);
+      setTrashTotalPages(res.data.totalPages || 1);
     } catch (error) {
       console.error("Error fetching deleted batches", error);
     }
@@ -146,19 +176,7 @@ const AdminBatches = () => {
     }
   };
 
-  const filteredBatches =
-    activeTab === "active"
-      ? batches.filter(
-          (b) =>
-            b.name?.toLowerCase().includes(search.toLowerCase()) ||
-            b.course?.title?.toLowerCase().includes(search.toLowerCase()) ||
-            b.tutor?.name?.toLowerCase().includes(search.toLowerCase()),
-        )
-      : deletedBatches.filter(
-          (b) =>
-            b.name?.toLowerCase().includes(search.toLowerCase()) ||
-            b.course?.title?.toLowerCase().includes(search.toLowerCase()),
-        );
+  const filteredBatches = activeTab === "active" ? batches : deletedBatches;
 
   return (
     <div className="space-y-6">
@@ -216,9 +234,54 @@ const AdminBatches = () => {
           type="text"
           placeholder="Search batches..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPage(1);
+            setTrashPage(1);
+          }}
           className="w-full outline-none text-sm bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
         />
+      </div>
+
+      <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-4 flex flex-wrap items-center gap-3 shadow-sm">
+        <select
+          value={filterField}
+          onChange={(e) => setFilterField(e.target.value)}
+          className="text-sm border rounded-lg px-2 py-1 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
+        >
+          <option value="status">Status</option>
+          <option value="isActive">Is Active</option>
+          <option value="name">Name</option>
+        </select>
+        <input
+          value={filterValue}
+          onChange={(e) => setFilterValue(e.target.value)}
+          placeholder="Filter value"
+          className="text-sm border rounded-lg px-2 py-1 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
+        />
+        <button
+          onClick={addFilter}
+          className="px-3 py-1 rounded-lg bg-[#3F72AF] text-white text-sm"
+        >
+          Add Filter
+        </button>
+        <button
+          onClick={clearFilters}
+          className="px-3 py-1 rounded-lg border text-sm"
+        >
+          Clear Filters
+        </button>
+        <div className="flex flex-wrap gap-2">
+          {Object.keys(filters).map((key) => (
+            <button
+              key={key}
+              onClick={() => removeFilter(key)}
+              className="px-2 py-1 text-xs rounded-lg bg-[#DBE2EF] dark:bg-[#0a1f3a]"
+            >
+              {key}: {String(filters[key])} ×
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Table */}
@@ -233,7 +296,13 @@ const AdminBatches = () => {
               <thead className="bg-[#DBE2EF] dark:bg-[#3F72AF] border-b border-[#DBE2EF] dark:border-[#3F72AF]">
                 <tr>
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
-                    Batch
+                    <SortHeader
+                      label="Batch"
+                      field="name"
+                      sortBy={sortBy}
+                      sortOrder={sortOrder}
+                      onSort={handleSort}
+                    />
                   </th>
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
                     Course
@@ -242,7 +311,13 @@ const AdminBatches = () => {
                     Tutor
                   </th>
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
-                    Start Date
+                    <SortHeader
+                      label="Start Date"
+                      field="startDate"
+                      sortBy={sortBy}
+                      sortOrder={sortOrder}
+                      onSort={handleSort}
+                    />
                   </th>
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
                     End Date
@@ -395,6 +470,14 @@ const AdminBatches = () => {
         )}
       </div>
 
+      <Pagination
+        page={activeTab === "active" ? page : trashPage}
+        totalPages={activeTab === "active" ? totalPages : trashTotalPages}
+        onPageChange={(p) =>
+          activeTab === "active" ? setPage(p) : setTrashPage(p)
+        }
+      />
+
       {/* Modals */}
       <AddBatchModal
         open={openAdd}
@@ -447,3 +530,37 @@ const AdminBatches = () => {
 };
 
 export default AdminBatches;
+  const handleSort = (field) => {
+    if (sortBy === field) {
+      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(field);
+      setSortOrder("asc");
+    }
+    setPage(1);
+    setTrashPage(1);
+  };
+
+  const addFilter = () => {
+    if (!filterField || !filterValue) return;
+    setFilters((prev) => ({ ...prev, [filterField]: filterValue }));
+    setFilterValue("");
+    setPage(1);
+    setTrashPage(1);
+  };
+
+  const removeFilter = (field) => {
+    setFilters((prev) => {
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+    setPage(1);
+    setTrashPage(1);
+  };
+
+  const clearFilters = () => {
+    setFilters({});
+    setPage(1);
+    setTrashPage(1);
+  };

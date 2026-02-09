@@ -3,7 +3,18 @@ const Student = require("../models/student.model");
 const Tutor = require("../models/tutor.model");
 const Employee = require("../models/employee.model");
 const User = require("../models/authUsers.model");
+const Course = require("../models/course.model");
+const mongoose = require("mongoose");
 
+const parseListParams = (req) => {
+    const page = Math.max(parseInt(req.query.page || "1", 10), 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit || "10", 10), 1), 100);
+    const skip = (page - 1) * limit;
+    const sortBy = req.query.sortBy || "createdAt";
+    const sortOrder = req.query.sortOrder === "asc" ? 1 : -1;
+    const search = (req.query.search || "").trim();
+    return { page, limit, skip, sortBy, sortOrder, search };
+};
 exports.createVisitor = async (req, res) => {
     try {
         const { name, email, phone, source, note, course, status, createdBy } = req.body
@@ -30,10 +41,32 @@ exports.createVisitor = async (req, res) => {
 
 exports.getVisitors = async (req, res) => {
     try {
-        const visitors = await Visitor.find({ isDeleted: false })
-            .sort({ createdAt: -1 });
+        const { page, limit, skip, sortBy, sortOrder, search } = parseListParams(req);
+        const searchQuery = search
+            ? {
+                $or: [
+                    { name: { $regex: search, $options: "i" } },
+                    { email: { $regex: search, $options: "i" } },
+                    { phone: { $regex: search, $options: "i" } },
+                    { course: { $regex: search, $options: "i" } },
+                    { source: { $regex: search, $options: "i" } },
+                ],
+            }
+            : {};
+        const filter = { isDeleted: false, ...searchQuery };
+        const totalVisitors = await Visitor.countDocuments(filter);
+        const visitors = await Visitor.find(filter)
+            .sort({ [sortBy]: sortOrder })
+            .skip(skip)
+            .limit(limit);
 
-        return res.status(200).json(visitors);
+        return res.status(200).json({
+            visitors,
+            totalVisitors,
+            page,
+            limit,
+            totalPages: Math.ceil(totalVisitors / limit),
+        });
     } catch (err) {
         res.status(400).json({ message: err.message });
     }
@@ -118,10 +151,32 @@ exports.restoreVisitor = async (req, res) => {
 
 exports.getDeletedVisitors = async (req, res) => {
     try {
-        const visitors = await Visitor.find({ isDeleted: true })
-            .sort({ deletedAt: -1 });
+        const { page, limit, skip, sortBy, sortOrder, search } = parseListParams(req);
+        const searchQuery = search
+            ? {
+                $or: [
+                    { name: { $regex: search, $options: "i" } },
+                    { email: { $regex: search, $options: "i" } },
+                    { phone: { $regex: search, $options: "i" } },
+                    { course: { $regex: search, $options: "i" } },
+                    { source: { $regex: search, $options: "i" } },
+                ],
+            }
+            : {};
+        const filter = { isDeleted: true, ...searchQuery };
+        const totalVisitors = await Visitor.countDocuments(filter);
+        const visitors = await Visitor.find(filter)
+            .sort({ [sortBy]: sortOrder })
+            .skip(skip)
+            .limit(limit);
 
-        res.json(visitors);
+        res.json({
+            visitors,
+            totalVisitors,
+            page,
+            limit,
+            totalPages: Math.ceil(totalVisitors / limit),
+        });
     } catch (error) {
         res.status(500).json({ message: "Internal server error" });
     }
@@ -129,13 +184,35 @@ exports.getDeletedVisitors = async (req, res) => {
 
 exports.getNotInterestedVisitors = async (req, res) => {
     try {
-        const visitors = await Visitor.find({
+        const { page, limit, skip, sortBy, sortOrder, search } = parseListParams(req);
+        const searchQuery = search
+            ? {
+                $or: [
+                    { name: { $regex: search, $options: "i" } },
+                    { email: { $regex: search, $options: "i" } },
+                    { phone: { $regex: search, $options: "i" } },
+                    { course: { $regex: search, $options: "i" } },
+                ],
+            }
+            : {};
+        const filter = {
             isDeleted: false,
-            status: "not-interested"
-        })
-            .sort({ updatedAt: -1 });
+            status: "not-interested",
+            ...searchQuery,
+        };
+        const totalVisitors = await Visitor.countDocuments(filter);
+        const visitors = await Visitor.find(filter)
+            .sort({ [sortBy]: sortOrder })
+            .skip(skip)
+            .limit(limit);
 
-        res.json(visitors);
+        res.json({
+            visitors,
+            totalVisitors,
+            page,
+            limit,
+            totalPages: Math.ceil(totalVisitors / limit),
+        });
     } catch (error) {
         res.status(500).json({ message: "Internal server error" });
     }
@@ -143,14 +220,36 @@ exports.getNotInterestedVisitors = async (req, res) => {
 
 exports.getFollowUpVisitors = async (req, res) => {
     try {
-        const visitors = await Visitor.find({
+        const { page, limit, skip, sortBy, sortOrder, search } = parseListParams(req);
+        const searchQuery = search
+            ? {
+                $or: [
+                    { name: { $regex: search, $options: "i" } },
+                    { email: { $regex: search, $options: "i" } },
+                    { phone: { $regex: search, $options: "i" } },
+                    { course: { $regex: search, $options: "i" } },
+                ],
+            }
+            : {};
+        const filter = {
             isDeleted: false,
             status: "follow-up",
-            followUpDate: { $lte: new Date() } // Only those whose follow-up date has passed
-        })
-            .sort({ followUpDate: 1 });
+            followUpDate: { $lte: new Date() }, // Only those whose follow-up date has passed
+            ...searchQuery,
+        };
+        const totalVisitors = await Visitor.countDocuments(filter);
+        const visitors = await Visitor.find(filter)
+            .sort({ [sortBy]: sortOrder })
+            .skip(skip)
+            .limit(limit);
 
-        res.json(visitors);
+        res.json({
+            visitors,
+            totalVisitors,
+            page,
+            limit,
+            totalPages: Math.ceil(totalVisitors / limit),
+        });
     } catch (error) {
         res.status(500).json({ message: "Internal server error" });
     }
@@ -158,13 +257,35 @@ exports.getFollowUpVisitors = async (req, res) => {
 
 exports.getConvertedVisitors = async (req, res) => {
     try {
-        const visitors = await Visitor.find({
+        const { page, limit, skip, sortBy, sortOrder, search } = parseListParams(req);
+        const searchQuery = search
+            ? {
+                $or: [
+                    { name: { $regex: search, $options: "i" } },
+                    { email: { $regex: search, $options: "i" } },
+                    { phone: { $regex: search, $options: "i" } },
+                    { course: { $regex: search, $options: "i" } },
+                ],
+            }
+            : {};
+        const filter = {
             isDeleted: false,
-            status: "converted"
-        })
-            .sort({ updatedAt: -1 });
+            status: "converted",
+            ...searchQuery,
+        };
+        const totalVisitors = await Visitor.countDocuments(filter);
+        const visitors = await Visitor.find(filter)
+            .sort({ [sortBy]: sortOrder })
+            .skip(skip)
+            .limit(limit);
 
-        res.json(visitors);
+        res.json({
+            visitors,
+            totalVisitors,
+            page,
+            limit,
+            totalPages: Math.ceil(totalVisitors / limit),
+        });
     } catch (error) {
         res.status(500).json({ message: "Internal server error" });
     }
@@ -213,11 +334,32 @@ exports.convertToStudent = async (req, res) => {
             return res.status(400).json({ message: "Student with this email already exists" });
         }
 
+        let courseDoc = null;
+        if (visitor.course) {
+            if (mongoose.Types.ObjectId.isValid(visitor.course)) {
+                courseDoc = await Course.findOne({
+                    _id: visitor.course,
+                    isDeleted: false,
+                });
+            }
+
+            if (!courseDoc) {
+                courseDoc = await Course.findOne({
+                    title: { $regex: `^${visitor.course}$`, $options: "i" },
+                    isDeleted: false,
+                });
+            }
+        }
+
+        if (!courseDoc) {
+            return res.status(400).json({ message: "Course not found. Please update visitor course before converting." });
+        }
+
         const student = await Student.create({
             name: visitor.name,
             email: visitor.email,
             phone: visitor.phone?.toString(),
-            course: visitor.course,
+            course: courseDoc._id,
         });
 
         const defaultPassword = "Password@123";
@@ -233,10 +375,13 @@ exports.convertToStudent = async (req, res) => {
         visitor.convertedToId = student._id;
         await visitor.save();
 
+        const populatedStudent = await Student.findById(student._id)
+            .populate("course", "title category price level");
+
         res.json({
             message: "Visitor converted to student successfully",
             visitor,
-            student,
+            student: populatedStudent,
             user: { email: user.email, role: user.role }
         });
     } catch (err) {

@@ -39,8 +39,8 @@ const EditVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
 
   const fetchCourses = async () => {
     try {
-      const res = await courseService.getAll();
-      setCourses(res.data || []);
+      const res = await courseService.getAll({ limit: 100 });
+      setCourses(res.data.courses || []);
     } catch (error) {
       console.error("Error fetching courses", error);
     }

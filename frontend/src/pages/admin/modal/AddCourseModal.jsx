@@ -29,8 +29,8 @@ const AddCourseModal = ({ open, onClose, onSubmit }) => {
 
   const fetchTutors = async () => {
     try {
-      const res = await tutorService.getAll();
-      setTutors(res.data || []);
+      const res = await tutorService.getAll({ limit: 100 });
+      setTutors(res.data.tutors || []);
     } catch (error) {
       console.error("Error fetching tutors", error);
     }
@@ -38,8 +38,8 @@ const AddCourseModal = ({ open, onClose, onSubmit }) => {
 
   const fetchSkills = async () => {
     try {
-      const res = await skillService.getAll();
-      setSkills(res.data || []);
+      const res = await skillService.getAll({ limit: 100 });
+      setSkills(res.data.skills || []);
     } catch (error) {
       console.error("Error fetching skills", error);
     }
@@ -70,6 +70,9 @@ const AddCourseModal = ({ open, onClose, onSubmit }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (!form.price || Number(form.price) <= 0) {
+      return alert("Course price is required and must be greater than 0");
+    }
     onSubmit?.(form);
     setForm({
       title: "",
@@ -94,7 +97,10 @@ const AddCourseModal = ({ open, onClose, onSubmit }) => {
           Add Course
         </h2>
 
-        <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto">
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-4 max-h-[70vh] overflow-y-auto"
+        >
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
               <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
@@ -159,7 +165,7 @@ const AddCourseModal = ({ open, onClose, onSubmit }) => {
 
             <div>
               <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                Price
+                Price *
               </label>
               <input
                 name="price"
@@ -167,7 +173,8 @@ const AddCourseModal = ({ open, onClose, onSubmit }) => {
                 value={form.price}
                 onChange={handleChange}
                 placeholder="0"
-                min="0"
+                min="1"
+                required
                 className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               />
             </div>
@@ -251,7 +258,9 @@ const AddCourseModal = ({ open, onClose, onSubmit }) => {
               </label>
               <div className="max-h-40 overflow-y-auto border rounded-lg p-3 dark:border-gray-600">
                 {skills.length === 0 ? (
-                  <p className="text-sm text-gray-500 dark:text-gray-400">No skills available</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    No skills available
+                  </p>
                 ) : (
                   <div className="space-y-2">
                     {skills.map((skill) => (

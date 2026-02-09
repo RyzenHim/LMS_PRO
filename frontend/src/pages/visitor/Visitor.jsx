@@ -7,6 +7,8 @@ import ConvertVisitorModal from "./modal/ConvertVisitorModal";
 import NotInterestedModal from "./modal/NotInterestedModal";
 import ConfirmDeleteModal from "../admin/modal/ConfirmDeleteModal";
 import axiosInstance from "../../api/axios";
+import Pagination from "../../components/Pagination";
+import SortHeader from "../../components/SortHeader";
 
 const Visitors = () => {
   const [visitors, setVisitors] = useState([]);
@@ -19,6 +21,13 @@ const Visitors = () => {
 
   const [activeTab, setActiveTab] = useState("active");
   const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState("createdAt");
+  const [sortOrder, setSortOrder] = useState("desc");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [filters, setFilters] = useState({});
+  const [filterField, setFilterField] = useState("status");
+  const [filterValue, setFilterValue] = useState("");
 
   const [openModal, setOpenModal] = useState(false);
   const [editVisitor, setEditVisitor] = useState(null);
@@ -33,22 +42,37 @@ const Visitors = () => {
   const [notInterestedVisitor, setNotInterestedVisitor] = useState(null);
 
   /* ---------------- FETCH VISITORS ---------------- */
-  const fetchAllData = async () => {
+  const fetchActiveTab = async () => {
     setLoading(true);
     try {
-      const [activeRes, notInterestedRes, followUpRes, convertedRes, deletedRes] = await Promise.all([
-        axiosInstance.get("/visitor/allvisitor"),
-        axiosInstance.get("/visitor/not-interested/list"),
-        axiosInstance.get("/visitor/follow-up/list"),
-        axiosInstance.get("/visitor/converted/list"),
-        axiosInstance.get("/visitor/trash/list"),
-      ]);
+      const params = {
+        page,
+        limit: 10,
+        search,
+        sortBy,
+        sortOrder,
+        ...filters,
+      };
 
-      setVisitors(Array.isArray(activeRes?.data) ? activeRes.data.filter(v => !["converted", "not-interested", "follow-up"].includes(v.status)) : []);
-      setNotInterestedVisitors(Array.isArray(notInterestedRes?.data) ? notInterestedRes.data : []);
-      setFollowUpVisitors(Array.isArray(followUpRes?.data) ? followUpRes.data : []);
-      setConvertedVisitors(Array.isArray(convertedRes?.data) ? convertedRes.data : []);
-      setDeletedVisitors(Array.isArray(deletedRes?.data) ? deletedRes.data : []);
+      let res;
+      if (activeTab === "active") {
+        res = await axiosInstance.get("/visitor/allvisitor", { params });
+        setVisitors(res.data.visitors || []);
+      } else if (activeTab === "not-interested") {
+        res = await axiosInstance.get("/visitor/not-interested/list", { params });
+        setNotInterestedVisitors(res.data.visitors || []);
+      } else if (activeTab === "follow-up") {
+        res = await axiosInstance.get("/visitor/follow-up/list", { params });
+        setFollowUpVisitors(res.data.visitors || []);
+      } else if (activeTab === "converted") {
+        res = await axiosInstance.get("/visitor/converted/list", { params });
+        setConvertedVisitors(res.data.visitors || []);
+      } else if (activeTab === "trash") {
+        res = await axiosInstance.get("/visitor/trash/list", { params });
+        setDeletedVisitors(res.data.visitors || []);
+      }
+
+      setTotalPages(res?.data?.totalPages || 1);
     } catch (err) {
       setError("Failed to load visitors");
       console.error("Error fetching visitors:", err);
@@ -58,8 +82,8 @@ const Visitors = () => {
   };
 
   useEffect(() => {
-    fetchAllData();
-  }, []);
+    fetchActiveTab();
+  }, [activeTab, page, search, sortBy, sortOrder]);
 
   /* ---------------- SOFT DELETE ---------------- */
   const handleDeleteClick = (visitor) => {
@@ -70,7 +94,7 @@ const Visitors = () => {
   const handleDelete = async () => {
     try {
       await axiosInstance.delete(`/visitor/${deleteVisitor._id}`);
-      fetchAllData();
+      fetchActiveTab();
       setOpenDeleteModal(false);
       setDeleteVisitor(null);
     } catch {
@@ -82,7 +106,7 @@ const Visitors = () => {
   const handleRestore = async (id) => {
     try {
       await axiosInstance.patch(`/visitor/${id}/restore`);
-      fetchAllData();
+      fetchActiveTab();
     } catch {
       alert("Failed to recover visitor");
     }
@@ -101,7 +125,7 @@ const Visitors = () => {
   };
 
   const handleConvertSuccess = () => {
-    fetchAllData();
+      fetchActiveTab();
     setOpenConvertModal(false);
     setConvertVisitor(null);
   };
@@ -113,44 +137,22 @@ const Visitors = () => {
   };
 
   const handleNotInterestedSuccess = () => {
-    fetchAllData();
+      fetchActiveTab();
     setOpenNotInterestedModal(false);
     setNotInterestedVisitor(null);
   };
 
   /* ---------------- FILTERED DATA ---------------- */
-  const getFilteredVisitors = () => {
-    let dataToFilter = [];
-    switch (activeTab) {
-      case "active":
-        dataToFilter = visitors;
-        break;
-      case "not-interested":
-        dataToFilter = notInterestedVisitors;
-        break;
-      case "follow-up":
-        dataToFilter = followUpVisitors;
-        break;
-      case "converted":
-        dataToFilter = convertedVisitors;
-        break;
-      case "trash":
-        dataToFilter = deletedVisitors;
-        break;
-      default:
-        dataToFilter = visitors;
-    }
-
-    return dataToFilter.filter(
-      (v) =>
-        v.name?.toLowerCase().includes(search.toLowerCase()) ||
-        v.email?.toLowerCase().includes(search.toLowerCase()) ||
-        v.phone?.toString().includes(search) ||
-        v.course?.toLowerCase().includes(search.toLowerCase())
-    );
-  };
-
-  const filteredVisitors = getFilteredVisitors();
+  const filteredVisitors =
+    activeTab === "active"
+      ? visitors
+      : activeTab === "not-interested"
+        ? notInterestedVisitors
+        : activeTab === "follow-up"
+          ? followUpVisitors
+          : activeTab === "converted"
+            ? convertedVisitors
+            : deletedVisitors;
 
   const getTabCount = (tab) => {
     switch (tab) {
@@ -267,9 +269,54 @@ const Visitors = () => {
             type="text"
             placeholder="Search visitors..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
             className="w-full outline-none text-sm bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
           />
+        </div>
+      </div>
+
+      <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-4 flex flex-wrap items-center gap-3 shadow-sm">
+        <select
+          value={filterField}
+          onChange={(e) => setFilterField(e.target.value)}
+          className="text-sm border rounded-lg px-2 py-1 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
+        >
+          <option value="status">Status</option>
+          <option value="source">Source</option>
+          <option value="course">Course</option>
+          <option value="conversionType">Conversion Type</option>
+        </select>
+        <input
+          value={filterValue}
+          onChange={(e) => setFilterValue(e.target.value)}
+          placeholder="Filter value"
+          className="text-sm border rounded-lg px-2 py-1 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
+        />
+        <button
+          onClick={addFilter}
+          className="px-3 py-1 rounded-lg bg-[#3F72AF] text-white text-sm"
+        >
+          Add Filter
+        </button>
+        <button
+          onClick={clearFilters}
+          className="px-3 py-1 rounded-lg border text-sm"
+        >
+          Clear Filters
+        </button>
+        <div className="flex flex-wrap gap-2">
+          {Object.keys(filters).map((key) => (
+            <button
+              key={key}
+              onClick={() => removeFilter(key)}
+              className="px-2 py-1 text-xs rounded-lg bg-[#DBE2EF] dark:bg-[#0a1f3a]"
+            >
+              {key}: {String(filters[key])} ×
+            </button>
+          ))}
         </div>
       </div>
 
@@ -288,10 +335,22 @@ const Visitors = () => {
             <thead className="bg-[#DBE2EF] dark:bg-[#3F72AF]">
               <tr>
                 <th className="border border-[#DBE2EF] dark:border-[#3F72AF] p-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
-                  Name
+                  <SortHeader
+                    label="Name"
+                    field="name"
+                    sortBy={sortBy}
+                    sortOrder={sortOrder}
+                    onSort={handleSort}
+                  />
                 </th>
                 <th className="border border-[#DBE2EF] dark:border-[#3F72AF] p-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
-                  Email
+                  <SortHeader
+                    label="Email"
+                    field="email"
+                    sortBy={sortBy}
+                    sortOrder={sortOrder}
+                    onSort={handleSort}
+                  />
                 </th>
                 <th className="border border-[#DBE2EF] dark:border-[#3F72AF] p-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
                   Phone
@@ -321,7 +380,13 @@ const Visitors = () => {
                   </th>
                 )}
                 <th className="border border-[#DBE2EF] dark:border-[#3F72AF] p-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
-                  Created
+                  <SortHeader
+                    label="Created"
+                    field="createdAt"
+                    sortBy={sortBy}
+                    sortOrder={sortOrder}
+                    onSort={handleSort}
+                  />
                 </th>
                 <th className="border border-[#DBE2EF] dark:border-[#3F72AF] p-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
                   Actions
@@ -478,12 +543,14 @@ const Visitors = () => {
         </div>
       )}
 
+      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+
       {/* ---------- MODALS ---------- */}
       <AddVisitorModal
         open={openModal}
         onClose={() => setOpenModal(false)}
         onSuccess={(visitor) => {
-          fetchAllData();
+          fetchActiveTab();
           setOpenModal(false);
         }}
       />
@@ -496,7 +563,7 @@ const Visitors = () => {
           setEditVisitor(null);
         }}
         onSuccess={(updatedVisitor) => {
-          fetchAllData();
+          fetchActiveTab();
           setOpenEditModal(false);
           setEditVisitor(null);
         }}
@@ -545,3 +612,33 @@ const Visitors = () => {
 };
 
 export default Visitors;
+  const handleSort = (field) => {
+    if (sortBy === field) {
+      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(field);
+      setSortOrder("asc");
+    }
+    setPage(1);
+  };
+
+  const addFilter = () => {
+    if (!filterField || !filterValue) return;
+    setFilters((prev) => ({ ...prev, [filterField]: filterValue }));
+    setFilterValue("");
+    setPage(1);
+  };
+
+  const removeFilter = (field) => {
+    setFilters((prev) => {
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+    setPage(1);
+  };
+
+  const clearFilters = () => {
+    setFilters({});
+    setPage(1);
+  };

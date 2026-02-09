@@ -24,12 +24,18 @@ exports.getStudentsOfBatch = async (req, res) => {
 exports.getBatchesOfStudent = async (req, res) => {
     try {
         const { studentId } = req.params;
+        const includeHistory = req.query?.includeHistory === "true";
 
-        const mappings = await BatchStudentMap.find({
+        const query = {
             student: studentId,
-            status: "active",
             isDeleted: false,
-        })
+        };
+
+        if (!includeHistory) {
+            query.status = "active";
+        }
+
+        const mappings = await BatchStudentMap.find(query)
             .populate("batch", "name startDate endDate status isActive")
             .populate("course", "title category level")
             .populate("tutor", "name email")
@@ -141,3 +147,88 @@ exports.removeStudentsFromBatch = async (req, res) => {
     }
 };
 
+exports.changeStudentBatch = async (req, res) => {
+    try {
+        const { studentId } = req.params;
+        const { fromBatchId, toBatchId } = req.body;
+
+        if (!toBatchId) {
+            return res.status(400).json({ message: "Target batch is required" });
+        }
+
+        const targetBatch = await Batch.findOne({ _id: toBatchId, isDeleted: false });
+        if (!targetBatch) {
+            return res.status(404).json({ message: "Target batch not found" });
+        }
+
+        const student = await Student.findOne({ _id: studentId, isDeleted: false });
+        if (!student) {
+            return res.status(404).json({ message: "Student not found" });
+        }
+
+        const activeQuery = {
+            student: studentId,
+            status: "active",
+            isDeleted: false,
+        };
+
+        if (fromBatchId) {
+            activeQuery.batch = fromBatchId;
+        }
+
+        await BatchStudentMap.updateMany(activeQuery, {
+            $set: {
+                status: "removed",
+                removedAt: new Date(),
+            },
+        });
+
+        const existingActive = await BatchStudentMap.findOne({
+            student: studentId,
+            batch: targetBatch._id,
+            status: "active",
+            isDeleted: false,
+        });
+
+        if (existingActive) {
+            return res.status(200).json({
+                message: "Student already in target batch",
+                mapping: existingActive,
+            });
+        }
+
+        const mapping = await BatchStudentMap.create({
+            batch: targetBatch._id,
+            student: studentId,
+            course: targetBatch.course,
+            tutor: targetBatch.tutor,
+            addedBy: req.user?._id || null,
+            status: "active",
+            joinedAt: new Date(),
+        });
+
+        const populated = await BatchStudentMap.findById(mapping._id)
+            .populate("batch", "name startDate endDate status isActive")
+            .populate("course", "title category level")
+            .populate("tutor", "name email")
+            .populate("student", "name email phone status");
+
+        return res.status(200).json({
+            message: "Student batch changed successfully",
+            mapping: populated,
+        });
+    } catch (error) {
+        console.error("changeStudentBatch error:", error);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+exports.allBatches = async (req, res) => {
+    try {
+        const totalBatches = await Batch.countDocuments()
+        return res.status(200).json({ totalBatches })
+    } catch (error) {
+        return res.status(500).json({ message: "Internal server error" });
+
+    }
+}

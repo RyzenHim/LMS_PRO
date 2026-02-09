@@ -5,12 +5,23 @@ import { employeeService } from "../../services/employeeService";
 import Admin_EditEmployeeModal from "./modal/employee/Admin_EditEmployeeModal";
 import ConfirmDeleteModal from "./modal/ConfirmDeleteModal";
 import ViewEmployeeModal from "./modal/ViewEmployeeModal";
+import Pagination from "../../components/Pagination";
+import SortHeader from "../../components/SortHeader";
 
 const AdminEmployees = () => {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [allEmp, setAllEmp] = useState([]);
   const [deletedEmployees, setDeletedEmployees] = useState([]);
+  const [page, setPage] = useState(1);
+  const [trashPage, setTrashPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [trashTotalPages, setTrashTotalPages] = useState(1);
+  const [sortBy, setSortBy] = useState("createdAt");
+  const [sortOrder, setSortOrder] = useState("desc");
+  const [filters, setFilters] = useState({});
+  const [filterField, setFilterField] = useState("department");
+  const [filterValue, setFilterValue] = useState("");
   const [activeTab, setActiveTab] = useState("active");
   const [openAdd, setOpenAdd] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
@@ -20,14 +31,25 @@ const AdminEmployees = () => {
 
   useEffect(() => {
     fetchEmployees();
+  }, [page, search, sortBy, sortOrder, JSON.stringify(filters)]);
+
+  useEffect(() => {
     fetchDeletedEmployees();
-  }, []);
+  }, [trashPage, search, sortBy, sortOrder, activeTab, JSON.stringify(filters)]);
 
   const fetchEmployees = async () => {
     setLoading(true);
     try {
-      const res = await employeeService.getAll();
-      setAllEmp(res.data || []);
+      const res = await employeeService.getAll({
+        page,
+        limit: 10,
+        search,
+        sortBy,
+        sortOrder,
+        ...filters,
+      });
+      setAllEmp(res.data.allEmployes || []);
+      setTotalPages(res.data.totalPages || 1);
     } catch (error) {
       console.error("Error fetching employees", error);
     } finally {
@@ -37,8 +59,16 @@ const AdminEmployees = () => {
 
   const fetchDeletedEmployees = async () => {
     try {
-      const res = await employeeService.getDeleted();
-      setDeletedEmployees(res.data || []);
+      const res = await employeeService.getDeleted({
+        page: trashPage,
+        limit: 10,
+        search,
+        sortBy,
+        sortOrder,
+        ...filters,
+      });
+      setDeletedEmployees(res.data.allEmployes || []);
+      setTrashTotalPages(res.data.totalPages || 1);
     } catch (error) {
       console.error("Error fetching deleted employees", error);
     }
@@ -133,18 +163,7 @@ const AdminEmployees = () => {
   };
 
   const filteredEmployees =
-    activeTab === "active"
-      ? allEmp.filter(
-          (emp) =>
-            emp.name?.toLowerCase().includes(search.toLowerCase()) ||
-            emp.email?.toLowerCase().includes(search.toLowerCase()) ||
-            emp.department?.toLowerCase().includes(search.toLowerCase())
-        )
-      : deletedEmployees.filter(
-          (emp) =>
-            emp.name?.toLowerCase().includes(search.toLowerCase()) ||
-            emp.email?.toLowerCase().includes(search.toLowerCase())
-        );
+    activeTab === "active" ? allEmp : deletedEmployees;
 
   return (
     <div className="space-y-6">
@@ -169,7 +188,6 @@ const AdminEmployees = () => {
         )}
       </div>
 
-      {/* Tabs */}
       <div className="flex gap-4 border-b border-[#DBE2EF] dark:border-[#3F72AF]">
         <button
           onClick={() => setActiveTab("active")}
@@ -200,9 +218,55 @@ const AdminEmployees = () => {
             type="text"
             placeholder="Search by name, email, or department"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+              setTrashPage(1);
+            }}
             className="w-full outline-none text-sm bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
           />
+        </div>
+      </div>
+
+      <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-4 flex flex-wrap items-center gap-3 shadow-sm">
+        <select
+          value={filterField}
+          onChange={(e) => setFilterField(e.target.value)}
+          className="text-sm border rounded-lg px-2 py-1 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
+        >
+          <option value="department">Department</option>
+          <option value="designation">Designation</option>
+          <option value="isActive">Is Active</option>
+          <option value="email">Email</option>
+        </select>
+        <input
+          value={filterValue}
+          onChange={(e) => setFilterValue(e.target.value)}
+          placeholder="Filter value"
+          className="text-sm border rounded-lg px-2 py-1 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
+        />
+        <button
+          onClick={addFilter}
+          className="px-3 py-1 rounded-lg bg-[#3F72AF] text-white text-sm"
+        >
+          Add Filter
+        </button>
+        <button
+          onClick={clearFilters}
+          className="px-3 py-1 rounded-lg border text-sm"
+        >
+          Clear Filters
+        </button>
+        <div className="flex flex-wrap gap-2">
+          {Object.keys(filters).map((key) => (
+            <button
+              key={key}
+              onClick={() => removeFilter(key)}
+              className="px-2 py-1 text-xs rounded-lg bg-[#DBE2EF] dark:bg-[#0a1f3a]"
+            >
+              {key}: {String(filters[key])} ×
+            </button>
+          ))}
         </div>
       </div>
 
@@ -216,16 +280,60 @@ const AdminEmployees = () => {
             <table className="w-full text-sm">
               <thead className="bg-[#DBE2EF] dark:bg-[#3F72AF] border-b border-[#DBE2EF] dark:border-[#3F72AF]">
                 <tr>
-                  <th className="px-4 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Name</th>
-                  <th className="px-4 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Email</th>
-                  <th className="px-4 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Department</th>
-                  <th className="px-4 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Designation</th>
-                  <th className="px-4 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Salary</th>
-                  <th className="px-4 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Status</th>
-                  <th className="px-4 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Joining Date</th>
-                  <th className="px-4 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Created At</th>
-                  <th className="px-4 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Updated At</th>
-                  <th className="px-4 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">Actions</th>
+                  <th className="px-4 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                    <SortHeader
+                      label="Name"
+                      field="name"
+                      sortBy={sortBy}
+                      sortOrder={sortOrder}
+                      onSort={handleSort}
+                    />
+                  </th>
+                  <th className="px-4 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                    <SortHeader
+                      label="Email"
+                      field="email"
+                      sortBy={sortBy}
+                      sortOrder={sortOrder}
+                      onSort={handleSort}
+                    />
+                  </th>
+                  <th className="px-4 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                    <SortHeader
+                      label="Department"
+                      field="department"
+                      sortBy={sortBy}
+                      sortOrder={sortOrder}
+                      onSort={handleSort}
+                    />
+                  </th>
+                  <th className="px-4 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                    <SortHeader
+                      label="Designation"
+                      field="designation"
+                      sortBy={sortBy}
+                      sortOrder={sortOrder}
+                      onSort={handleSort}
+                    />
+                  </th>
+                  <th className="px-4 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                    Salary
+                  </th>
+                  <th className="px-4 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                    Status
+                  </th>
+                  <th className="px-4 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                    Joining Date
+                  </th>
+                  <th className="px-4 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                    Created At
+                  </th>
+                  <th className="px-4 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                    Updated At
+                  </th>
+                  <th className="px-4 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                    Actions
+                  </th>
                 </tr>
               </thead>
 
@@ -235,15 +343,23 @@ const AdminEmployees = () => {
                     key={emp._id}
                     className="border-b border-[#DBE2EF] dark:border-[#3F72AF] last:border-none hover:bg-[#DBE2EF] dark:hover:bg-[#0a1f3a] transition-colors"
                   >
-                    <td className="px-4 py-3 font-medium text-[#112D4E] dark:text-[#DBE2EF]">{emp.name}</td>
-                    <td className="px-4 py-3 text-[#3F72AF] dark:text-[#DBE2EF]">{emp.email}</td>
-                    <td className="px-4 py-3 text-[#112D4E] dark:text-[#DBE2EF]">{emp.department}</td>
+                    <td className="px-4 py-3 font-medium text-[#112D4E] dark:text-[#DBE2EF]">
+                      {emp.name}
+                    </td>
+                    <td className="px-4 py-3 text-[#3F72AF] dark:text-[#DBE2EF]">
+                      {emp.email}
+                    </td>
+                    <td className="px-4 py-3 text-[#112D4E] dark:text-[#DBE2EF]">
+                      {emp.department}
+                    </td>
                     <td className="px-4 py-3">
                       <span className="px-2 py-1 text-xs rounded-md bg-[#DBE2EF] dark:bg-[#3F72AF] text-[#112D4E] dark:text-[#DBE2EF]">
                         {emp.designation}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-[#112D4E] dark:text-[#DBE2EF]">₹{emp.salary}</td>
+                    <td className="px-4 py-3 text-[#112D4E] dark:text-[#DBE2EF]">
+                      ₹{emp.salary}
+                    </td>
                     <td className="px-4 py-3">
                       <span
                         className={`px-2 py-1 text-xs rounded-md ${
@@ -323,6 +439,14 @@ const AdminEmployees = () => {
         )}
       </div>
 
+      <Pagination
+        page={activeTab === "active" ? page : trashPage}
+        totalPages={activeTab === "active" ? totalPages : trashTotalPages}
+        onPageChange={(p) =>
+          activeTab === "active" ? setPage(p) : setTrashPage(p)
+        }
+      />
+
       <AddEmployeeModal
         open={openAdd}
         onClose={() => setOpenAdd(false)}
@@ -359,3 +483,37 @@ const AdminEmployees = () => {
 };
 
 export default AdminEmployees;
+  const handleSort = (field) => {
+    if (sortBy === field) {
+      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(field);
+      setSortOrder("asc");
+    }
+    setPage(1);
+    setTrashPage(1);
+  };
+
+  const addFilter = () => {
+    if (!filterField || !filterValue) return;
+    setFilters((prev) => ({ ...prev, [filterField]: filterValue }));
+    setFilterValue("");
+    setPage(1);
+    setTrashPage(1);
+  };
+
+  const removeFilter = (field) => {
+    setFilters((prev) => {
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+    setPage(1);
+    setTrashPage(1);
+  };
+
+  const clearFilters = () => {
+    setFilters({});
+    setPage(1);
+    setTrashPage(1);
+  };

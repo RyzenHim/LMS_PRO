@@ -1,9 +1,41 @@
 const Employee = require("../models/employee.model");
 
+const parseListParams = (req) => {
+    const page = Math.max(parseInt(req.query.page || "1", 10), 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit || "10", 10), 1), 100);
+    const skip = (page - 1) * limit;
+    const sortBy = req.query.sortBy || "createdAt";
+    const sortOrder = req.query.sortOrder === "asc" ? 1 : -1;
+    const search = (req.query.search || "").trim();
+    return { page, limit, skip, sortBy, sortOrder, search };
+};
+
 exports.allEmployee = async (req, res) => {
     try {
-        const allEmployes = await Employee.find({ isDeleted: false }).sort({ createdAt: -1 });
-        return res.status(200).json(allEmployes);
+        const { page, limit, skip, sortBy, sortOrder, search } = parseListParams(req);
+        const searchQuery = search
+            ? {
+                $or: [
+                    { name: { $regex: search, $options: "i" } },
+                    { email: { $regex: search, $options: "i" } },
+                    { department: { $regex: search, $options: "i" } },
+                    { designation: { $regex: search, $options: "i" } },
+                ],
+            }
+            : {};
+        const filter = { isDeleted: false, ...searchQuery };
+        const totalEmployes = await Employee.countDocuments(filter);
+        const allEmployes = await Employee.find(filter)
+            .sort({ [sortBy]: sortOrder })
+            .skip(skip)
+            .limit(limit);
+        return res.status(200).json({
+            allEmployes,
+            totalEmployes,
+            page,
+            limit,
+            totalPages: Math.ceil(totalEmployes / limit),
+        });
     } catch (error) {
         console.error("Get employees error:", error);
         return res.status(500).json({ message: "Internal Server Error" });
@@ -186,9 +218,30 @@ exports.restoreEmployee = async (req, res) => {
 
 exports.getDeletedEmployees = async (req, res) => {
     try {
-        const employees = await Employee.find({ isDeleted: true })
-            .sort({ deletedAt: -1 });
-        res.status(200).json(employees);
+        const { page, limit, skip, sortBy, sortOrder, search } = parseListParams(req);
+        const searchQuery = search
+            ? {
+                $or: [
+                    { name: { $regex: search, $options: "i" } },
+                    { email: { $regex: search, $options: "i" } },
+                    { department: { $regex: search, $options: "i" } },
+                    { designation: { $regex: search, $options: "i" } },
+                ],
+            }
+            : {};
+        const filter = { isDeleted: true, ...searchQuery };
+        const totalEmployes = await Employee.countDocuments(filter);
+        const employees = await Employee.find(filter)
+            .sort({ [sortBy]: sortOrder })
+            .skip(skip)
+            .limit(limit);
+        res.status(200).json({
+            allEmployes: employees,
+            totalEmployes,
+            page,
+            limit,
+            totalPages: Math.ceil(totalEmployes / limit),
+        });
     } catch (error) {
         console.error("Get deleted employees error:", error);
         res.status(500).json({ message: "Internal server error" });

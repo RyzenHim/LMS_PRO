@@ -3,6 +3,16 @@ const Student = require("../models/student.model");
 const Course = require("../models/course.model");
 const Batch = require("../models/batch.model");
 
+const parseListParams = (req) => {
+    const page = Math.max(parseInt(req.query.page || "1", 10), 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit || "10", 10), 1), 100);
+    const skip = (page - 1) * limit;
+    const sortBy = req.query.sortBy || "createdAt";
+    const sortOrder = req.query.sortOrder === "asc" ? 1 : -1;
+    const search = (req.query.search || "").trim();
+    return { page, limit, skip, sortBy, sortOrder, search };
+};
+
 const calculateFees = ({ coursePrice, amountPaid }) => {
     const paid = Number(amountPaid || 0);
     const price = Number(coursePrice || 0);
@@ -23,13 +33,34 @@ const calculateFees = ({ coursePrice, amountPaid }) => {
 // ✅ Get all fees
 exports.allFees = async (req, res) => {
     try {
-        const fees = await Fees.find({ isDeleted: false })
+        const { page, limit, skip, sortBy, sortOrder, search } = parseListParams(req);
+        const searchQuery = search
+            ? {
+                $or: [
+                    { paymentMode: { $regex: search, $options: "i" } },
+                    { paymentType: { $regex: search, $options: "i" } },
+                    { status: { $regex: search, $options: "i" } },
+                ],
+            }
+            : {};
+
+        const filter = { isDeleted: false, ...searchQuery };
+        const totalFees = await Fees.countDocuments(filter);
+        const fees = await Fees.find(filter)
             .populate("student", "name email phone status")
             .populate("course", "title category price duration level")
             .populate("batch", "name startDate status")
-            .sort({ createdAt: -1 });
+            .sort({ [sortBy]: sortOrder })
+            .skip(skip)
+            .limit(limit);
 
-        return res.status(200).json(fees);
+        return res.status(200).json({
+            fees,
+            totalFees,
+            page,
+            limit,
+            totalPages: Math.ceil(totalFees / limit),
+        });
     } catch (error) {
         console.error("allFees error:", error);
         return res.status(500).json({ message: "Internal Server Error" });
@@ -39,13 +70,34 @@ exports.allFees = async (req, res) => {
 // ✅ Get deleted fees
 exports.getDeletedFees = async (req, res) => {
     try {
-        const fees = await Fees.find({ isDeleted: true })
+        const { page, limit, skip, sortBy, sortOrder, search } = parseListParams(req);
+        const searchQuery = search
+            ? {
+                $or: [
+                    { paymentMode: { $regex: search, $options: "i" } },
+                    { paymentType: { $regex: search, $options: "i" } },
+                    { status: { $regex: search, $options: "i" } },
+                ],
+            }
+            : {};
+
+        const filter = { isDeleted: true, ...searchQuery };
+        const totalFees = await Fees.countDocuments(filter);
+        const fees = await Fees.find(filter)
             .populate("student", "name email phone status")
             .populate("course", "title category price duration level")
             .populate("batch", "name startDate status")
-            .sort({ deletedAt: -1 });
+            .sort({ [sortBy]: sortOrder })
+            .skip(skip)
+            .limit(limit);
 
-        return res.status(200).json(fees);
+        return res.status(200).json({
+            fees,
+            totalFees,
+            page,
+            limit,
+            totalPages: Math.ceil(totalFees / limit),
+        });
     } catch (error) {
         console.error("getDeletedFees error:", error);
         return res.status(500).json({ message: "Internal Server Error" });

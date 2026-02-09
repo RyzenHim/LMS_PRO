@@ -16,4 +16,12 @@ export const batchStudentMapService = {
 
   getBatchesOfStudent: (studentId) =>
     axiosInstance.get(`/batch-student-map/student/${studentId}/batches`),
+
+  getBatchHistoryOfStudent: (studentId) =>
+    axiosInstance.get(
+      `/batch-student-map/student/${studentId}/batches?includeHistory=true`,
+    ),
+
+  changeStudentBatch: (studentId, payload) =>
+    axiosInstance.post(`/batch-student-map/student/${studentId}/change-batch`, payload),
 };

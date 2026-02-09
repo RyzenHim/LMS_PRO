@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
+import { courseService } from "../../../services/courseService";
 
 const EditStudentModal = ({ open, onClose, student, onSubmit }) => {
+  const [courses, setCourses] = useState([]);
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -14,20 +16,37 @@ const EditStudentModal = ({ open, onClose, student, onSubmit }) => {
   });
 
   useEffect(() => {
+    if (open) {
+      fetchCourses();
+    }
+  }, [open]);
+
+  useEffect(() => {
     if (student) {
       setForm({
         name: student.name || "",
         email: student.email || "",
         phone: student.phone || "",
-        course: student.course || "",
+        course: student.course?._id || student.course || "",
         address: student.address || "",
-        dateOfBirth: student.dateOfBirth ? new Date(student.dateOfBirth).toISOString().split('T')[0] : "",
+        dateOfBirth: student.dateOfBirth
+          ? new Date(student.dateOfBirth).toISOString().split("T")[0]
+          : "",
         guardianName: student.guardianName || "",
         guardianPhone: student.guardianPhone || "",
         status: student.status || "active",
       });
     }
   }, [student]);
+
+  const fetchCourses = async () => {
+    try {
+      const res = await courseService.getAll({ limit: 100 });
+      setCourses((res.data?.courses || []).filter((c) => c.isDeleted === false));
+    } catch (error) {
+      console.error("fetchCourses error:", error);
+    }
+  };
 
   if (!open) return null;
 
@@ -40,6 +59,9 @@ const EditStudentModal = ({ open, onClose, student, onSubmit }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (!form.course) {
+      return alert("Course is required");
+    }
     onSubmit?.(form);
   };
 
@@ -98,14 +120,20 @@ const EditStudentModal = ({ open, onClose, student, onSubmit }) => {
               <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
                 Course *
               </label>
-              <input
+              <select
                 name="course"
                 value={form.course}
                 onChange={handleChange}
-                placeholder="Course name"
                 required
                 className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              />
+              >
+                <option value="">Select course</option>
+                {courses.map((c) => (
+                  <option key={c._id} value={c._id}>
+                    {c.title} (₹{c.price})
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div>

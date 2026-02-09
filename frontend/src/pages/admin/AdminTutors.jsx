@@ -5,12 +5,23 @@ import AddTutorModal from "./modal/AddTutorModal";
 import EditTutorModal from "./modal/EditTutorModal";
 import ViewTutorModal from "./modal/ViewTutorModal";
 import ConfirmDeleteModal from "./modal/ConfirmDeleteModal";
+import Pagination from "../../components/Pagination";
+import SortHeader from "../../components/SortHeader";
 
 const AdminTutors = () => {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [tutors, setTutors] = useState([]);
   const [deletedTutors, setDeletedTutors] = useState([]);
+  const [page, setPage] = useState(1);
+  const [trashPage, setTrashPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [trashTotalPages, setTrashTotalPages] = useState(1);
+  const [sortBy, setSortBy] = useState("createdAt");
+  const [sortOrder, setSortOrder] = useState("desc");
+  const [filters, setFilters] = useState({});
+  const [filterField, setFilterField] = useState("expertise");
+  const [filterValue, setFilterValue] = useState("");
   const [activeTab, setActiveTab] = useState("active");
   const [openAdd, setOpenAdd] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
@@ -20,14 +31,25 @@ const AdminTutors = () => {
 
   useEffect(() => {
     fetchTutors();
+  }, [page, search, sortBy, sortOrder, JSON.stringify(filters)]);
+
+  useEffect(() => {
     fetchDeletedTutors();
-  }, []);
+  }, [trashPage, search, sortBy, sortOrder, activeTab, JSON.stringify(filters)]);
 
   const fetchTutors = async () => {
     setLoading(true);
     try {
-      const res = await tutorService.getAll();
-      setTutors(res.data || []);
+      const res = await tutorService.getAll({
+        page,
+        limit: 10,
+        search,
+        sortBy,
+        sortOrder,
+        ...filters,
+      });
+      setTutors(res.data.tutors || []);
+      setTotalPages(res.data.totalPages || 1);
     } catch (error) {
       console.error("Error fetching tutors", error);
     } finally {
@@ -37,8 +59,16 @@ const AdminTutors = () => {
 
   const fetchDeletedTutors = async () => {
     try {
-      const res = await tutorService.getDeleted();
-      setDeletedTutors(res.data || []);
+      const res = await tutorService.getDeleted({
+        page: trashPage,
+        limit: 10,
+        search,
+        sortBy,
+        sortOrder,
+        ...filters,
+      });
+      setDeletedTutors(res.data.tutors || []);
+      setTrashTotalPages(res.data.totalPages || 1);
     } catch (error) {
       console.error("Error fetching deleted tutors", error);
     }
@@ -122,19 +152,7 @@ const AdminTutors = () => {
     }
   };
 
-  const filteredTutors =
-    activeTab === "active"
-      ? tutors.filter(
-          (t) =>
-            t.name?.toLowerCase().includes(search.toLowerCase()) ||
-            t.email?.toLowerCase().includes(search.toLowerCase()) ||
-            t.expertise?.toLowerCase().includes(search.toLowerCase()),
-        )
-      : deletedTutors.filter(
-          (t) =>
-            t.name?.toLowerCase().includes(search.toLowerCase()) ||
-            t.email?.toLowerCase().includes(search.toLowerCase()),
-        );
+  const filteredTutors = activeTab === "active" ? tutors : deletedTutors;
 
   return (
     <div className="space-y-6">
@@ -188,9 +206,55 @@ const AdminTutors = () => {
           type="text"
           placeholder="Search tutors..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPage(1);
+            setTrashPage(1);
+          }}
           className="w-full outline-none text-sm bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
         />
+      </div>
+
+      <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-4 flex flex-wrap items-center gap-3 shadow-sm">
+        <select
+          value={filterField}
+          onChange={(e) => setFilterField(e.target.value)}
+          className="text-sm border rounded-lg px-2 py-1 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
+        >
+          <option value="expertise">Expertise</option>
+          <option value="isActive">Is Active</option>
+          <option value="email">Email</option>
+          <option value="phone">Phone</option>
+        </select>
+        <input
+          value={filterValue}
+          onChange={(e) => setFilterValue(e.target.value)}
+          placeholder="Filter value"
+          className="text-sm border rounded-lg px-2 py-1 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
+        />
+        <button
+          onClick={addFilter}
+          className="px-3 py-1 rounded-lg bg-[#3F72AF] text-white text-sm"
+        >
+          Add Filter
+        </button>
+        <button
+          onClick={clearFilters}
+          className="px-3 py-1 rounded-lg border text-sm"
+        >
+          Clear Filters
+        </button>
+        <div className="flex flex-wrap gap-2">
+          {Object.keys(filters).map((key) => (
+            <button
+              key={key}
+              onClick={() => removeFilter(key)}
+              className="px-2 py-1 text-xs rounded-lg bg-[#DBE2EF] dark:bg-[#0a1f3a]"
+            >
+              {key}: {String(filters[key])} ×
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] overflow-hidden shadow-lg">
@@ -202,16 +266,34 @@ const AdminTutors = () => {
               <thead className="bg-[#DBE2EF] dark:bg-[#3F72AF] border-b border-[#DBE2EF] dark:border-[#3F72AF]">
                 <tr>
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
-                    Name
+                    <SortHeader
+                      label="Name"
+                      field="name"
+                      sortBy={sortBy}
+                      sortOrder={sortOrder}
+                      onSort={handleSort}
+                    />
                   </th>
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
-                    Email
+                    <SortHeader
+                      label="Email"
+                      field="email"
+                      sortBy={sortBy}
+                      sortOrder={sortOrder}
+                      onSort={handleSort}
+                    />
                   </th>
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
                     Phone
                   </th>
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
-                    Expertise
+                    <SortHeader
+                      label="Expertise"
+                      field="expertise"
+                      sortBy={sortBy}
+                      sortOrder={sortOrder}
+                      onSort={handleSort}
+                    />
                   </th>
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
                     Experience
@@ -325,6 +407,14 @@ const AdminTutors = () => {
         )}
       </div>
 
+      <Pagination
+        page={activeTab === "active" ? page : trashPage}
+        totalPages={activeTab === "active" ? totalPages : trashTotalPages}
+        onPageChange={(p) =>
+          activeTab === "active" ? setPage(p) : setTrashPage(p)
+        }
+      />
+
       <AddTutorModal
         open={openAdd}
         onClose={() => setOpenAdd(false)}
@@ -361,3 +451,37 @@ const AdminTutors = () => {
 };
 
 export default AdminTutors;
+  const handleSort = (field) => {
+    if (sortBy === field) {
+      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(field);
+      setSortOrder("asc");
+    }
+    setPage(1);
+    setTrashPage(1);
+  };
+
+  const addFilter = () => {
+    if (!filterField || !filterValue) return;
+    setFilters((prev) => ({ ...prev, [filterField]: filterValue }));
+    setFilterValue("");
+    setPage(1);
+    setTrashPage(1);
+  };
+
+  const removeFilter = (field) => {
+    setFilters((prev) => {
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+    setPage(1);
+    setTrashPage(1);
+  };
+
+  const clearFilters = () => {
+    setFilters({});
+    setPage(1);
+    setTrashPage(1);
+  };

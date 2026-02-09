@@ -15,6 +15,8 @@ import AddFeesModal from "./modal/fees/AddFeesModal";
 import EditFeesModal from "./modal/fees/EditFeesModal";
 import ViewFeesModal from "./modal/fees/ViewFeesModal";
 import ConfirmDeleteModal from "./modal/fees/ConfirmDeleteModal";
+import Pagination from "../../components/Pagination";
+import SortHeader from "../../components/SortHeader";
 
 const AdminFees = () => {
   const [search, setSearch] = useState("");
@@ -22,6 +24,15 @@ const AdminFees = () => {
 
   const [fees, setFees] = useState([]);
   const [deletedFees, setDeletedFees] = useState([]);
+  const [page, setPage] = useState(1);
+  const [trashPage, setTrashPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [trashTotalPages, setTrashTotalPages] = useState(1);
+  const [sortBy, setSortBy] = useState("createdAt");
+  const [sortOrder, setSortOrder] = useState("desc");
+  const [filters, setFilters] = useState({});
+  const [filterField, setFilterField] = useState("status");
+  const [filterValue, setFilterValue] = useState("");
 
   const [activeTab, setActiveTab] = useState("active");
 
@@ -34,14 +45,25 @@ const AdminFees = () => {
 
   useEffect(() => {
     fetchFees();
+  }, [page, search, sortBy, sortOrder]);
+
+  useEffect(() => {
     fetchDeletedFees();
-  }, []);
+  }, [trashPage, search, sortBy, sortOrder, activeTab]);
 
   const fetchFees = async () => {
     setLoading(true);
     try {
-      const res = await feesService.getAll();
-      setFees(res.data || []);
+      const res = await feesService.getAll({
+        page,
+        limit: 10,
+        search,
+        sortBy,
+        sortOrder,
+        ...filters,
+      });
+      setFees(res.data.fees || []);
+      setTotalPages(res.data.totalPages || 1);
     } catch (error) {
       console.error("Error fetching fees", error);
     } finally {
@@ -51,8 +73,16 @@ const AdminFees = () => {
 
   const fetchDeletedFees = async () => {
     try {
-      const res = await feesService.getDeleted();
-      setDeletedFees(res.data || []);
+      const res = await feesService.getDeleted({
+        page: trashPage,
+        limit: 10,
+        search,
+        sortBy,
+        sortOrder,
+        ...filters,
+      });
+      setDeletedFees(res.data.fees || []);
+      setTrashTotalPages(res.data.totalPages || 1);
     } catch (error) {
       console.error("Error fetching deleted fees", error);
     }
@@ -140,20 +170,8 @@ const AdminFees = () => {
   };
 
   const filteredFees = useMemo(() => {
-    const q = search.toLowerCase();
-
-    const list = activeTab === "active" ? fees : deletedFees;
-
-    return list.filter((f) => {
-      return (
-        f.student?.name?.toLowerCase().includes(q) ||
-        f.student?.email?.toLowerCase().includes(q) ||
-        f.course?.title?.toLowerCase().includes(q) ||
-        f.paymentMode?.toLowerCase().includes(q) ||
-        f.status?.toLowerCase().includes(q)
-      );
-    });
-  }, [search, fees, deletedFees, activeTab]);
+    return activeTab === "active" ? fees : deletedFees;
+  }, [fees, deletedFees, activeTab]);
 
   return (
     <div className="space-y-6">
@@ -211,9 +229,55 @@ const AdminFees = () => {
           type="text"
           placeholder="Search fees by student, course, status..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPage(1);
+            setTrashPage(1);
+          }}
           className="w-full outline-none text-sm bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
         />
+      </div>
+
+      <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-4 flex flex-wrap items-center gap-3 shadow-sm">
+        <select
+          value={filterField}
+          onChange={(e) => setFilterField(e.target.value)}
+          className="text-sm border rounded-lg px-2 py-1 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
+        >
+          <option value="status">Status</option>
+          <option value="paymentMode">Payment Mode</option>
+          <option value="paymentType">Payment Type</option>
+          <option value="isActive">Is Active</option>
+        </select>
+        <input
+          value={filterValue}
+          onChange={(e) => setFilterValue(e.target.value)}
+          placeholder="Filter value"
+          className="text-sm border rounded-lg px-2 py-1 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
+        />
+        <button
+          onClick={addFilter}
+          className="px-3 py-1 rounded-lg bg-[#3F72AF] text-white text-sm"
+        >
+          Add Filter
+        </button>
+        <button
+          onClick={clearFilters}
+          className="px-3 py-1 rounded-lg border text-sm"
+        >
+          Clear Filters
+        </button>
+        <div className="flex flex-wrap gap-2">
+          {Object.keys(filters).map((key) => (
+            <button
+              key={key}
+              onClick={() => removeFilter(key)}
+              className="px-2 py-1 text-xs rounded-lg bg-[#DBE2EF] dark:bg-[#0a1f3a]"
+            >
+              {key}: {String(filters[key])} ×
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Table */}
@@ -226,22 +290,52 @@ const AdminFees = () => {
               <thead className="bg-[#DBE2EF] dark:bg-[#3F72AF] border-b border-[#DBE2EF] dark:border-[#3F72AF]">
                 <tr>
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
-                    Student
+                    <SortHeader
+                      label="Student"
+                      field="student"
+                      sortBy={sortBy}
+                      sortOrder={sortOrder}
+                      onSort={handleSort}
+                    />
                   </th>
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
                     Course
                   </th>
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
-                    Total
+                    <SortHeader
+                      label="Total"
+                      field="coursePrice"
+                      sortBy={sortBy}
+                      sortOrder={sortOrder}
+                      onSort={handleSort}
+                    />
                   </th>
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
-                    Paid
+                    <SortHeader
+                      label="Paid"
+                      field="amountPaid"
+                      sortBy={sortBy}
+                      sortOrder={sortOrder}
+                      onSort={handleSort}
+                    />
                   </th>
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
-                    Remaining
+                    <SortHeader
+                      label="Remaining"
+                      field="remainingAmount"
+                      sortBy={sortBy}
+                      sortOrder={sortOrder}
+                      onSort={handleSort}
+                    />
                   </th>
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
-                    Due Date
+                    <SortHeader
+                      label="Due Date"
+                      field="dueDate"
+                      sortBy={sortBy}
+                      sortOrder={sortOrder}
+                      onSort={handleSort}
+                    />
                   </th>
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
                     Mode
@@ -383,6 +477,14 @@ const AdminFees = () => {
         )}
       </div>
 
+      <Pagination
+        page={activeTab === "active" ? page : trashPage}
+        totalPages={activeTab === "active" ? totalPages : trashTotalPages}
+        onPageChange={(p) =>
+          activeTab === "active" ? setPage(p) : setTrashPage(p)
+        }
+      />
+
       <AddFeesModal
         open={openAdd}
         onClose={() => setOpenAdd(false)}
@@ -422,3 +524,37 @@ const AdminFees = () => {
 };
 
 export default AdminFees;
+  const handleSort = (field) => {
+    if (sortBy === field) {
+      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(field);
+      setSortOrder("asc");
+    }
+    setPage(1);
+    setTrashPage(1);
+  };
+
+  const addFilter = () => {
+    if (!filterField || !filterValue) return;
+    setFilters((prev) => ({ ...prev, [filterField]: filterValue }));
+    setFilterValue("");
+    setPage(1);
+    setTrashPage(1);
+  };
+
+  const removeFilter = (field) => {
+    setFilters((prev) => {
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+    setPage(1);
+    setTrashPage(1);
+  };
+
+  const clearFilters = () => {
+    setFilters({});
+    setPage(1);
+    setTrashPage(1);
+  };

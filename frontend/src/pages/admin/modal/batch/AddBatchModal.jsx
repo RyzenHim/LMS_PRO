@@ -26,8 +26,8 @@ const AddBatchModal = ({ open, onClose, onSubmit }) => {
 
   const fetchCourses = async () => {
     try {
-      const res = await courseService.getAll();
-      setCourses(res.data || []);
+      const res = await courseService.getAll({ limit: 100 });
+      setCourses(res.data.courses || []);
     } catch (error) {
       console.error("Failed to fetch courses", error);
     }
@@ -36,8 +36,8 @@ const AddBatchModal = ({ open, onClose, onSubmit }) => {
   const fetchTutors = async () => {
     try {
       // ⚠️ You must have this in your tutorService
-      const res = await tutorService.getAll();
-      setTutors(res.data || []);
+      const res = await tutorService.getAll({ limit: 100 });
+      setTutors(res.data.tutors || []);
     } catch (error) {
       console.error("Failed to fetch tutors", error);
     }

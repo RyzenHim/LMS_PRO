@@ -1,9 +1,40 @@
 const Skill = require("../models/skill.model");
 
+const parseListParams = (req) => {
+    const page = Math.max(parseInt(req.query.page || "1", 10), 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit || "10", 10), 1), 100);
+    const skip = (page - 1) * limit;
+    const sortBy = req.query.sortBy || "name";
+    const sortOrder = req.query.sortOrder === "asc" ? 1 : -1;
+    const search = (req.query.search || "").trim();
+    return { page, limit, skip, sortBy, sortOrder, search };
+};
+
 exports.allSkills = async (req, res) => {
     try {
-        const skills = await Skill.find({ isDeleted: false }).sort({ name: 1 });
-        res.status(200).json(skills);
+        const { page, limit, skip, sortBy, sortOrder, search } = parseListParams(req);
+        const searchQuery = search
+            ? {
+                $or: [
+                    { name: { $regex: search, $options: "i" } },
+                    { category: { $regex: search, $options: "i" } },
+                    { description: { $regex: search, $options: "i" } },
+                ],
+            }
+            : {};
+        const filter = { isDeleted: false, ...searchQuery };
+        const totalSkills = await Skill.countDocuments(filter);
+        const skills = await Skill.find(filter)
+            .sort({ [sortBy]: sortOrder })
+            .skip(skip)
+            .limit(limit);
+        res.status(200).json({
+            skills,
+            totalSkills,
+            page,
+            limit,
+            totalPages: Math.ceil(totalSkills / limit),
+        });
     } catch (error) {
         console.error("Get skills error:", error);
         res.status(500).json({ message: "Internal server error" });
@@ -162,9 +193,29 @@ exports.restoreSkill = async (req, res) => {
 
 exports.getDeletedSkills = async (req, res) => {
     try {
-        const skills = await Skill.find({ isDeleted: true })
-            .sort({ deletedAt: -1 });
-        res.status(200).json(skills);
+        const { page, limit, skip, sortBy, sortOrder, search } = parseListParams(req);
+        const searchQuery = search
+            ? {
+                $or: [
+                    { name: { $regex: search, $options: "i" } },
+                    { category: { $regex: search, $options: "i" } },
+                    { description: { $regex: search, $options: "i" } },
+                ],
+            }
+            : {};
+        const filter = { isDeleted: true, ...searchQuery };
+        const totalSkills = await Skill.countDocuments(filter);
+        const skills = await Skill.find(filter)
+            .sort({ [sortBy]: sortOrder })
+            .skip(skip)
+            .limit(limit);
+        res.status(200).json({
+            skills,
+            totalSkills,
+            page,
+            limit,
+            totalPages: Math.ceil(totalSkills / limit),
+        });
     } catch (error) {
         console.error("Get deleted skills error:", error);
         res.status(500).json({ message: "Internal server error" });

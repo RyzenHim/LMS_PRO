@@ -1,6 +1,32 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { batchStudentMapService } from "../../../services/batchStudentMapService";
 
 const ViewStudentModal = ({ open, onClose, student }) => {
+  const [batchHistory, setBatchHistory] = useState([]);
+
+  useEffect(() => {
+    if (open && student?._id) {
+      fetchBatchHistory(student._id);
+    }
+  }, [open, student?._id]);
+
+  useEffect(() => {
+    if (!open) {
+      setBatchHistory([]);
+    }
+  }, [open]);
+
+  const fetchBatchHistory = async (studentId) => {
+    try {
+      const res = await batchStudentMapService.getBatchHistoryOfStudent(studentId);
+      setBatchHistory(res.data || []);
+    } catch (error) {
+      console.error("fetchBatchHistory error:", error);
+    }
+  };
+
+  const activeBatch = batchHistory.find((b) => b.status === "active");
+
   if (!open || !student) return null;
 
   return (
@@ -45,7 +71,9 @@ const ViewStudentModal = ({ open, onClose, student }) => {
               <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
                 Course
               </label>
-              <p className="text-gray-900 dark:text-white">{student.course}</p>
+              <p className="text-gray-900 dark:text-white">
+                {student.course?.title || "—"}
+              </p>
             </div>
 
             <div>
@@ -74,6 +102,15 @@ const ViewStudentModal = ({ open, onClose, student }) => {
                 {student.enrollmentDate
                   ? new Date(student.enrollmentDate).toLocaleDateString()
                   : "—"}
+              </p>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                Current Batch
+              </label>
+              <p className="text-gray-900 dark:text-white">
+                {activeBatch?.batch?.name || "—"}
               </p>
             </div>
 
@@ -123,6 +160,42 @@ const ViewStudentModal = ({ open, onClose, student }) => {
               <p className="text-gray-900 dark:text-white">
                 {new Date(student.updatedAt).toLocaleString()}
               </p>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
+              Batch History
+            </label>
+            <div className="mt-2 space-y-2">
+              {batchHistory.length === 0 && (
+                <p className="text-sm text-gray-500 dark:text-gray-400">No batch history</p>
+              )}
+              {batchHistory.map((b) => (
+                <div
+                  key={b._id}
+                  className="flex items-center justify-between text-sm border rounded-lg px-3 py-2 dark:border-gray-700"
+                >
+                  <div>
+                    <p className="text-gray-900 dark:text-white">
+                      {b.batch?.name || "—"}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {b.course?.title || "—"} • {b.tutor?.name || "—"}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="capitalize text-gray-700 dark:text-gray-300">
+                      {b.status}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {b.joinedAt
+                        ? new Date(b.joinedAt).toLocaleDateString()
+                        : "—"}
+                    </p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

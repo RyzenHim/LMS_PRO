@@ -1,11 +1,77 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Moon, Sun, User, LogOut } from "lucide-react";
-import { useTheme } from "../../context/ThemeContext";
+import axiosInstance from "../../api/axios";
 
 const AdminTopbar = () => {
   const navigate = useNavigate();
-  const { theme, toggleTheme } = useTheme();
+  const [theme, setTheme] = useState("light");
+
+  const applyTheme = (nextTheme) => {
+    document.documentElement.classList.toggle("dark", nextTheme === "dark");
+  };
+
+  const getSystemTheme = () => {
+    return window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
+  };
+
+  const fetchAndInitTheme = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await axiosInstance.get("/user/me", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const userTheme = res.data?.theme;
+      const systemTheme = getSystemTheme();
+      const themeInitialized = localStorage.getItem("themeInitialized");
+
+      let finalTheme = ["light", "dark"].includes(userTheme)
+        ? userTheme
+        : systemTheme;
+
+      if (!themeInitialized) {
+        finalTheme = systemTheme;
+        await axiosInstance.put(
+          "/user/profile",
+          { theme: finalTheme },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        localStorage.setItem("themeInitialized", "true");
+      }
+
+      setTheme(finalTheme);
+      applyTheme(finalTheme);
+    } catch (error) {
+      const fallback = getSystemTheme();
+      setTheme(fallback);
+      applyTheme(fallback);
+      console.error("Theme init error:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchAndInitTheme();
+  }, []);
+
+  const toggleTheme = async () => {
+    const nextTheme = theme === "dark" ? "light" : "dark";
+    setTheme(nextTheme);
+    applyTheme(nextTheme);
+
+    try {
+      const token = localStorage.getItem("token");
+      await axiosInstance.put(
+        "/user/profile",
+        { theme: nextTheme },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+    } catch (error) {
+      console.error("Theme update error:", error);
+    }
+  };
 
   const handleLogout = () => {
     console.log("clicked");

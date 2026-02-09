@@ -25,8 +25,8 @@ const ManageBatchStudentsModal = ({ open, onClose, batch }) => {
 
   const fetchAllStudents = async () => {
     try {
-      const res = await studentService.getAll();
-      setAllStudents(res.data || []);
+      const res = await studentService.getAll({ limit: 100 });
+      setAllStudents(res.data.students || []);
     } catch (error) {
       console.error("fetchAllStudents error", error);
     }

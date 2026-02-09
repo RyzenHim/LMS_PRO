@@ -1,29 +1,16 @@
 import { useState } from "react";
-import { GraduationCap, UserCog, Users } from "lucide-react";
+import { GraduationCap } from "lucide-react";
 import axiosInstance from "../../../api/axios";
 
 const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
-  const [conversionType, setConversionType] = useState("student");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [employeeForm, setEmployeeForm] = useState({
-    department: "",
-    designation: "",
-    salary: "",
-  });
 
   if (!open || !visitor) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-
-    if (conversionType === "employee") {
-      if (!employeeForm.department || !employeeForm.designation) {
-        setError("Department and designation are required for employee conversion");
-        return;
-      }
-    }
 
     if (!visitor.email) {
       setError("Email is required for conversion. Please add email to visitor first.");
@@ -32,27 +19,12 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
 
     try {
       setLoading(true);
-      let endpoint = "";
-      let data = {};
-
-      if (conversionType === "student") {
-        endpoint = `/visitor/${visitor._id}/convert/student`;
-      } else if (conversionType === "tutor") {
-        endpoint = `/visitor/${visitor._id}/convert/tutor`;
-      } else if (conversionType === "employee") {
-        endpoint = `/visitor/${visitor._id}/convert/employee`;
-        data = {
-          department: employeeForm.department,
-          designation: employeeForm.designation,
-          salary: Number(employeeForm.salary) || 0,
-        };
-      }
-
-      const res = await axiosInstance.post(endpoint, data);
+      const endpoint = `/visitor/${visitor._id}/convert/student`;
+      const res = await axiosInstance.post(endpoint);
 
       if (res?.data) {
         alert(
-          `Visitor converted to ${conversionType} successfully! Default password: Password@123`
+          "Visitor converted to student successfully! Default password: Password@123"
         );
         onSuccess(res.data.visitor);
         onClose();
@@ -80,95 +52,13 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
             <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
               Convert To *
             </label>
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => setConversionType("student")}
-                className={`p-3 border rounded-lg flex flex-col items-center gap-2 transition-colors ${
-                  conversionType === "student"
-                    ? "border-[#3F72AF] bg-[#DBE2EF] dark:bg-[#3F72AF] text-[#112D4E] dark:text-[#DBE2EF]"
-                    : "border-[#DBE2EF] dark:border-[#3F72AF] text-[#3F72AF] dark:text-[#DBE2EF]"
-                }`}
-              >
+            <div className="grid grid-cols-1 gap-2">
+              <div className="p-3 border rounded-lg flex flex-col items-center gap-2 border-[#3F72AF] bg-[#DBE2EF] dark:bg-[#3F72AF] text-[#112D4E] dark:text-[#DBE2EF]">
                 <GraduationCap size={24} />
                 <span className="text-xs">Student</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setConversionType("tutor")}
-                className={`p-3 border rounded-lg flex flex-col items-center gap-2 transition-colors ${
-                  conversionType === "tutor"
-                    ? "border-[#3F72AF] bg-[#DBE2EF] dark:bg-[#3F72AF] text-[#112D4E] dark:text-[#DBE2EF]"
-                    : "border-[#DBE2EF] dark:border-[#3F72AF] text-[#3F72AF] dark:text-[#DBE2EF]"
-                }`}
-              >
-                <Users size={24} />
-                <span className="text-xs">Tutor</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setConversionType("employee")}
-                className={`p-3 border rounded-lg flex flex-col items-center gap-2 transition-colors ${
-                  conversionType === "employee"
-                    ? "border-[#3F72AF] bg-[#DBE2EF] dark:bg-[#3F72AF] text-[#112D4E] dark:text-[#DBE2EF]"
-                    : "border-[#DBE2EF] dark:border-[#3F72AF] text-[#3F72AF] dark:text-[#DBE2EF]"
-                }`}
-              >
-                <UserCog size={24} />
-                <span className="text-xs">Employee</span>
-              </button>
+              </div>
             </div>
           </div>
-
-          {conversionType === "employee" && (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
-                  Department *
-                </label>
-                <input
-                  type="text"
-                  value={employeeForm.department}
-                  onChange={(e) =>
-                    setEmployeeForm({ ...employeeForm, department: e.target.value })
-                  }
-                  placeholder="e.g., HR, IT"
-                  required
-                  className="w-full border border-[#DBE2EF] dark:border-[#3F72AF] p-2 rounded-lg bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
-                  Designation *
-                </label>
-                <input
-                  type="text"
-                  value={employeeForm.designation}
-                  onChange={(e) =>
-                    setEmployeeForm({ ...employeeForm, designation: e.target.value })
-                  }
-                  placeholder="e.g., HR Manager, Admin"
-                  required
-                  className="w-full border border-[#DBE2EF] dark:border-[#3F72AF] p-2 rounded-lg bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
-                  Salary
-                </label>
-                <input
-                  type="number"
-                  value={employeeForm.salary}
-                  onChange={(e) =>
-                    setEmployeeForm({ ...employeeForm, salary: e.target.value })
-                  }
-                  placeholder="0"
-                  min="0"
-                  className="w-full border border-[#DBE2EF] dark:border-[#3F72AF] p-2 rounded-lg bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
-                />
-              </div>
-            </>
-          )}
 
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
             <p className="text-sm text-blue-800 dark:text-blue-200">

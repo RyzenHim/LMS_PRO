@@ -1,11 +1,47 @@
 const Student = require('../models/student.model');
+const Course = require("../models/course.model");
+
+const parseListParams = (req) => {
+    const page = Math.max(parseInt(req.query.page || "1", 10), 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit || "10", 10), 1), 100);
+    const skip = (page - 1) * limit;
+    const sortBy = req.query.sortBy || "createdAt";
+    const sortOrder = req.query.sortOrder === "asc" ? 1 : -1;
+    const search = (req.query.search || "").trim();
+    return { page, limit, skip, sortBy, sortOrder, search };
+};
 
 exports.allStudents = async (req, res) => {
     try {
-        const students = await Student.find({ isDeleted: false }).sort({ createdAt: -1 });
-        const totalStudents = await Student.countDocuments()
-        console.log(totalStudents);
-        res.status(200).json({ students, totalStudents });
+        const { page, limit, skip, sortBy, sortOrder, search } = parseListParams(req);
+
+        const searchQuery = search
+            ? {
+                $or: [
+                    { name: { $regex: search, $options: "i" } },
+                    { email: { $regex: search, $options: "i" } },
+                    { phone: { $regex: search, $options: "i" } },
+                    { adhaar: { $regex: search, $options: "i" } },
+                ],
+            }
+            : {};
+
+        const filter = { isDeleted: false, ...searchQuery };
+        const totalStudents = await Student.countDocuments(filter);
+
+        const students = await Student.find(filter)
+            .populate("course", "title category price level")
+            .sort({ [sortBy]: sortOrder })
+            .skip(skip)
+            .limit(limit);
+
+        res.status(200).json({
+            students,
+            totalStudents,
+            page,
+            limit,
+            totalPages: Math.ceil(totalStudents / limit),
+        });
     } catch (error) {
         console.error("Get students error:", error);
         res.status(500).json({ message: "Internal server error" });
@@ -17,7 +53,7 @@ exports.getStudentById = async (req, res) => {
         const student = await Student.findOne({
             _id: req.params.id,
             isDeleted: false
-        });
+        }).populate("course", "title category price level");
 
         if (!student) {
             return res.status(404).json({ message: "Student not found" });
@@ -43,11 +79,16 @@ exports.addStudent = async (req, res) => {
             return res.status(400).json({ message: "Student already exists" });
         }
 
+        const courseDoc = await Course.findOne({ _id: course, isDeleted: false });
+        if (!courseDoc) {
+            return res.status(404).json({ message: "Course not found" });
+        }
+
         const student = await Student.create({
             name,
             email,
             phone,
-            course,
+            course: courseDoc._id,
             address,
             dateOfBirth,
             guardianName,
@@ -55,9 +96,12 @@ exports.addStudent = async (req, res) => {
             status: status || "active"
         });
 
+        const populatedStudent = await Student.findById(student._id)
+            .populate("course", "title category price level");
+
         res.status(201).json({
             message: "Student added successfully",
-            student,
+            student: populatedStudent,
         });
     } catch (error) {
         console.error("Add student error:", error);
@@ -78,7 +122,13 @@ exports.updateStudent = async (req, res) => {
         if (name) student.name = name;
         if (email) student.email = email;
         if (phone !== undefined) student.phone = phone;
-        if (course) student.course = course;
+        if (course) {
+            const courseDoc = await Course.findOne({ _id: course, isDeleted: false });
+            if (!courseDoc) {
+                return res.status(404).json({ message: "Course not found" });
+            }
+            student.course = courseDoc._id;
+        }
         if (address !== undefined) student.address = address;
         if (dateOfBirth) student.dateOfBirth = dateOfBirth;
         if (guardianName !== undefined) student.guardianName = guardianName;
@@ -87,9 +137,12 @@ exports.updateStudent = async (req, res) => {
 
         await student.save();
 
+        const populatedStudent = await Student.findById(student._id)
+            .populate("course", "title category price level");
+
         res.status(200).json({
             message: "Student updated successfully",
-            student,
+            student: populatedStudent,
         });
     } catch (error) {
         console.error("Update student error:", error);
@@ -163,9 +216,31 @@ exports.restoreStudent = async (req, res) => {
 
 exports.getDeletedStudents = async (req, res) => {
     try {
-        const students = await Student.find({ isDeleted: true })
-            .sort({ deletedAt: -1 });
-        res.status(200).json(students);
+        const { page, limit, skip, sortBy, sortOrder, search } = parseListParams(req);
+        const searchQuery = search
+            ? {
+                $or: [
+                    { name: { $regex: search, $options: "i" } },
+                    { email: { $regex: search, $options: "i" } },
+                    { phone: { $regex: search, $options: "i" } },
+                    { adhaar: { $regex: search, $options: "i" } },
+                ],
+            }
+            : {};
+        const filter = { isDeleted: true, ...searchQuery };
+        const totalStudents = await Student.countDocuments(filter);
+        const students = await Student.find(filter)
+            .populate("course", "title category price level")
+            .sort({ [sortBy]: sortOrder })
+            .skip(skip)
+            .limit(limit);
+        res.status(200).json({
+            students,
+            totalStudents,
+            page,
+            limit,
+            totalPages: Math.ceil(totalStudents / limit),
+        });
     } catch (error) {
         console.error("Get deleted students error:", error);
         res.status(500).json({ message: "Internal server error" });

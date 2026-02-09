@@ -45,8 +45,8 @@ const EditFeesModal = ({ open, onClose, fees, onSubmit }) => {
 
   const fetchStudents = async () => {
     try {
-      const res = await studentService.getAll();
-      setStudents((res.data || []).filter((s) => s.isDeleted === false));
+      const res = await studentService.getAll({ limit: 100 });
+      setStudents((res.data.students || []).filter((s) => s.isDeleted === false));
     } catch (error) {
       console.error("fetchStudents error:", error);
     }
@@ -54,8 +54,8 @@ const EditFeesModal = ({ open, onClose, fees, onSubmit }) => {
 
   const fetchCourses = async () => {
     try {
-      const res = await courseService.getAll();
-      setCourses((res.data || []).filter((c) => c.isDeleted === false));
+      const res = await courseService.getAll({ limit: 100 });
+      setCourses((res.data.courses || []).filter((c) => c.isDeleted === false));
     } catch (error) {
       console.error("fetchCourses error:", error);
     }
@@ -63,8 +63,8 @@ const EditFeesModal = ({ open, onClose, fees, onSubmit }) => {
 
   const fetchBatches = async () => {
     try {
-      const res = await batchService.getAll();
-      setBatches((res.data || []).filter((b) => b.isDeleted === false));
+      const res = await batchService.getAll({ limit: 100 });
+      setBatches((res.data.batches || []).filter((b) => b.isDeleted === false));
     } catch (error) {
       console.error("fetchBatches error:", error);
     }
@@ -143,6 +143,10 @@ const EditFeesModal = ({ open, onClose, fees, onSubmit }) => {
 
     if (Number(form.amountPaid) > Number(coursePrice)) {
       return alert("Paid amount cannot be greater than course price");
+    }
+
+    if (form.paymentType === "partial" && remainingAmount > 0 && !form.dueDate) {
+      return alert("Please enter due date for remaining amount");
     }
 
     setLoading(true);
@@ -385,3 +389,4 @@ const EditFeesModal = ({ open, onClose, fees, onSubmit }) => {
 };
 
 export default EditFeesModal;
+    

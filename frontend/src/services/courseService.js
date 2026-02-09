@@ -1,9 +1,9 @@
 import axiosInstance from "../api/axios";
 
 export const courseService = {
-  getAll: () => axiosInstance.get("/courses/all"),
+  getAll: (params) => axiosInstance.get("/courses/all", { params }),
   getById: (id) => axiosInstance.get(`/courses/${id}`),
-  getDeleted: () => axiosInstance.get("/courses/trash/list"),
+  getDeleted: (params) => axiosInstance.get("/courses/trash/list", { params }),
   create: (data) => axiosInstance.post("/courses/add", data),
   update: (id, data) => axiosInstance.put(`/courses/${id}`, data),
   toggleStatus: (id) => axiosInstance.patch(`/courses/${id}/toggle-status`),
