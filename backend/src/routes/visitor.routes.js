@@ -1,6 +1,7 @@
 const router = require("express").Router()
 // const router = express.Router()
 const authenticate = require("../middleware/auth.middleware");
+const upload = require("../middleware/multer");
 // const role = require("../middlewares/role.middleware");
 
 const {

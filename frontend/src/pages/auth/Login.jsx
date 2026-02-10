@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { loginApi } from "../../services/authService";
 import axiosInstance from "../../api/axios";
+
 const Login = () => {
   const navigate = useNavigate();
+
   const [form, setForm] = useState({
     email: "",
     password: "",
@@ -13,10 +14,21 @@ const Login = () => {
   const [error, setError] = useState("");
 
   const handleChange = (e) => {
-    setForm({
-      ...form,
+    setForm((prev) => ({
+      ...prev,
       [e.target.name]: e.target.value,
-    });
+    }));
+  };
+
+  const redirectByRole = (role) => {
+    // backend roles: student, instructor, admin, hr
+    if (role === "admin") return "/admin";
+    if (role === "hr") return "/hr";
+    if (role === "instructor") return "/instructor";
+    if (role === "student") return "/student";
+
+    // fallback
+    return "/";
   };
 
   const handleSubmit = async (e) => {
@@ -25,12 +37,25 @@ const Login = () => {
     setError("");
 
     try {
-      const loginData = await axiosInstance.post("/user/login", form);
-      localStorage.setItem("token", loginData.data.token);
-      console.log("Login success:", loginData);
-      navigate("/admin");
+      const res = await axiosInstance.post("/user/login", form);
+
+      const token = res.data?.token;
+      const user = res.data?.user;
+
+      if (!token || !user) {
+        setError("Invalid login response from server");
+        return;
+      }
+
+      // save token + user in localStorage
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(user));
+
+      const redirectPath = redirectByRole(user.role);
+      navigate(redirectPath, { replace: true });
     } catch (err) {
-      setError(err.message || "Login Failed");
+      const msg = err.response?.data?.message || err.message || "Login Failed";
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -46,6 +71,12 @@ const Login = () => {
           Enter your credentials to continue
         </p>
       </div>
+
+      {error && (
+        <div className="p-3 rounded-lg bg-red-100 text-red-700 border border-red-300 text-sm">
+          {error}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <div className="space-y-1">
@@ -66,6 +97,7 @@ const Login = () => {
               shadow-sm
               focus:outline-none focus:ring-2 focus:ring-indigo-500
             "
+            required
           />
         </div>
 
@@ -80,13 +112,14 @@ const Login = () => {
             type="password"
             placeholder="••••••••"
             className="
-                    w-full px-4 py-3 rounded-xl border
-                    border-gray-200 dark:border-gray-700
-                    bg-white dark:bg-slate-800
-                    text-gray-900 dark:text-white
-                    shadow-sm
-                    focus:outline-none focus:ring-2 focus:ring-indigo-500
-                    "
+              w-full px-4 py-3 rounded-xl border
+              border-gray-200 dark:border-gray-700
+              bg-white dark:bg-slate-800
+              text-gray-900 dark:text-white
+              shadow-sm
+              focus:outline-none focus:ring-2 focus:ring-indigo-500
+            "
+            required
           />
         </div>
 
@@ -106,12 +139,14 @@ const Login = () => {
 
         <button
           type="submit"
+          disabled={loading}
           className="
             w-full py-3 rounded-xl
             bg-indigo-600 hover:bg-indigo-700
             text-white font-medium
             shadow-lg shadow-indigo-600/30
             transition
+            disabled:opacity-60 disabled:cursor-not-allowed
           "
         >
           {loading ? "Logging in..." : "Login"}
@@ -124,7 +159,7 @@ const Login = () => {
           to="/auth/signup"
           className="text-indigo-600 hover:underline font-medium"
         >
-          Send enquiry  
+          Send enquiry
         </Link>
       </p>
     </div>

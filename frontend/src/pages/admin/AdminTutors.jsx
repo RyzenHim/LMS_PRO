@@ -1,42 +1,83 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Search, Plus, Eye, Edit, Trash2, RotateCcw } from "lucide-react";
+
 import { tutorService } from "../../services/tutorService";
+
 import AddTutorModal from "./modal/AddTutorModal";
 import EditTutorModal from "./modal/EditTutorModal";
 import ViewTutorModal from "./modal/ViewTutorModal";
 import ConfirmDeleteModal from "./modal/ConfirmDeleteModal";
+
 import Pagination from "../../components/Pagination";
 import SortHeader from "../../components/SortHeader";
 
 const AdminTutors = () => {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
+
   const [tutors, setTutors] = useState([]);
   const [deletedTutors, setDeletedTutors] = useState([]);
+
   const [page, setPage] = useState(1);
   const [trashPage, setTrashPage] = useState(1);
+
   const [totalPages, setTotalPages] = useState(1);
   const [trashTotalPages, setTrashTotalPages] = useState(1);
+
   const [sortBy, setSortBy] = useState("createdAt");
   const [sortOrder, setSortOrder] = useState("desc");
+
   const [filters, setFilters] = useState({});
   const [filterField, setFilterField] = useState("expertise");
   const [filterValue, setFilterValue] = useState("");
+
   const [activeTab, setActiveTab] = useState("active");
+
   const [openAdd, setOpenAdd] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [openView, setOpenView] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
+
   const [selectedTutor, setSelectedTutor] = useState(null);
 
-  useEffect(() => {
-    fetchTutors();
-  }, [page, search, sortBy, sortOrder, JSON.stringify(filters)]);
+  // ✅ SORT
+  const handleSort = (field) => {
+    if (sortBy === field) {
+      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(field);
+      setSortOrder("asc");
+    }
+    setPage(1);
+    setTrashPage(1);
+  };
 
-  useEffect(() => {
-    fetchDeletedTutors();
-  }, [trashPage, search, sortBy, sortOrder, activeTab, JSON.stringify(filters)]);
+  // ✅ FILTERS
+  const addFilter = () => {
+    if (!filterField || !filterValue) return;
+    setFilters((prev) => ({ ...prev, [filterField]: filterValue }));
+    setFilterValue("");
+    setPage(1);
+    setTrashPage(1);
+  };
 
+  const removeFilter = (field) => {
+    setFilters((prev) => {
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+    setPage(1);
+    setTrashPage(1);
+  };
+
+  const clearFilters = () => {
+    setFilters({});
+    setPage(1);
+    setTrashPage(1);
+  };
+
+  // ✅ API
   const fetchTutors = async () => {
     setLoading(true);
     try {
@@ -48,6 +89,7 @@ const AdminTutors = () => {
         sortOrder,
         ...filters,
       });
+
       setTutors(res.data.tutors || []);
       setTotalPages(res.data.totalPages || 1);
     } catch (error) {
@@ -67,6 +109,7 @@ const AdminTutors = () => {
         sortOrder,
         ...filters,
       });
+
       setDeletedTutors(res.data.tutors || []);
       setTrashTotalPages(res.data.totalPages || 1);
     } catch (error) {
@@ -74,10 +117,33 @@ const AdminTutors = () => {
     }
   };
 
+  // ✅ Fetch based on tab
+  useEffect(() => {
+    if (activeTab === "active") fetchTutors();
+  }, [activeTab, page, search, sortBy, sortOrder, JSON.stringify(filters)]);
+
+  useEffect(() => {
+    if (activeTab === "trash") fetchDeletedTutors();
+  }, [
+    activeTab,
+    trashPage,
+    search,
+    sortBy,
+    sortOrder,
+    JSON.stringify(filters),
+  ]);
+
+  // ✅ Reset page on tab switch
+  useEffect(() => {
+    setPage(1);
+    setTrashPage(1);
+  }, [activeTab]);
+
+  // ✅ CRUD
   const handleAddTutor = async (data) => {
     try {
-      const res = await tutorService.create(data);
-      setTutors((prev) => [res.data.tutor, ...prev]);
+      await tutorService.create(data);
+      await fetchTutors();
       setOpenAdd(false);
     } catch (error) {
       console.error("Add tutor failed", error);
@@ -92,10 +158,9 @@ const AdminTutors = () => {
 
   const handleUpdateTutor = async (data) => {
     try {
-      const res = await tutorService.update(selectedTutor._id, data);
-      setTutors((prev) =>
-        prev.map((t) => (t._id === selectedTutor._id ? res.data.tutor : t)),
-      );
+      await tutorService.update(selectedTutor._id, data);
+      await fetchTutors();
+
       setOpenEdit(false);
       setSelectedTutor(null);
     } catch (error) {
@@ -117,8 +182,10 @@ const AdminTutors = () => {
   const handleDelete = async () => {
     try {
       await tutorService.softDelete(selectedTutor._id);
-      setTutors((prev) => prev.filter((t) => t._id !== selectedTutor._id));
-      fetchDeletedTutors();
+
+      await fetchTutors();
+      await fetchDeletedTutors();
+
       setOpenDelete(false);
       setSelectedTutor(null);
     } catch (error) {
@@ -130,8 +197,9 @@ const AdminTutors = () => {
   const handleRestore = async (id) => {
     try {
       await tutorService.restore(id);
-      setDeletedTutors((prev) => prev.filter((t) => t._id !== id));
-      fetchTutors();
+
+      await fetchTutors();
+      await fetchDeletedTutors();
     } catch (error) {
       console.error("Restore failed", error);
       alert(error.response?.data?.message || "Failed to restore tutor");
@@ -140,12 +208,8 @@ const AdminTutors = () => {
 
   const handleToggleStatus = async (id) => {
     try {
-      const res = await tutorService.toggleStatus(id);
-      setTutors((prev) =>
-        prev.map((t) =>
-          t._id === id ? { ...t, isActive: res.data.isActive } : t,
-        ),
-      );
+      await tutorService.toggleStatus(id);
+      await fetchTutors();
     } catch (error) {
       console.error("Toggle status failed", error);
       alert(error.response?.data?.message || "Failed to toggle status");
@@ -156,6 +220,7 @@ const AdminTutors = () => {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
@@ -177,6 +242,7 @@ const AdminTutors = () => {
         )}
       </div>
 
+      {/* Tabs */}
       <div className="flex gap-4 border-b border-[#DBE2EF] dark:border-[#3F72AF]">
         <button
           onClick={() => setActiveTab("active")}
@@ -188,6 +254,7 @@ const AdminTutors = () => {
         >
           Active ({tutors.length})
         </button>
+
         <button
           onClick={() => setActiveTab("trash")}
           className={`pb-2 px-2 transition-colors ${
@@ -200,6 +267,7 @@ const AdminTutors = () => {
         </button>
       </div>
 
+      {/* Search */}
       <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-4 flex items-center gap-3 shadow-sm">
         <Search size={18} className="text-[#3F72AF] dark:text-[#DBE2EF]" />
         <input
@@ -215,6 +283,7 @@ const AdminTutors = () => {
         />
       </div>
 
+      {/* Filters */}
       <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-4 flex flex-wrap items-center gap-3 shadow-sm">
         <select
           value={filterField}
@@ -226,24 +295,28 @@ const AdminTutors = () => {
           <option value="email">Email</option>
           <option value="phone">Phone</option>
         </select>
+
         <input
           value={filterValue}
           onChange={(e) => setFilterValue(e.target.value)}
           placeholder="Filter value"
           className="text-sm border rounded-lg px-2 py-1 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
         />
+
         <button
           onClick={addFilter}
           className="px-3 py-1 rounded-lg bg-[#3F72AF] text-white text-sm"
         >
           Add Filter
         </button>
+
         <button
           onClick={clearFilters}
           className="px-3 py-1 rounded-lg border text-sm"
         >
           Clear Filters
         </button>
+
         <div className="flex flex-wrap gap-2">
           {Object.keys(filters).map((key) => (
             <button
@@ -257,6 +330,7 @@ const AdminTutors = () => {
         </div>
       </div>
 
+      {/* Table */}
       <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] overflow-hidden shadow-lg">
         {loading ? (
           <div className="p-6 text-center text-gray-500">Loading tutors...</div>
@@ -274,6 +348,7 @@ const AdminTutors = () => {
                       onSort={handleSort}
                     />
                   </th>
+
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
                     <SortHeader
                       label="Email"
@@ -283,9 +358,11 @@ const AdminTutors = () => {
                       onSort={handleSort}
                     />
                   </th>
+
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
                     Phone
                   </th>
+
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
                     <SortHeader
                       label="Expertise"
@@ -295,23 +372,29 @@ const AdminTutors = () => {
                       onSort={handleSort}
                     />
                   </th>
+
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
                     Experience
                   </th>
+
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
                     Qualification
                   </th>
+
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
                     Salary
                   </th>
+
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
                     Is Active
                   </th>
+
                   <th className="px-6 py-3 text-right text-[#112D4E] dark:text-[#DBE2EF]">
                     Actions
                   </th>
                 </tr>
               </thead>
+
               <tbody>
                 {filteredTutors.map((t) => (
                   <tr
@@ -321,24 +404,31 @@ const AdminTutors = () => {
                     <td className="px-6 py-4 font-medium text-[#112D4E] dark:text-[#DBE2EF]">
                       {t.name}
                     </td>
+
                     <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
                       {t.email}
                     </td>
+
                     <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
                       {t.phone || "—"}
                     </td>
+
                     <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
                       {t.expertise}
                     </td>
+
                     <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
                       {t.experience || 0} years
                     </td>
+
                     <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
                       {t.qualification || "—"}
                     </td>
+
                     <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
                       ₹{t.salary || 0}
                     </td>
+
                     <td className="px-6 py-4">
                       <span
                         className={`px-2 py-1 text-xs rounded-md ${
@@ -350,6 +440,7 @@ const AdminTutors = () => {
                         {t.isActive ? "Yes" : "No"}
                       </span>
                     </td>
+
                     <td className="px-6 py-4 text-right space-x-2">
                       {activeTab === "active" ? (
                         <>
@@ -360,6 +451,7 @@ const AdminTutors = () => {
                           >
                             <Eye size={16} className="inline" />
                           </button>
+
                           <button
                             onClick={() => handleEdit(t)}
                             className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-sm transition-colors"
@@ -367,6 +459,7 @@ const AdminTutors = () => {
                           >
                             <Edit size={16} className="inline" />
                           </button>
+
                           <button
                             onClick={() => handleToggleStatus(t._id)}
                             className="text-yellow-600 hover:text-yellow-700 dark:text-yellow-400 dark:hover:text-yellow-300 text-sm transition-colors"
@@ -374,6 +467,7 @@ const AdminTutors = () => {
                           >
                             {t.isActive ? "Disable" : "Enable"}
                           </button>
+
                           <button
                             onClick={() => handleDeleteClick(t)}
                             className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-sm transition-colors"
@@ -407,6 +501,7 @@ const AdminTutors = () => {
         )}
       </div>
 
+      {/* Pagination */}
       <Pagination
         page={activeTab === "active" ? page : trashPage}
         totalPages={activeTab === "active" ? totalPages : trashTotalPages}
@@ -415,11 +510,13 @@ const AdminTutors = () => {
         }
       />
 
+      {/* Modals */}
       <AddTutorModal
         open={openAdd}
         onClose={() => setOpenAdd(false)}
         onSubmit={handleAddTutor}
       />
+
       <EditTutorModal
         open={openEdit}
         tutor={selectedTutor}
@@ -429,6 +526,7 @@ const AdminTutors = () => {
         }}
         onSubmit={handleUpdateTutor}
       />
+
       <ViewTutorModal
         open={openView}
         tutor={selectedTutor}
@@ -437,6 +535,7 @@ const AdminTutors = () => {
           setSelectedTutor(null);
         }}
       />
+
       <ConfirmDeleteModal
         open={openDelete}
         onClose={() => {
@@ -451,37 +550,3 @@ const AdminTutors = () => {
 };
 
 export default AdminTutors;
-  const handleSort = (field) => {
-    if (sortBy === field) {
-      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
-    } else {
-      setSortBy(field);
-      setSortOrder("asc");
-    }
-    setPage(1);
-    setTrashPage(1);
-  };
-
-  const addFilter = () => {
-    if (!filterField || !filterValue) return;
-    setFilters((prev) => ({ ...prev, [filterField]: filterValue }));
-    setFilterValue("");
-    setPage(1);
-    setTrashPage(1);
-  };
-
-  const removeFilter = (field) => {
-    setFilters((prev) => {
-      const next = { ...prev };
-      delete next[field];
-      return next;
-    });
-    setPage(1);
-    setTrashPage(1);
-  };
-
-  const clearFilters = () => {
-    setFilters({});
-    setPage(1);
-    setTrashPage(1);
-  };

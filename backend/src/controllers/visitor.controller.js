@@ -15,6 +15,9 @@ const parseListParams = (req) => {
     const search = (req.query.search || "").trim();
     return { page, limit, skip, sortBy, sortOrder, search };
 };
+
+
+
 exports.createVisitor = async (req, res) => {
     try {
         const { name, email, phone, source, note, course, status, createdBy } = req.body
@@ -504,3 +507,4 @@ exports.convertToEmployee = async (req, res) => {
         res.status(500).json({ message: err.message });
     }
 };
+

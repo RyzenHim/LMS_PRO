@@ -8,43 +8,94 @@ import {
   RotateCcw,
   BookOpen,
 } from "lucide-react";
+
 import { courseService } from "../../services/courseService";
+
 import AddCourseModal from "./modal/AddCourseModal";
 import EditCourseModal from "./modal/EditCourseModal";
 import ViewCourseModal from "./modal/ViewCourseModal";
 import ConfirmDeleteModal from "./modal/ConfirmDeleteModal";
+
 import Pagination from "../../components/Pagination";
 import SortHeader from "../../components/SortHeader";
 
 const AdminCourses = () => {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
+
   const [courses, setCourses] = useState([]);
   const [deletedCourses, setDeletedCourses] = useState([]);
+
   const [page, setPage] = useState(1);
   const [trashPage, setTrashPage] = useState(1);
+
   const [totalPages, setTotalPages] = useState(1);
   const [trashTotalPages, setTrashTotalPages] = useState(1);
+
   const [sortBy, setSortBy] = useState("createdAt");
   const [sortOrder, setSortOrder] = useState("desc");
+
   const [filters, setFilters] = useState({});
   const [filterField, setFilterField] = useState("status");
   const [filterValue, setFilterValue] = useState("");
+
   const [activeTab, setActiveTab] = useState("active");
+
   const [openAdd, setOpenAdd] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [openView, setOpenView] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
+
   const [selectedCourse, setSelectedCourse] = useState(null);
 
-  useEffect(() => {
-    fetchCourses();
-  }, [page, search, sortBy, sortOrder, JSON.stringify(filters)]);
+  // =========================
+  // SORT + FILTER FUNCTIONS
+  // =========================
+  const handleSort = (field) => {
+    if (sortBy === field) {
+      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(field);
+      setSortOrder("asc");
+    }
 
-  useEffect(() => {
-    fetchDeletedCourses();
-  }, [trashPage, search, sortBy, sortOrder, activeTab, JSON.stringify(filters)]);
+    setPage(1);
+    setTrashPage(1);
+  };
 
+  const addFilter = () => {
+    if (!filterField || !filterValue) return;
+
+    setFilters((prev) => ({
+      ...prev,
+      [filterField]: filterValue,
+    }));
+
+    setFilterValue("");
+    setPage(1);
+    setTrashPage(1);
+  };
+
+  const removeFilter = (field) => {
+    setFilters((prev) => {
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+
+    setPage(1);
+    setTrashPage(1);
+  };
+
+  const clearFilters = () => {
+    setFilters({});
+    setPage(1);
+    setTrashPage(1);
+  };
+
+  // =========================
+  // API CALLS
+  // =========================
   const fetchCourses = async () => {
     setLoading(true);
     try {
@@ -56,6 +107,7 @@ const AdminCourses = () => {
         sortOrder,
         ...filters,
       });
+
       setCourses(res.data.courses || []);
       setTotalPages(res.data.totalPages || 1);
     } catch (error) {
@@ -66,6 +118,7 @@ const AdminCourses = () => {
   };
 
   const fetchDeletedCourses = async () => {
+    setLoading(true);
     try {
       const res = await courseService.getDeleted({
         page: trashPage,
@@ -75,17 +128,56 @@ const AdminCourses = () => {
         sortOrder,
         ...filters,
       });
+
       setDeletedCourses(res.data.courses || []);
       setTrashTotalPages(res.data.totalPages || 1);
     } catch (error) {
       console.error("Error fetching deleted courses", error);
+    } finally {
+      setLoading(false);
     }
   };
 
+  // =========================
+  // FETCH BASED ON ACTIVE TAB
+  // =========================
+  useEffect(() => {
+    if (activeTab === "active") {
+      fetchCourses();
+    } else {
+      fetchDeletedCourses();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    activeTab,
+    page,
+    trashPage,
+    search,
+    sortBy,
+    sortOrder,
+    JSON.stringify(filters),
+  ]);
+
+  // reset correct page when tab changes
+  useEffect(() => {
+    if (activeTab === "active") setPage(1);
+    else setTrashPage(1);
+  }, [activeTab]);
+
+  // =========================
+  // CRUD HANDLERS
+  // =========================
   const handleAddCourse = async (data) => {
     try {
       const res = await courseService.create(data);
-      setCourses((prev) => [res.data.course, ...prev]);
+
+      // if on page 1, show instantly
+      if (activeTab === "active" && page === 1) {
+        setCourses((prev) => [res.data.course, ...prev]);
+      } else {
+        await fetchCourses();
+      }
+
       setOpenAdd(false);
     } catch (error) {
       console.error("Add course failed", error);
@@ -101,9 +193,11 @@ const AdminCourses = () => {
   const handleUpdateCourse = async (data) => {
     try {
       const res = await courseService.update(selectedCourse._id, data);
+
       setCourses((prev) =>
         prev.map((c) => (c._id === selectedCourse._id ? res.data.course : c)),
       );
+
       setOpenEdit(false);
       setSelectedCourse(null);
     } catch (error) {
@@ -125,8 +219,11 @@ const AdminCourses = () => {
   const handleDelete = async () => {
     try {
       await courseService.softDelete(selectedCourse._id);
+
       setCourses((prev) => prev.filter((c) => c._id !== selectedCourse._id));
-      fetchDeletedCourses();
+
+      await fetchDeletedCourses();
+
       setOpenDelete(false);
       setSelectedCourse(null);
     } catch (error) {
@@ -138,8 +235,10 @@ const AdminCourses = () => {
   const handleRestore = async (id) => {
     try {
       await courseService.restore(id);
+
       setDeletedCourses((prev) => prev.filter((c) => c._id !== id));
-      fetchCourses();
+
+      await fetchCourses();
     } catch (error) {
       console.error("Restore failed", error);
       alert(error.response?.data?.message || "Failed to restore course");
@@ -149,6 +248,7 @@ const AdminCourses = () => {
   const handleToggleStatus = async (id) => {
     try {
       const res = await courseService.toggleStatus(id);
+
       setCourses((prev) =>
         prev.map((c) =>
           c._id === id ? { ...c, isActive: res.data.isActive } : c,
@@ -164,6 +264,7 @@ const AdminCourses = () => {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
@@ -195,8 +296,9 @@ const AdminCourses = () => {
               : "text-[#3F72AF] dark:text-[#DBE2EF]"
           }`}
         >
-          Active ({courses.length})
+          Active
         </button>
+
         <button
           onClick={() => setActiveTab("trash")}
           className={`pb-2 px-2 transition-colors ${
@@ -205,7 +307,7 @@ const AdminCourses = () => {
               : "text-[#3F72AF] dark:text-[#DBE2EF]"
           }`}
         >
-          Trash ({deletedCourses.length})
+          Trash
         </button>
       </div>
 
@@ -225,6 +327,7 @@ const AdminCourses = () => {
         />
       </div>
 
+      {/* Filters */}
       <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-4 flex flex-wrap items-center gap-3 shadow-sm">
         <select
           value={filterField}
@@ -238,24 +341,28 @@ const AdminCourses = () => {
           <option value="price">Price</option>
           <option value="duration">Duration</option>
         </select>
+
         <input
           value={filterValue}
           onChange={(e) => setFilterValue(e.target.value)}
           placeholder="Filter value"
           className="text-sm border rounded-lg px-2 py-1 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
         />
+
         <button
           onClick={addFilter}
           className="px-3 py-1 rounded-lg bg-[#3F72AF] text-white text-sm"
         >
           Add Filter
         </button>
+
         <button
           onClick={clearFilters}
           className="px-3 py-1 rounded-lg border text-sm"
         >
           Clear Filters
         </button>
+
         <div className="flex flex-wrap gap-2">
           {Object.keys(filters).map((key) => (
             <button
@@ -289,12 +396,15 @@ const AdminCourses = () => {
                       onSort={handleSort}
                     />
                   </th>
+
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
                     Category
                   </th>
+
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
                     Tutor
                   </th>
+
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
                     <SortHeader
                       label="Price"
@@ -304,6 +414,7 @@ const AdminCourses = () => {
                       onSort={handleSort}
                     />
                   </th>
+
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
                     <SortHeader
                       label="Duration"
@@ -313,26 +424,33 @@ const AdminCourses = () => {
                       onSort={handleSort}
                     />
                   </th>
+
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
                     Level
                   </th>
+
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
                     Students
                   </th>
+
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
                     Skills
                   </th>
+
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
                     Status
                   </th>
+
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
                     Is Active
                   </th>
+
                   <th className="px-6 py-3 text-right text-[#112D4E] dark:text-[#DBE2EF]">
                     Actions
                   </th>
                 </tr>
               </thead>
+
               <tbody>
                 {filteredCourses.map((course) => (
                   <tr
@@ -343,24 +461,31 @@ const AdminCourses = () => {
                       <BookOpen size={16} className="text-[#3F72AF]" />
                       {course.title}
                     </td>
+
                     <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
                       {course.category}
                     </td>
+
                     <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
                       {course.tutorName || course.tutor?.name || "—"}
                     </td>
+
                     <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
                       ₹{course.price || 0}
                     </td>
+
                     <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
                       {course.duration || 0} hrs
                     </td>
+
                     <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF] capitalize">
                       {course.level}
                     </td>
+
                     <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
                       {course.studentsEnrolled || 0}
                     </td>
+
                     <td className="px-6 py-4">
                       <div className="flex flex-wrap gap-1">
                         {course.skills && course.skills.length > 0 ? (
@@ -377,6 +502,7 @@ const AdminCourses = () => {
                             —
                           </span>
                         )}
+
                         {course.skills && course.skills.length > 2 && (
                           <span className="text-xs text-[#3F72AF] dark:text-[#DBE2EF]">
                             +{course.skills.length - 2} more
@@ -384,6 +510,7 @@ const AdminCourses = () => {
                         )}
                       </div>
                     </td>
+
                     <td className="px-6 py-4">
                       <span
                         className={`px-2 py-1 text-xs rounded-md capitalize ${
@@ -397,6 +524,7 @@ const AdminCourses = () => {
                         {course.status}
                       </span>
                     </td>
+
                     <td className="px-6 py-4">
                       <span
                         className={`px-2 py-1 text-xs rounded-md ${
@@ -408,6 +536,7 @@ const AdminCourses = () => {
                         {course.isActive ? "Yes" : "No"}
                       </span>
                     </td>
+
                     <td className="px-6 py-4 text-right space-x-2">
                       {activeTab === "active" ? (
                         <>
@@ -418,6 +547,7 @@ const AdminCourses = () => {
                           >
                             <Eye size={16} className="inline" />
                           </button>
+
                           <button
                             onClick={() => handleEdit(course)}
                             className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-sm transition-colors"
@@ -425,6 +555,7 @@ const AdminCourses = () => {
                           >
                             <Edit size={16} className="inline" />
                           </button>
+
                           <button
                             onClick={() => handleToggleStatus(course._id)}
                             className="text-yellow-600 hover:text-yellow-700 dark:text-yellow-400 dark:hover:text-yellow-300 text-sm transition-colors"
@@ -432,6 +563,7 @@ const AdminCourses = () => {
                           >
                             {course.isActive ? "Disable" : "Enable"}
                           </button>
+
                           <button
                             onClick={() => handleDeleteClick(course)}
                             className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-sm transition-colors"
@@ -465,6 +597,7 @@ const AdminCourses = () => {
         )}
       </div>
 
+      {/* Pagination */}
       <Pagination
         page={activeTab === "active" ? page : trashPage}
         totalPages={activeTab === "active" ? totalPages : trashTotalPages}
@@ -479,6 +612,7 @@ const AdminCourses = () => {
         onClose={() => setOpenAdd(false)}
         onSubmit={handleAddCourse}
       />
+
       <EditCourseModal
         open={openEdit}
         course={selectedCourse}
@@ -488,6 +622,7 @@ const AdminCourses = () => {
         }}
         onSubmit={handleUpdateCourse}
       />
+
       <ViewCourseModal
         open={openView}
         course={selectedCourse}
@@ -496,6 +631,7 @@ const AdminCourses = () => {
           setSelectedCourse(null);
         }}
       />
+
       <ConfirmDeleteModal
         open={openDelete}
         onClose={() => {
@@ -510,37 +646,3 @@ const AdminCourses = () => {
 };
 
 export default AdminCourses;
-  const handleSort = (field) => {
-    if (sortBy === field) {
-      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
-    } else {
-      setSortBy(field);
-      setSortOrder("asc");
-    }
-    setPage(1);
-    setTrashPage(1);
-  };
-
-  const addFilter = () => {
-    if (!filterField || !filterValue) return;
-    setFilters((prev) => ({ ...prev, [filterField]: filterValue }));
-    setFilterValue("");
-    setPage(1);
-    setTrashPage(1);
-  };
-
-  const removeFilter = (field) => {
-    setFilters((prev) => {
-      const next = { ...prev };
-      delete next[field];
-      return next;
-    });
-    setPage(1);
-    setTrashPage(1);
-  };
-
-  const clearFilters = () => {
-    setFilters({});
-    setPage(1);
-    setTrashPage(1);
-  };

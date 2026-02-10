@@ -1,13 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import {
-  Search,
-  Plus,
-  Eye,
-  Edit,
-  Trash2,
-  RotateCcw,
-  IndianRupee,
-} from "lucide-react";
+import { Search, Plus, Eye, Edit, Trash2, RotateCcw } from "lucide-react";
 
 import { feesService } from "../../services/feesService";
 
@@ -15,6 +7,7 @@ import AddFeesModal from "./modal/fees/AddFeesModal";
 import EditFeesModal from "./modal/fees/EditFeesModal";
 import ViewFeesModal from "./modal/fees/ViewFeesModal";
 import ConfirmDeleteModal from "./modal/fees/ConfirmDeleteModal";
+
 import Pagination from "../../components/Pagination";
 import SortHeader from "../../components/SortHeader";
 
@@ -24,12 +17,16 @@ const AdminFees = () => {
 
   const [fees, setFees] = useState([]);
   const [deletedFees, setDeletedFees] = useState([]);
+
   const [page, setPage] = useState(1);
   const [trashPage, setTrashPage] = useState(1);
+
   const [totalPages, setTotalPages] = useState(1);
   const [trashTotalPages, setTrashTotalPages] = useState(1);
+
   const [sortBy, setSortBy] = useState("createdAt");
   const [sortOrder, setSortOrder] = useState("desc");
+
   const [filters, setFilters] = useState({});
   const [filterField, setFilterField] = useState("status");
   const [filterValue, setFilterValue] = useState("");
@@ -43,14 +40,54 @@ const AdminFees = () => {
 
   const [selectedFees, setSelectedFees] = useState(null);
 
-  useEffect(() => {
-    fetchFees();
-  }, [page, search, sortBy, sortOrder]);
+  // =========================
+  // SORT + FILTER FUNCTIONS
+  // =========================
+  const handleSort = (field) => {
+    if (sortBy === field) {
+      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(field);
+      setSortOrder("asc");
+    }
 
-  useEffect(() => {
-    fetchDeletedFees();
-  }, [trashPage, search, sortBy, sortOrder, activeTab]);
+    setPage(1);
+    setTrashPage(1);
+  };
 
+  const addFilter = () => {
+    if (!filterField || !filterValue) return;
+
+    setFilters((prev) => ({
+      ...prev,
+      [filterField]: filterValue,
+    }));
+
+    setFilterValue("");
+    setPage(1);
+    setTrashPage(1);
+  };
+
+  const removeFilter = (field) => {
+    setFilters((prev) => {
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+
+    setPage(1);
+    setTrashPage(1);
+  };
+
+  const clearFilters = () => {
+    setFilters({});
+    setPage(1);
+    setTrashPage(1);
+  };
+
+  // =========================
+  // API CALLS
+  // =========================
   const fetchFees = async () => {
     setLoading(true);
     try {
@@ -62,6 +99,7 @@ const AdminFees = () => {
         sortOrder,
         ...filters,
       });
+
       setFees(res.data.fees || []);
       setTotalPages(res.data.totalPages || 1);
     } catch (error) {
@@ -72,6 +110,7 @@ const AdminFees = () => {
   };
 
   const fetchDeletedFees = async () => {
+    setLoading(true);
     try {
       const res = await feesService.getDeleted({
         page: trashPage,
@@ -81,17 +120,56 @@ const AdminFees = () => {
         sortOrder,
         ...filters,
       });
+
       setDeletedFees(res.data.fees || []);
       setTrashTotalPages(res.data.totalPages || 1);
     } catch (error) {
       console.error("Error fetching deleted fees", error);
+    } finally {
+      setLoading(false);
     }
   };
 
+  // =========================
+  // FETCH BASED ON ACTIVE TAB
+  // =========================
+  useEffect(() => {
+    if (activeTab === "active") {
+      fetchFees();
+    } else {
+      fetchDeletedFees();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    activeTab,
+    page,
+    trashPage,
+    search,
+    sortBy,
+    sortOrder,
+    JSON.stringify(filters),
+  ]);
+
+  // reset correct page when tab changes
+  useEffect(() => {
+    if (activeTab === "active") setPage(1);
+    else setTrashPage(1);
+  }, [activeTab]);
+
+  // =========================
+  // CRUD HANDLERS
+  // =========================
   const handleAddFees = async (data) => {
     try {
       const res = await feesService.create(data);
-      setFees((prev) => [res.data.fees, ...prev]);
+
+      // if on page 1, show instantly
+      if (activeTab === "active" && page === 1) {
+        setFees((prev) => [res.data.fees, ...prev]);
+      } else {
+        await fetchFees();
+      }
+
       setOpenAdd(false);
     } catch (error) {
       console.error("Add fees failed", error);
@@ -133,8 +211,11 @@ const AdminFees = () => {
   const handleDelete = async () => {
     try {
       await feesService.softDelete(selectedFees._id);
+
       setFees((prev) => prev.filter((f) => f._id !== selectedFees._id));
-      fetchDeletedFees();
+
+      await fetchDeletedFees();
+
       setOpenDelete(false);
       setSelectedFees(null);
     } catch (error) {
@@ -146,8 +227,10 @@ const AdminFees = () => {
   const handleRestore = async (id) => {
     try {
       await feesService.restore(id);
+
       setDeletedFees((prev) => prev.filter((f) => f._id !== id));
-      fetchFees();
+
+      await fetchFees();
     } catch (error) {
       console.error("Restore failed", error);
       alert(error.response?.data?.message || "Failed to restore fees");
@@ -207,7 +290,7 @@ const AdminFees = () => {
               : "text-[#3F72AF] dark:text-[#DBE2EF]"
           }`}
         >
-          Active ({fees.length})
+          Active
         </button>
 
         <button
@@ -218,7 +301,7 @@ const AdminFees = () => {
               : "text-[#3F72AF] dark:text-[#DBE2EF]"
           }`}
         >
-          Trash ({deletedFees.length})
+          Trash
         </button>
       </div>
 
@@ -238,6 +321,7 @@ const AdminFees = () => {
         />
       </div>
 
+      {/* Filters */}
       <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-4 flex flex-wrap items-center gap-3 shadow-sm">
         <select
           value={filterField}
@@ -249,24 +333,28 @@ const AdminFees = () => {
           <option value="paymentType">Payment Type</option>
           <option value="isActive">Is Active</option>
         </select>
+
         <input
           value={filterValue}
           onChange={(e) => setFilterValue(e.target.value)}
           placeholder="Filter value"
           className="text-sm border rounded-lg px-2 py-1 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
         />
+
         <button
           onClick={addFilter}
           className="px-3 py-1 rounded-lg bg-[#3F72AF] text-white text-sm"
         >
           Add Filter
         </button>
+
         <button
           onClick={clearFilters}
           className="px-3 py-1 rounded-lg border text-sm"
         >
           Clear Filters
         </button>
+
         <div className="flex flex-wrap gap-2">
           {Object.keys(filters).map((key) => (
             <button
@@ -298,9 +386,11 @@ const AdminFees = () => {
                       onSort={handleSort}
                     />
                   </th>
+
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
                     Course
                   </th>
+
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
                     <SortHeader
                       label="Total"
@@ -310,6 +400,7 @@ const AdminFees = () => {
                       onSort={handleSort}
                     />
                   </th>
+
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
                     <SortHeader
                       label="Paid"
@@ -319,6 +410,7 @@ const AdminFees = () => {
                       onSort={handleSort}
                     />
                   </th>
+
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
                     <SortHeader
                       label="Remaining"
@@ -328,6 +420,7 @@ const AdminFees = () => {
                       onSort={handleSort}
                     />
                   </th>
+
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
                     <SortHeader
                       label="Due Date"
@@ -337,15 +430,19 @@ const AdminFees = () => {
                       onSort={handleSort}
                     />
                   </th>
+
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
                     Mode
                   </th>
+
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
                     Status
                   </th>
+
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
                     Is Active
                   </th>
+
                   <th className="px-6 py-3 text-right text-[#112D4E] dark:text-[#DBE2EF]">
                     Actions
                   </th>
@@ -477,6 +574,7 @@ const AdminFees = () => {
         )}
       </div>
 
+      {/* Pagination */}
       <Pagination
         page={activeTab === "active" ? page : trashPage}
         totalPages={activeTab === "active" ? totalPages : trashTotalPages}
@@ -485,6 +583,7 @@ const AdminFees = () => {
         }
       />
 
+      {/* Modals */}
       <AddFeesModal
         open={openAdd}
         onClose={() => setOpenAdd(false)}
@@ -524,37 +623,3 @@ const AdminFees = () => {
 };
 
 export default AdminFees;
-  const handleSort = (field) => {
-    if (sortBy === field) {
-      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
-    } else {
-      setSortBy(field);
-      setSortOrder("asc");
-    }
-    setPage(1);
-    setTrashPage(1);
-  };
-
-  const addFilter = () => {
-    if (!filterField || !filterValue) return;
-    setFilters((prev) => ({ ...prev, [filterField]: filterValue }));
-    setFilterValue("");
-    setPage(1);
-    setTrashPage(1);
-  };
-
-  const removeFilter = (field) => {
-    setFilters((prev) => {
-      const next = { ...prev };
-      delete next[field];
-      return next;
-    });
-    setPage(1);
-    setTrashPage(1);
-  };
-
-  const clearFilters = () => {
-    setFilters({});
-    setPage(1);
-    setTrashPage(1);
-  };

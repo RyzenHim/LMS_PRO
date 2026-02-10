@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Search, Plus, Edit, Trash2, RotateCcw } from "lucide-react";
+
 import { skillService } from "../../services/skillService";
 import ConfirmDeleteModal from "./modal/ConfirmDeleteModal";
 import Pagination from "../../components/Pagination";
@@ -8,36 +9,75 @@ import SortHeader from "../../components/SortHeader";
 const AdminSkills = () => {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
+
   const [skills, setSkills] = useState([]);
   const [deletedSkills, setDeletedSkills] = useState([]);
+
   const [page, setPage] = useState(1);
   const [trashPage, setTrashPage] = useState(1);
+
   const [totalPages, setTotalPages] = useState(1);
   const [trashTotalPages, setTrashTotalPages] = useState(1);
+
   const [sortBy, setSortBy] = useState("name");
   const [sortOrder, setSortOrder] = useState("asc");
+
   const [filters, setFilters] = useState({});
   const [filterField, setFilterField] = useState("category");
   const [filterValue, setFilterValue] = useState("");
+
   const [activeTab, setActiveTab] = useState("active");
+
   const [openAdd, setOpenAdd] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
+
   const [selectedSkill, setSelectedSkill] = useState(null);
+
   const [form, setForm] = useState({
     name: "",
     description: "",
     category: "",
   });
 
-  useEffect(() => {
-    fetchSkills();
-  }, [page, search, sortBy, sortOrder]);
+  // ✅ SORT
+  const handleSort = (field) => {
+    if (sortBy === field) {
+      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(field);
+      setSortOrder("asc");
+    }
+    setPage(1);
+    setTrashPage(1);
+  };
 
-  useEffect(() => {
-    fetchDeletedSkills();
-  }, [trashPage, search, sortBy, sortOrder, activeTab]);
+  // ✅ FILTERS
+  const addFilter = () => {
+    if (!filterField || !filterValue) return;
+    setFilters((prev) => ({ ...prev, [filterField]: filterValue }));
+    setFilterValue("");
+    setPage(1);
+    setTrashPage(1);
+  };
 
+  const removeFilter = (field) => {
+    setFilters((prev) => {
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+    setPage(1);
+    setTrashPage(1);
+  };
+
+  const clearFilters = () => {
+    setFilters({});
+    setPage(1);
+    setTrashPage(1);
+  };
+
+  // ✅ API CALLS
   const fetchSkills = async () => {
     setLoading(true);
     try {
@@ -49,6 +89,7 @@ const AdminSkills = () => {
         sortOrder,
         ...filters,
       });
+
       setSkills(res.data.skills || []);
       setTotalPages(res.data.totalPages || 1);
     } catch (error) {
@@ -68,6 +109,7 @@ const AdminSkills = () => {
         sortOrder,
         ...filters,
       });
+
       setDeletedSkills(res.data.skills || []);
       setTrashTotalPages(res.data.totalPages || 1);
     } catch (error) {
@@ -75,10 +117,36 @@ const AdminSkills = () => {
     }
   };
 
+  // ✅ IMPORTANT: include filters
+  useEffect(() => {
+    if (activeTab === "active") fetchSkills();
+  }, [activeTab, page, search, sortBy, sortOrder, JSON.stringify(filters)]);
+
+  useEffect(() => {
+    if (activeTab === "trash") fetchDeletedSkills();
+  }, [
+    activeTab,
+    trashPage,
+    search,
+    sortBy,
+    sortOrder,
+    JSON.stringify(filters),
+  ]);
+
+  // ✅ reset page when tab changes
+  useEffect(() => {
+    setPage(1);
+    setTrashPage(1);
+  }, [activeTab]);
+
+  // ✅ CRUD
   const handleAddSkill = async () => {
     try {
       const res = await skillService.create(form);
-      setSkills((prev) => [res.data.skill, ...prev]);
+
+      // Refresh list (best)
+      await fetchSkills();
+
       setForm({ name: "", description: "", category: "" });
       setOpenAdd(false);
     } catch (error) {
@@ -99,10 +167,10 @@ const AdminSkills = () => {
 
   const handleUpdateSkill = async () => {
     try {
-      const res = await skillService.update(selectedSkill._id, form);
-      setSkills((prev) =>
-        prev.map((s) => (s._id === selectedSkill._id ? res.data.skill : s)),
-      );
+      await skillService.update(selectedSkill._id, form);
+
+      await fetchSkills();
+
       setOpenEdit(false);
       setSelectedSkill(null);
       setForm({ name: "", description: "", category: "" });
@@ -120,8 +188,10 @@ const AdminSkills = () => {
   const handleDelete = async () => {
     try {
       await skillService.softDelete(selectedSkill._id);
-      setSkills((prev) => prev.filter((s) => s._id !== selectedSkill._id));
-      fetchDeletedSkills();
+
+      await fetchSkills();
+      await fetchDeletedSkills();
+
       setOpenDelete(false);
       setSelectedSkill(null);
     } catch (error) {
@@ -133,8 +203,9 @@ const AdminSkills = () => {
   const handleRestore = async (id) => {
     try {
       await skillService.restore(id);
-      setDeletedSkills((prev) => prev.filter((s) => s._id !== id));
-      fetchSkills();
+
+      await fetchSkills();
+      await fetchDeletedSkills();
     } catch (error) {
       console.error("Restore failed", error);
       alert(error.response?.data?.message || "Failed to restore skill");
@@ -143,12 +214,8 @@ const AdminSkills = () => {
 
   const handleToggleStatus = async (id) => {
     try {
-      const res = await skillService.toggleStatus(id);
-      setSkills((prev) =>
-        prev.map((s) =>
-          s._id === id ? { ...s, isActive: res.data.isActive } : s,
-        ),
-      );
+      await skillService.toggleStatus(id);
+      await fetchSkills();
     } catch (error) {
       console.error("Toggle status failed", error);
       alert(error.response?.data?.message || "Failed to toggle status");
@@ -159,6 +226,7 @@ const AdminSkills = () => {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
@@ -180,6 +248,7 @@ const AdminSkills = () => {
         )}
       </div>
 
+      {/* Tabs */}
       <div className="flex gap-4 border-b border-[#DBE2EF] dark:border-[#3F72AF]">
         <button
           onClick={() => setActiveTab("active")}
@@ -203,6 +272,7 @@ const AdminSkills = () => {
         </button>
       </div>
 
+      {/* Search */}
       <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-4 flex items-center gap-3 shadow-sm">
         <Search size={18} className="text-[#3F72AF] dark:text-[#DBE2EF]" />
         <input
@@ -218,6 +288,7 @@ const AdminSkills = () => {
         />
       </div>
 
+      {/* Filters */}
       <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-4 flex flex-wrap items-center gap-3 shadow-sm">
         <select
           value={filterField}
@@ -228,24 +299,28 @@ const AdminSkills = () => {
           <option value="isActive">Is Active</option>
           <option value="name">Name</option>
         </select>
+
         <input
           value={filterValue}
           onChange={(e) => setFilterValue(e.target.value)}
           placeholder="Filter value"
           className="text-sm border rounded-lg px-2 py-1 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
         />
+
         <button
           onClick={addFilter}
           className="px-3 py-1 rounded-lg bg-[#3F72AF] text-white text-sm"
         >
           Add Filter
         </button>
+
         <button
           onClick={clearFilters}
           className="px-3 py-1 rounded-lg border text-sm"
         >
           Clear Filters
         </button>
+
         <div className="flex flex-wrap gap-2">
           {Object.keys(filters).map((key) => (
             <button
@@ -259,6 +334,7 @@ const AdminSkills = () => {
         </div>
       </div>
 
+      {/* Table */}
       <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] overflow-hidden shadow-lg">
         {loading ? (
           <div className="p-6 text-center text-gray-500">Loading skills...</div>
@@ -290,6 +366,7 @@ const AdminSkills = () => {
                   </th>
                 </tr>
               </thead>
+
               <tbody>
                 {filteredSkills.map((s) => (
                   <tr
@@ -326,6 +403,7 @@ const AdminSkills = () => {
                           >
                             <Edit size={16} className="inline" />
                           </button>
+
                           <button
                             onClick={() => handleToggleStatus(s._id)}
                             className="text-yellow-600 hover:text-yellow-700 dark:text-yellow-400 dark:hover:text-yellow-300 text-sm transition-colors"
@@ -333,6 +411,7 @@ const AdminSkills = () => {
                           >
                             {s.isActive ? "Disable" : "Enable"}
                           </button>
+
                           <button
                             onClick={() => handleDeleteClick(s)}
                             className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-sm transition-colors"
@@ -366,6 +445,7 @@ const AdminSkills = () => {
         )}
       </div>
 
+      {/* Pagination */}
       <Pagination
         page={activeTab === "active" ? page : trashPage}
         totalPages={activeTab === "active" ? totalPages : trashTotalPages}
@@ -374,12 +454,14 @@ const AdminSkills = () => {
         }
       />
 
+      {/* Add Modal */}
       {openAdd && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-[#112D4E] rounded-xl p-6 w-full max-w-md shadow-2xl border border-[#DBE2EF] dark:border-[#3F72AF]">
             <h2 className="text-lg font-semibold text-[#112D4E] dark:text-[#DBE2EF] mb-4">
               Add Skill
             </h2>
+
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -399,6 +481,7 @@ const AdminSkills = () => {
                   className="w-full px-3 py-2 border border-[#DBE2EF] dark:border-[#3F72AF] rounded-lg bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
                 />
               </div>
+
               <div>
                 <label className="text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF]">
                   Category
@@ -412,6 +495,7 @@ const AdminSkills = () => {
                   className="w-full px-3 py-2 border border-[#DBE2EF] dark:border-[#3F72AF] rounded-lg bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
                 />
               </div>
+
               <div>
                 <label className="text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF]">
                   Description
@@ -425,6 +509,7 @@ const AdminSkills = () => {
                   className="w-full px-3 py-2 border border-[#DBE2EF] dark:border-[#3F72AF] rounded-lg bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
                 />
               </div>
+
               <div className="flex justify-end gap-3">
                 <button
                   type="button"
@@ -436,6 +521,7 @@ const AdminSkills = () => {
                 >
                   Cancel
                 </button>
+
                 <button
                   type="submit"
                   className="px-4 py-2 bg-[#3F72AF] text-white rounded-lg hover:bg-[#112D4E] dark:bg-[#3F72AF] dark:hover:bg-[#DBE2EF] dark:hover:text-[#112D4E] transition-colors"
@@ -448,12 +534,14 @@ const AdminSkills = () => {
         </div>
       )}
 
+      {/* Edit Modal */}
       {openEdit && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-[#112D4E] rounded-xl p-6 w-full max-w-md shadow-2xl border border-[#DBE2EF] dark:border-[#3F72AF]">
             <h2 className="text-lg font-semibold text-[#112D4E] dark:text-[#DBE2EF] mb-4">
               Edit Skill
             </h2>
+
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -473,6 +561,7 @@ const AdminSkills = () => {
                   className="w-full px-3 py-2 border border-[#DBE2EF] dark:border-[#3F72AF] rounded-lg bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
                 />
               </div>
+
               <div>
                 <label className="text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF]">
                   Category
@@ -486,6 +575,7 @@ const AdminSkills = () => {
                   className="w-full px-3 py-2 border border-[#DBE2EF] dark:border-[#3F72AF] rounded-lg bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
                 />
               </div>
+
               <div>
                 <label className="text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF]">
                   Description
@@ -499,6 +589,7 @@ const AdminSkills = () => {
                   className="w-full px-3 py-2 border border-[#DBE2EF] dark:border-[#3F72AF] rounded-lg bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
                 />
               </div>
+
               <div className="flex justify-end gap-3">
                 <button
                   type="button"
@@ -511,6 +602,7 @@ const AdminSkills = () => {
                 >
                   Cancel
                 </button>
+
                 <button
                   type="submit"
                   className="px-4 py-2 bg-[#3F72AF] text-white rounded-lg hover:bg-[#112D4E] dark:bg-[#3F72AF] dark:hover:bg-[#DBE2EF] dark:hover:text-[#112D4E] transition-colors"
@@ -523,6 +615,7 @@ const AdminSkills = () => {
         </div>
       )}
 
+      {/* Delete */}
       <ConfirmDeleteModal
         open={openDelete}
         onClose={() => {
@@ -537,37 +630,3 @@ const AdminSkills = () => {
 };
 
 export default AdminSkills;
-  const handleSort = (field) => {
-    if (sortBy === field) {
-      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
-    } else {
-      setSortBy(field);
-      setSortOrder("asc");
-    }
-    setPage(1);
-    setTrashPage(1);
-  };
-
-  const addFilter = () => {
-    if (!filterField || !filterValue) return;
-    setFilters((prev) => ({ ...prev, [filterField]: filterValue }));
-    setFilterValue("");
-    setPage(1);
-    setTrashPage(1);
-  };
-
-  const removeFilter = (field) => {
-    setFilters((prev) => {
-      const next = { ...prev };
-      delete next[field];
-      return next;
-    });
-    setPage(1);
-    setTrashPage(1);
-  };
-
-  const clearFilters = () => {
-    setFilters({});
-    setPage(1);
-    setTrashPage(1);
-  };

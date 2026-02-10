@@ -1,44 +1,93 @@
-import React, { useState, useEffect } from "react";
-import { Search, Plus, Eye, Edit, Trash2, RotateCcw, Repeat } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import {
+  Search,
+  Plus,
+  Eye,
+  Edit,
+  Trash2,
+  RotateCcw,
+  Repeat,
+} from "lucide-react";
+
 import { studentService } from "../../services/studentService";
+
 import AddStudentModal from "./modal/AddStudentModal";
 import EditStudentModal from "./modal/EditStudentModal";
 import ViewStudentModal from "./modal/ViewStudentModal";
 import ConfirmDeleteModal from "./modal/ConfirmDeleteModal";
 import ChangeBatchModal from "./modal/ChangeBatchModal";
+
 import Pagination from "../../components/Pagination";
 import SortHeader from "../../components/SortHeader";
 
 const AdminStudents = () => {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
+
   const [students, setStudents] = useState([]);
   const [deletedStudents, setDeletedStudents] = useState([]);
+
   const [page, setPage] = useState(1);
   const [trashPage, setTrashPage] = useState(1);
+
   const [totalPages, setTotalPages] = useState(1);
   const [trashTotalPages, setTrashTotalPages] = useState(1);
+
   const [sortBy, setSortBy] = useState("createdAt");
   const [sortOrder, setSortOrder] = useState("desc");
+
   const [filters, setFilters] = useState({});
   const [filterField, setFilterField] = useState("status");
   const [filterValue, setFilterValue] = useState("");
+
   const [activeTab, setActiveTab] = useState("active");
+
   const [openAdd, setOpenAdd] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [openView, setOpenView] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [openChangeBatch, setOpenChangeBatch] = useState(false);
+
   const [selectedStudent, setSelectedStudent] = useState(null);
 
-  useEffect(() => {
-    fetchStudents();
-  }, [page, search, sortBy, sortOrder, JSON.stringify(filters)]);
+  // ✅ SORT
+  const handleSort = (field) => {
+    if (sortBy === field) {
+      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(field);
+      setSortOrder("asc");
+    }
+    setPage(1);
+    setTrashPage(1);
+  };
 
-  useEffect(() => {
-    fetchDeletedStudents();
-  }, [trashPage, search, sortBy, sortOrder, activeTab, JSON.stringify(filters)]);
+  // ✅ FILTERS
+  const addFilter = () => {
+    if (!filterField || !filterValue) return;
+    setFilters((prev) => ({ ...prev, [filterField]: filterValue }));
+    setFilterValue("");
+    setPage(1);
+    setTrashPage(1);
+  };
 
+  const removeFilter = (field) => {
+    setFilters((prev) => {
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+    setPage(1);
+    setTrashPage(1);
+  };
+
+  const clearFilters = () => {
+    setFilters({});
+    setPage(1);
+    setTrashPage(1);
+  };
+
+  // ✅ API CALLS
   const fetchStudents = async () => {
     setLoading(true);
     try {
@@ -50,6 +99,7 @@ const AdminStudents = () => {
         sortOrder,
         ...filters,
       });
+
       setStudents(res.data.students || []);
       setTotalPages(res.data.totalPages || 1);
     } catch (error) {
@@ -69,6 +119,7 @@ const AdminStudents = () => {
         sortOrder,
         ...filters,
       });
+
       setDeletedStudents(res.data.students || []);
       setTrashTotalPages(res.data.totalPages || 1);
     } catch (error) {
@@ -76,10 +127,36 @@ const AdminStudents = () => {
     }
   };
 
+  // ✅ Fetch based on tab (optimized)
+  useEffect(() => {
+    if (activeTab === "active") fetchStudents();
+  }, [activeTab, page, search, sortBy, sortOrder, JSON.stringify(filters)]);
+
+  useEffect(() => {
+    if (activeTab === "trash") fetchDeletedStudents();
+  }, [
+    activeTab,
+    trashPage,
+    search,
+    sortBy,
+    sortOrder,
+    JSON.stringify(filters),
+  ]);
+
+  // ✅ Reset page when tab changes
+  useEffect(() => {
+    setPage(1);
+    setTrashPage(1);
+  }, [activeTab]);
+
+  // ✅ CRUD
   const handleAddStudent = async (data) => {
     try {
-      const res = await studentService.create(data);
-      setStudents((prev) => [res.data.student, ...prev]);
+      await studentService.create(data);
+
+      // Best practice: refresh from backend (pagination safe)
+      await fetchStudents();
+
       setOpenAdd(false);
     } catch (error) {
       console.error("Add student failed", error);
@@ -94,10 +171,9 @@ const AdminStudents = () => {
 
   const handleUpdateStudent = async (data) => {
     try {
-      const res = await studentService.update(selectedStudent._id, data);
-      setStudents((prev) =>
-        prev.map((s) => (s._id === selectedStudent._id ? res.data.student : s)),
-      );
+      await studentService.update(selectedStudent._id, data);
+      await fetchStudents();
+
       setOpenEdit(false);
       setSelectedStudent(null);
     } catch (error) {
@@ -124,8 +200,10 @@ const AdminStudents = () => {
   const handleDelete = async () => {
     try {
       await studentService.softDelete(selectedStudent._id);
-      setStudents((prev) => prev.filter((s) => s._id !== selectedStudent._id));
-      fetchDeletedStudents();
+
+      await fetchStudents();
+      await fetchDeletedStudents();
+
       setOpenDelete(false);
       setSelectedStudent(null);
     } catch (error) {
@@ -137,8 +215,9 @@ const AdminStudents = () => {
   const handleRestore = async (id) => {
     try {
       await studentService.restore(id);
-      setDeletedStudents((prev) => prev.filter((s) => s._id !== id));
-      fetchStudents();
+
+      await fetchStudents();
+      await fetchDeletedStudents();
     } catch (error) {
       console.error("Restore failed", error);
       alert(error.response?.data?.message || "Failed to restore student");
@@ -147,12 +226,8 @@ const AdminStudents = () => {
 
   const handleToggleStatus = async (id) => {
     try {
-      const res = await studentService.toggleStatus(id);
-      setStudents((prev) =>
-        prev.map((s) =>
-          s._id === id ? { ...s, isActive: res.data.isActive } : s,
-        ),
-      );
+      await studentService.toggleStatus(id);
+      await fetchStudents();
     } catch (error) {
       console.error("Toggle status failed", error);
       alert(error.response?.data?.message || "Failed to toggle status");
@@ -163,6 +238,7 @@ const AdminStudents = () => {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
@@ -196,6 +272,7 @@ const AdminStudents = () => {
         >
           Active ({students.length})
         </button>
+
         <button
           onClick={() => setActiveTab("trash")}
           className={`pb-2 px-2 transition-colors ${
@@ -208,6 +285,7 @@ const AdminStudents = () => {
         </button>
       </div>
 
+      {/* Search */}
       <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-4 flex items-center gap-3 shadow-sm">
         <Search size={18} className="text-[#3F72AF] dark:text-[#DBE2EF]" />
         <input
@@ -223,6 +301,7 @@ const AdminStudents = () => {
         />
       </div>
 
+      {/* Filters */}
       <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-4 flex flex-wrap items-center gap-3 shadow-sm">
         <select
           value={filterField}
@@ -235,24 +314,28 @@ const AdminStudents = () => {
           <option value="phone">Phone</option>
           <option value="adhaar">Adhaar</option>
         </select>
+
         <input
           value={filterValue}
           onChange={(e) => setFilterValue(e.target.value)}
           placeholder="Filter value"
           className="text-sm border rounded-lg px-2 py-1 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
         />
+
         <button
           onClick={addFilter}
           className="px-3 py-1 rounded-lg bg-[#3F72AF] text-white text-sm"
         >
           Add Filter
         </button>
+
         <button
           onClick={clearFilters}
           className="px-3 py-1 rounded-lg border text-sm"
         >
           Clear Filters
         </button>
+
         <div className="flex flex-wrap gap-2">
           {Object.keys(filters).map((key) => (
             <button
@@ -266,6 +349,7 @@ const AdminStudents = () => {
         </div>
       </div>
 
+      {/* Table */}
       <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] overflow-hidden shadow-lg">
         {loading ? (
           <div className="p-6 text-center text-gray-500">
@@ -285,6 +369,7 @@ const AdminStudents = () => {
                       onSort={handleSort}
                     />
                   </th>
+
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
                     <SortHeader
                       label="Email"
@@ -294,12 +379,15 @@ const AdminStudents = () => {
                       onSort={handleSort}
                     />
                   </th>
+
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
                     Phone
                   </th>
+
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
                     Course
                   </th>
+
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
                     <SortHeader
                       label="Status"
@@ -309,6 +397,7 @@ const AdminStudents = () => {
                       onSort={handleSort}
                     />
                   </th>
+
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
                     <SortHeader
                       label="Enrollment Date"
@@ -318,14 +407,17 @@ const AdminStudents = () => {
                       onSort={handleSort}
                     />
                   </th>
+
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
                     Is Active
                   </th>
+
                   <th className="px-6 py-3 text-right text-[#112D4E] dark:text-[#DBE2EF]">
                     Actions
                   </th>
                 </tr>
               </thead>
+
               <tbody>
                 {filteredStudents.map((s) => (
                   <tr
@@ -335,15 +427,19 @@ const AdminStudents = () => {
                     <td className="px-6 py-4 font-medium text-[#112D4E] dark:text-[#DBE2EF]">
                       {s.name}
                     </td>
+
                     <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
                       {s.email}
                     </td>
+
                     <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
                       {s.phone || "—"}
                     </td>
+
                     <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
                       {s.course?.title || "—"}
                     </td>
+
                     <td className="px-6 py-4">
                       <span
                         className={`px-2 py-1 text-xs rounded-md capitalize ${
@@ -357,11 +453,13 @@ const AdminStudents = () => {
                         {s.status}
                       </span>
                     </td>
+
                     <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
                       {s.enrollmentDate
                         ? new Date(s.enrollmentDate).toLocaleDateString()
                         : "—"}
                     </td>
+
                     <td className="px-6 py-4">
                       <span
                         className={`px-2 py-1 text-xs rounded-md ${
@@ -373,6 +471,7 @@ const AdminStudents = () => {
                         {s.isActive ? "Yes" : "No"}
                       </span>
                     </td>
+
                     <td className="px-6 py-4 text-right space-x-2">
                       {activeTab === "active" ? (
                         <>
@@ -383,6 +482,7 @@ const AdminStudents = () => {
                           >
                             <Eye size={16} className="inline" />
                           </button>
+
                           <button
                             onClick={() => handleEdit(s)}
                             className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-sm transition-colors"
@@ -390,6 +490,7 @@ const AdminStudents = () => {
                           >
                             <Edit size={16} className="inline" />
                           </button>
+
                           <button
                             onClick={() => handleChangeBatch(s)}
                             className="text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 text-sm transition-colors"
@@ -397,6 +498,7 @@ const AdminStudents = () => {
                           >
                             <Repeat size={16} className="inline" />
                           </button>
+
                           <button
                             onClick={() => handleToggleStatus(s._id)}
                             className="text-yellow-600 hover:text-yellow-700 dark:text-yellow-400 dark:hover:text-yellow-300 text-sm transition-colors"
@@ -404,6 +506,7 @@ const AdminStudents = () => {
                           >
                             {s.isActive ? "Disable" : "Enable"}
                           </button>
+
                           <button
                             onClick={() => handleDeleteClick(s)}
                             className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-sm transition-colors"
@@ -437,6 +540,7 @@ const AdminStudents = () => {
         )}
       </div>
 
+      {/* Pagination */}
       <Pagination
         page={activeTab === "active" ? page : trashPage}
         totalPages={activeTab === "active" ? totalPages : trashTotalPages}
@@ -445,11 +549,13 @@ const AdminStudents = () => {
         }
       />
 
+      {/* Modals */}
       <AddStudentModal
         open={openAdd}
         onClose={() => setOpenAdd(false)}
         onSubmit={handleAddStudent}
       />
+
       <EditStudentModal
         open={openEdit}
         student={selectedStudent}
@@ -459,6 +565,7 @@ const AdminStudents = () => {
         }}
         onSubmit={handleUpdateStudent}
       />
+
       <ViewStudentModal
         open={openView}
         student={selectedStudent}
@@ -467,6 +574,7 @@ const AdminStudents = () => {
           setSelectedStudent(null);
         }}
       />
+
       <ChangeBatchModal
         open={openChangeBatch}
         student={selectedStudent}
@@ -474,10 +582,9 @@ const AdminStudents = () => {
           setOpenChangeBatch(false);
           setSelectedStudent(null);
         }}
-        onChanged={() => {
-          fetchStudents();
-        }}
+        onChanged={() => fetchStudents()}
       />
+
       <ConfirmDeleteModal
         open={openDelete}
         onClose={() => {
@@ -492,37 +599,3 @@ const AdminStudents = () => {
 };
 
 export default AdminStudents;
-  const handleSort = (field) => {
-    if (sortBy === field) {
-      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
-    } else {
-      setSortBy(field);
-      setSortOrder("asc");
-    }
-    setPage(1);
-    setTrashPage(1);
-  };
-
-  const addFilter = () => {
-    if (!filterField || !filterValue) return;
-    setFilters((prev) => ({ ...prev, [filterField]: filterValue }));
-    setFilterValue("");
-    setPage(1);
-    setTrashPage(1);
-  };
-
-  const removeFilter = (field) => {
-    setFilters((prev) => {
-      const next = { ...prev };
-      delete next[field];
-      return next;
-    });
-    setPage(1);
-    setTrashPage(1);
-  };
-
-  const clearFilters = () => {
-    setFilters({});
-    setPage(1);
-    setTrashPage(1);
-  };

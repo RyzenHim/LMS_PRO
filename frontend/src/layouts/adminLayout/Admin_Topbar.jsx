@@ -20,6 +20,15 @@ const AdminTopbar = () => {
   const fetchAndInitTheme = async () => {
     try {
       const token = localStorage.getItem("token");
+
+      // if token missing -> go to login
+      if (!token) {
+        const fallback = getSystemTheme();
+        setTheme(fallback);
+        applyTheme(fallback);
+        return;
+      }
+
       const res = await axiosInstance.get("/user/me", {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -32,13 +41,16 @@ const AdminTopbar = () => {
         ? userTheme
         : systemTheme;
 
+      // First time user login -> sync theme with system theme
       if (!themeInitialized) {
         finalTheme = systemTheme;
+
         await axiosInstance.put(
           "/user/profile",
           { theme: finalTheme },
-          { headers: { Authorization: `Bearer ${token}` } }
+          { headers: { Authorization: `Bearer ${token}` } },
         );
+
         localStorage.setItem("themeInitialized", "true");
       }
 
@@ -63,10 +75,12 @@ const AdminTopbar = () => {
 
     try {
       const token = localStorage.getItem("token");
+      if (!token) return;
+
       await axiosInstance.put(
         "/user/profile",
         { theme: nextTheme },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
     } catch (error) {
       console.error("Theme update error:", error);
@@ -74,9 +88,18 @@ const AdminTopbar = () => {
   };
 
   const handleLogout = () => {
-    console.log("clicked");
-    localStorage.clear();
-    navigate("/auth");
+    // remove only auth-related keys
+    localStorage.removeItem("token");
+    localStorage.removeItem("role");
+    localStorage.removeItem("user");
+    localStorage.removeItem("themeInitialized");
+
+    // OPTIONAL: reset theme to system theme after logout
+    const fallback = getSystemTheme();
+    setTheme(fallback);
+    applyTheme(fallback);
+
+    navigate("/auth/login", { replace: true });
   };
 
   return (
@@ -89,7 +112,9 @@ const AdminTopbar = () => {
         <button
           onClick={toggleTheme}
           className="p-2 rounded-lg hover:bg-[#DBE2EF] dark:hover:bg-[#3F72AF] text-[#3F72AF] dark:text-[#DBE2EF] transition-colors"
-          title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          title={
+            theme === "dark" ? "Switch to light mode" : "Switch to dark mode"
+          }
         >
           {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
         </button>

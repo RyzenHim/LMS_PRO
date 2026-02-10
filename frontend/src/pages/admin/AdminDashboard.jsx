@@ -77,7 +77,10 @@ const AdminDashboard = () => {
   const feesSummary = useMemo(() => {
     const total = fees.reduce((sum, f) => sum + Number(f.coursePrice || 0), 0);
     const paid = fees.reduce((sum, f) => sum + Number(f.amountPaid || 0), 0);
-    const due = fees.reduce((sum, f) => sum + Number(f.remainingAmount || 0), 0);
+    const due = fees.reduce(
+      (sum, f) => sum + Number(f.remainingAmount || 0),
+      0,
+    );
     const paidCount = fees.filter((f) => f.status === "paid").length;
     const partialCount = fees.filter((f) => f.status === "partial").length;
     const unpaidCount = fees.filter((f) => f.status === "unpaid").length;
@@ -86,7 +89,10 @@ const AdminDashboard = () => {
 
   const feesPaidPercent = useMemo(() => {
     if (feesSummary.total <= 0) return 0;
-    return Math.min(100, Math.round((feesSummary.paid / feesSummary.total) * 100));
+    return Math.min(
+      100,
+      Math.round((feesSummary.paid / feesSummary.total) * 100),
+    );
   }, [feesSummary]);
 
   const studentSummary = useMemo(() => {
@@ -112,7 +118,10 @@ const AdminDashboard = () => {
 
   const topCourses = useMemo(() => {
     return [...courses]
-      .sort((a, b) => Number(b.studentsEnrolled || 0) - Number(a.studentsEnrolled || 0))
+      .sort(
+        (a, b) =>
+          Number(b.studentsEnrolled || 0) - Number(a.studentsEnrolled || 0),
+      )
       .slice(0, 5);
   }, [courses]);
 
@@ -186,10 +195,16 @@ const AdminDashboard = () => {
           </div>
           <div className="flex items-center gap-3">
             <div className="px-3 py-2 rounded-lg bg-white border text-sm text-gray-600">
-              Fees Paid: <span className="font-semibold text-gray-900">{feesPaidPercent}%</span>
+              Fees Paid:{" "}
+              <span className="font-semibold text-gray-900">
+                {feesPaidPercent}%
+              </span>
             </div>
             <div className="px-3 py-2 rounded-lg bg-white border text-sm text-gray-600">
-              Follow Ups: <span className="font-semibold text-gray-900">{followUps.length}</span>
+              Follow Ups:{" "}
+              <span className="font-semibold text-gray-900">
+                {followUps.length}
+              </span>
             </div>
           </div>
         </div>
@@ -226,15 +241,21 @@ const AdminDashboard = () => {
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-gray-500">Active</span>
-              <span className="text-gray-900 font-medium">{studentSummary.active}</span>
+              <span className="text-gray-900 font-medium">
+                {studentSummary.active}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Inactive</span>
-              <span className="text-gray-900 font-medium">{studentSummary.inactive}</span>
+              <span className="text-gray-900 font-medium">
+                {studentSummary.inactive}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Suspended</span>
-              <span className="text-gray-900 font-medium">{studentSummary.suspended}</span>
+              <span className="text-gray-900 font-medium">
+                {studentSummary.suspended}
+              </span>
             </div>
           </div>
         </div>
@@ -246,15 +267,21 @@ const AdminDashboard = () => {
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-gray-500">Published</span>
-              <span className="text-gray-900 font-medium">{courseSummary.published}</span>
+              <span className="text-gray-900 font-medium">
+                {courseSummary.published}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Draft</span>
-              <span className="text-gray-900 font-medium">{courseSummary.draft}</span>
+              <span className="text-gray-900 font-medium">
+                {courseSummary.draft}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Archived</span>
-              <span className="text-gray-900 font-medium">{courseSummary.archived}</span>
+              <span className="text-gray-900 font-medium">
+                {courseSummary.archived}
+              </span>
             </div>
           </div>
         </div>
@@ -266,19 +293,27 @@ const AdminDashboard = () => {
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-gray-500">Total</span>
-              <span className="text-gray-900 font-medium">{visitors.length}</span>
+              <span className="text-gray-900 font-medium">
+                {visitors.length}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Follow Up</span>
-              <span className="text-gray-900 font-medium">{followUps.length}</span>
+              <span className="text-gray-900 font-medium">
+                {followUps.length}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Not Interested</span>
-              <span className="text-gray-900 font-medium">{notInterested.length}</span>
+              <span className="text-gray-900 font-medium">
+                {notInterested.length}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Converted</span>
-              <span className="text-gray-900 font-medium">{converted.length}</span>
+              <span className="text-gray-900 font-medium">
+                {converted.length}
+              </span>
             </div>
           </div>
         </div>
@@ -288,7 +323,9 @@ const AdminDashboard = () => {
         <div className="bg-white rounded-xl border p-6">
           <div className="flex items-center gap-2 mb-4">
             <UserCheck className="text-green-600" size={18} />
-            <h2 className="text-lg font-medium text-gray-900">Recent Students</h2>
+            <h2 className="text-lg font-medium text-gray-900">
+              Recent Students
+            </h2>
           </div>
           {loading && <p className="text-sm text-gray-500">Loading...</p>}
           {!loading && recentStudents.length === 0 && (
@@ -299,12 +336,12 @@ const AdminDashboard = () => {
               <div key={s._id} className="flex justify-between">
                 <div>
                   <p className="text-gray-900 font-medium">{s.name}</p>
-                  <p className="text-gray-500">
-                    {s.course?.title || "—"}
-                  </p>
+                  <p className="text-gray-500">{s.course?.title || "—"}</p>
                 </div>
                 <span className="text-gray-400">
-                  {s.createdAt ? new Date(s.createdAt).toLocaleDateString() : "—"}
+                  {s.createdAt
+                    ? new Date(s.createdAt).toLocaleDateString()
+                    : "—"}
                 </span>
               </div>
             ))}
@@ -327,9 +364,7 @@ const AdminDashboard = () => {
                   <p className="text-gray-900 font-medium">
                     {f.student?.name || "—"}
                   </p>
-                  <p className="text-gray-500">
-                    Due ₹{f.remainingAmount}
-                  </p>
+                  <p className="text-gray-500">Due ₹{f.remainingAmount}</p>
                 </div>
                 <span className="text-gray-400">
                   {new Date(f.dueDate).toLocaleDateString()}
@@ -349,11 +384,15 @@ const AdminDashboard = () => {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
             <div className="p-4 rounded-lg border">
               <p className="text-gray-500">Total Fees</p>
-              <p className="text-lg font-semibold text-gray-900">₹{feesSummary.total}</p>
+              <p className="text-lg font-semibold text-gray-900">
+                ₹{feesSummary.total}
+              </p>
             </div>
             <div className="p-4 rounded-lg border">
               <p className="text-gray-500">Paid (Count)</p>
-              <p className="text-lg font-semibold text-gray-900">{feesSummary.paidCount}</p>
+              <p className="text-lg font-semibold text-gray-900">
+                {feesSummary.paidCount}
+              </p>
             </div>
             <div className="p-4 rounded-lg border">
               <p className="text-gray-500">Partial / Unpaid</p>
@@ -379,20 +418,28 @@ const AdminDashboard = () => {
         <div className="bg-white rounded-xl border p-6">
           <div className="flex items-center gap-2 mb-4">
             <Layers className="text-indigo-600" size={18} />
-            <h2 className="text-lg font-medium text-gray-900">Batches Overview</h2>
+            <h2 className="text-lg font-medium text-gray-900">
+              Batches Overview
+            </h2>
           </div>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-gray-500">Running</span>
-              <span className="text-gray-900 font-medium">{batchSummary.running}</span>
+              <span className="text-gray-900 font-medium">
+                {batchSummary.running}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Upcoming</span>
-              <span className="text-gray-900 font-medium">{batchSummary.upcoming}</span>
+              <span className="text-gray-900 font-medium">
+                {batchSummary.upcoming}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Completed</span>
-              <span className="text-gray-900 font-medium">{batchSummary.completed}</span>
+              <span className="text-gray-900 font-medium">
+                {batchSummary.completed}
+              </span>
             </div>
           </div>
         </div>
@@ -412,7 +459,9 @@ const AdminDashboard = () => {
             <div key={c._id} className="flex justify-between">
               <div>
                 <p className="text-gray-900 font-medium">{c.title}</p>
-                <p className="text-gray-500 capitalize">{c.level} • {c.category}</p>
+                <p className="text-gray-500 capitalize">
+                  {c.level} • {c.category}
+                </p>
               </div>
               <span className="text-gray-400">
                 {c.studentsEnrolled || 0} students
