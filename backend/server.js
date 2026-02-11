@@ -56,3 +56,7 @@ app.use("/batch-student-map", batchStudentMapRoutes);
 
 const feesRoutes = require("./src/routes/fees.route");
 app.use("/fees", feesRoutes);
+
+
+const timetableRoutes = require("./src/routes/timetable.routes");
+app.use("/timetable", timetableRoutes);

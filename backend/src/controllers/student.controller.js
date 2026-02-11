@@ -246,3 +246,60 @@ exports.getDeletedStudents = async (req, res) => {
         res.status(500).json({ message: "Internal server error" });
     }
 };
+exports.getMeStudent = async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const email = req.user.email;
+
+        if (!userId && !email) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
+
+        const student = await Student.findOne({
+            email: email,
+            isDeleted: false,
+        })
+            .populate("course", "title category level price")
+            .populate("batch", "name title");
+
+        if (!student) {
+            return res.status(404).json({ message: "Student profile not found" });
+        }
+
+        return res.status(200).json({ student });
+    } catch (error) {
+        console.error("Get me student error:", error);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+};
+exports.getMyStudentProfile = async (req, res) => {
+    try {
+        const student = await Student.findOne({ authUserId: req.user._id });
+
+        if (!student) {
+            return res.status(404).json({ message: "Student not found" });
+        }
+
+        res.json(student);
+    } catch (err) {
+        console.log("Get my student profile error:", err);
+        res.status(500).json({ message: "Server error" });
+    }
+};
+
+exports.getMyTimetable = async (req, res) => {
+    try {
+        const student = await Student.findOne({ authUserId: req.user._id });
+
+        if (!student) {
+            return res.status(404).json({ message: "Student not found" });
+        }
+
+        res.status(200).json({
+            timetable: student.timetable || [],
+        });
+    } catch (err) {
+        console.log("Get timetable error:", err);
+        res.status(500).json({ message: "Server error" });
+    }
+};

@@ -9,6 +9,7 @@ import {
   UserRound,
   Layers,
   IndianRupee,
+  CalendarCheck,
 } from "lucide-react";
 
 const AdminSidebar = () => {
@@ -52,6 +53,11 @@ const AdminSidebar = () => {
       name: "Fees",
       icon: IndianRupee,
       path: "/admin/fees",
+    },
+    {
+      name: "Time Table",
+      icon: CalendarCheck,
+      path: "/admin/timetable",
     },
     {
       name: "Visitors",
