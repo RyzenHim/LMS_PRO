@@ -9,5 +9,6 @@ export const courseService = {
   toggleStatus: (id) => axiosInstance.patch(`/courses/${id}/toggle-status`),
   softDelete: (id) => axiosInstance.delete(`/courses/${id}`),
   restore: (id) => axiosInstance.patch(`/courses/${id}/restore`),
+  getAllCourses: () => axiosInstance.get("/courses/all"),
 };
 

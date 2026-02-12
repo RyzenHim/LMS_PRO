@@ -255,3 +255,19 @@ exports.allBatchesWithCount = async (req, res) => {
         return res.status(500).json({ message: "Internal server error" });
     }
 };
+
+exports.getBatchesByCourse = async (req, res) => {
+    try {
+        const { courseId } = req.params;
+
+        const batches = await Batch.find({
+            course: courseId,
+            isDeleted: false,
+        }).sort({ createdAt: -1 });
+
+        res.status(200).json({ batches });
+    } catch (err) {
+        console.log("Get batches by course error:", err);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};

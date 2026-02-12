@@ -10,6 +10,7 @@ const {
     restoreBatch,
     toggleBatchStatus,
     allBatchesWithCount,
+    getBatchesByCourse,
 } = require("../controllers/batch.controller");
 
 router.get("/", getAllBatches);
@@ -23,5 +24,6 @@ router.put("/toggle-status/:id", toggleBatchStatus);
 router.get("/all", allBatchesWithCount);
 
 router.delete("/:id", softDeleteBatch);
+router.get("/by-course/:courseId", getBatchesByCourse);
 
 module.exports = router;

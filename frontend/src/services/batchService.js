@@ -14,4 +14,6 @@ export const batchService = {
   restore: (id) => axiosInstance.put(`/batch/restore/${id}`),
 
   toggleStatus: (id) => axiosInstance.put(`/batch/toggle-status/${id}`),
+
+  getAllBatches: () => axiosInstance.get("/batch/all"),
 };

@@ -60,3 +60,7 @@ app.use("/fees", feesRoutes);
 
 const timetableRoutes = require("./src/routes/timetable.routes");
 app.use("/timetable", timetableRoutes);
+
+
+const reportRoutes = require("./src/routes/reports.routes");
+app.use("/reports", reportRoutes);

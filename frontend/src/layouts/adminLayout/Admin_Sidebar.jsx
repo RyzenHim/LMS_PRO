@@ -10,6 +10,7 @@ import {
   Layers,
   IndianRupee,
   CalendarCheck,
+  FileText,
 } from "lucide-react";
 
 const AdminSidebar = () => {
@@ -63,6 +64,11 @@ const AdminSidebar = () => {
       name: "Visitors",
       icon: UserRound,
       path: "/admin/visitor",
+    },
+    {
+      name: "Report",
+      icon: FileText,
+      path: "/admin/reports",
     },
   ];
 

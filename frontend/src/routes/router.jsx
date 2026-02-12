@@ -35,6 +35,17 @@ import InstructorDashboard from "../pages/tutor/InstructorDashboard";
 import AdminTimetable from "../pages/admin/AdminTimetable";
 import StudentTimetable from "../pages/students/StudentTimetable";
 
+import AdminReports from "../pages/admin/report/AdminReports";
+import BatchReport from "../pages/admin/report/BatchReport";
+import FeeReport from "../pages/admin/report/FeeReport";
+import StudentReport from "../pages/admin/report/StudentReport";
+import TimetableReport from "../pages/admin/report/TimetableReport";
+import TutorReport from "../pages/admin/report/TutorReport";
+import VisitorReport from "../pages/admin/report/VisitorReport";
+import CourseReport from "../pages/admin/report/CourseReport";
+import EmployeeReport from "../pages/admin/report/EmployeeReport";
+import SkillReport from "../pages/admin/report/SkillReport";
+
 const router = createBrowserRouter([
   {
     path: "/",
@@ -73,6 +84,22 @@ const router = createBrowserRouter([
       { path: "batches", element: <AdminBatches /> },
       { path: "fees", element: <AdminFees /> },
       { path: "timetable", element: <AdminTimetable /> },
+
+      // REPORTS
+      { path: "reports", element: <AdminReports /> },
+
+      { path: "reports/students", element: <StudentReport /> },
+      { path: "reports/batch", element: <BatchReport /> },
+      { path: "reports/courses", element: <CourseReport /> },
+
+      { path: "reports/fees", element: <FeeReport /> },
+
+      { path: "reports/tutors", element: <TutorReport /> },
+      { path: "reports/employees", element: <EmployeeReport /> },
+      { path: "reports/skills", element: <SkillReport /> },
+
+      { path: "reports/timetable", element: <TimetableReport /> },
+      { path: "reports/visitors", element: <VisitorReport /> },
     ],
   },
 

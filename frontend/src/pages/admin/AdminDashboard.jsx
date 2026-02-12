@@ -216,7 +216,7 @@ const AdminDashboard = () => {
           return (
             <div
               key={index}
-              className="bg-white rounded-xl border p-6 flex items-center justify-between shadow-sm hover:shadow-md transition-shadow"
+              className="bg-white dark:bg-dark-card rounded-xl border p-6 flex items-center justify-between shadow-sm hover:shadow-md transition-shadow"
             >
               <div>
                 <p className="text-sm text-gray-500">{item.title}</p>

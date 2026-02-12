@@ -21,7 +21,6 @@ const AdminTopbar = () => {
     try {
       const token = localStorage.getItem("token");
 
-      // if token missing -> go to login
       if (!token) {
         const fallback = getSystemTheme();
         setTheme(fallback);
