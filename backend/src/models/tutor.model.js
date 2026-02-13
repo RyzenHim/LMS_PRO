@@ -2,71 +2,51 @@ const mongoose = require("mongoose");
 
 const tutorSchema = new mongoose.Schema(
     {
-        name: {
-            type: String,
-            required: true,
-            trim: true
-        },
-
-        email: {
-            type: String,
+        employee: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Employee",
             required: true,
             unique: true,
-            lowercase: true,
-            trim: true
-        },
-
-        phone: {
-            type: String,
-            trim: true
         },
 
         expertise: {
             type: String,
-            required: true
+            required: true,
+            trim: true,
         },
 
         experience: {
             type: Number,
-            default: 0
+            default: 0,
+            min: 0,
         },
 
         qualification: {
             type: String,
-            trim: true
+            trim: true,
         },
 
         bio: {
             type: String,
-            trim: true
-        },
-
-        joiningDate: {
-            type: Date,
-            default: Date.now
-        },
-
-        salary: {
-            type: Number,
-            default: 0
+            trim: true,
         },
 
         isActive: {
             type: Boolean,
-            default: true
+            default: true,
         },
 
         isDeleted: {
             type: Boolean,
-            default: false
+            default: false,
         },
 
         deletedAt: {
-            type: Date
-        }
+            type: Date,
+            default: null,
+        },
     },
     { timestamps: true }
 );
 
 module.exports = mongoose.model("Tutor", tutorSchema);
-

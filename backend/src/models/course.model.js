@@ -4,7 +4,8 @@ const courseSchema = new mongoose.Schema({
     title: {
         type: String,
         required: true,
-        trim: true
+        trim: true,
+        unique: true,
     },
 
     description: {
@@ -18,20 +19,17 @@ const courseSchema = new mongoose.Schema({
         trim: true
     },
 
-    tutor: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Tutor"
-    },
 
     skills: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: "Skill"
     }],
 
-    tutorName: {
-        type: String,
-        trim: true
-    },
+    tutor: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Tutor",
+        default: null
+    }],
 
     price: {
         type: Number,

@@ -23,7 +23,7 @@ const feesSchema = new mongoose.Schema(
         coursePrice: {
             type: Number,
             required: true,
-            default: 0,
+            // default: 0,
         },
 
         paymentType: {
@@ -56,6 +56,12 @@ const feesSchema = new mongoose.Schema(
 
         dueDate: {
             type: Date,
+            default: null,
+        },
+
+        collectedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
             default: null,
         },
 
