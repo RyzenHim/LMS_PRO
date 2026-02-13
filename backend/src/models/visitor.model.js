@@ -19,7 +19,8 @@ const visitorSchema = new mongoose.Schema(
             trim: true,
         },
         course: {
-            type: String,
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Course",
             required: true,
         },
         source: {

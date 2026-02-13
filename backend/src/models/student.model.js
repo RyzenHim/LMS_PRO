@@ -9,26 +9,14 @@ const fileSchema = new mongoose.Schema(
     },
     { _id: false }
 );
-
 const studentSchema = new mongoose.Schema(
     {
-        name: {
-            type: String,
-            required: true,
-            trim: true,
-        },
-
-        email: {
-            type: String,
-            required: true,
+        visitor: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Visitor",
+            default: null,
             unique: true,
-            lowercase: true,
-            trim: true,
-        },
-
-        phone: {
-            type: String,
-            trim: true,
+            sparse: true,
         },
 
         adhaar: {
@@ -36,12 +24,6 @@ const studentSchema = new mongoose.Schema(
             trim: true,
             unique: true,
             sparse: true,
-        },
-
-        course: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "Course",
-            required: true,
         },
 
         batch: {
@@ -61,29 +43,16 @@ const studentSchema = new mongoose.Schema(
             default: "active",
         },
 
-        address: {
-            type: String,
-            trim: true,
-        },
-
-        dateOfBirth: {
-            type: Date,
-        },
+        address: { type: String, trim: true },
+        dateOfBirth: { type: Date },
 
         gender: {
             type: String,
             enum: ["male", "female", "other"],
         },
 
-        guardianName: {
-            type: String,
-            trim: true,
-        },
-
-        guardianPhone: {
-            type: String,
-            trim: true,
-        },
+        guardianName: { type: String, trim: true },
+        guardianPhone: { type: String, trim: true },
 
         profileImage: {
             url: { type: String, trim: true },
@@ -95,36 +64,16 @@ const studentSchema = new mongoose.Schema(
                 type: String,
                 enum: ["aadhaar", "pan", "driving-license", "passport", "other"],
             },
-            number: {
-                type: String,
-                trim: true,
-            },
-            frontImage: {
-                url: { type: String, trim: true },
-                publicId: { type: String, trim: true },
-            },
-            backImage: {
-                url: { type: String, trim: true },
-                publicId: { type: String, trim: true },
-            },
+            number: { type: String, trim: true },
+            frontImage: { url: String, publicId: String },
+            backImage: { url: String, publicId: String },
         },
 
         documents: [fileSchema],
 
-        isActive: {
-            type: Boolean,
-            default: true,
-        },
-
-        isDeleted: {
-            type: Boolean,
-            default: false,
-        },
-
-        deletedAt: {
-            type: Date,
-            default: null,
-        },
+        isActive: { type: Boolean, default: true },
+        isDeleted: { type: Boolean, default: false },
+        deletedAt: { type: Date, default: null },
     },
     { timestamps: true }
 );
