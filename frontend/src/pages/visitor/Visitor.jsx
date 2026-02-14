@@ -19,19 +19,24 @@ import ConvertVisitorModal from "./modal/ConvertVisitorModal";
 import NotInterestedModal from "./modal/NotInterestedModal";
 import ConfirmDeleteModal from "../admin/modal/ConfirmDeleteModal";
 
-import axiosInstance from "../../api/axios";
 import Pagination from "../../components/Pagination";
+import axiosInstance from "../../api/axios";
+
+import {
+  getVisitorsApi,
+  getNotInterestedVisitorsApi,
+  getFollowUpVisitorsApi,
+  getConvertedVisitorsApi,
+  getTrashVisitorsApi,
+  deleteVisitorApi,
+  restoreVisitorApi,
+} from "../../services/visitorService";
 
 const Visitors = () => {
   const [visitors, setVisitors] = useState([]);
-  const [notInterestedVisitors, setNotInterestedVisitors] = useState([]);
-  const [followUpVisitors, setFollowUpVisitors] = useState([]);
-  const [convertedVisitors, setConvertedVisitors] = useState([]);
-  const [deletedVisitors, setDeletedVisitors] = useState([]);
 
-  const [loading, setLoading] = useState(true); // full page loader
-  const [tableLoading, setTableLoading] = useState(false); // smooth loader overlay
-
+  const [loading, setLoading] = useState(true);
+  const [tableLoading, setTableLoading] = useState(false);
   const [error, setError] = useState("");
 
   const [activeTab, setActiveTab] = useState("active");
@@ -48,13 +53,13 @@ const Visitors = () => {
   // dropdown data
   const [courses, setCourses] = useState([]);
 
-  // filters (real)
+  // filters
   const [filterStatus, setFilterStatus] = useState("");
   const [filterSource, setFilterSource] = useState("");
-  const [filterCourse, setFilterCourse] = useState("");
+  const [filterCourse, setFilterCourse] = useState(""); // MUST be courseId
 
   // created filter
-  const [createdFilter, setCreatedFilter] = useState(""); // today | yesterday | last7days | last30days | thisMonth | custom
+  const [createdFilter, setCreatedFilter] = useState("");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
 
@@ -76,14 +81,14 @@ const Visitors = () => {
   const [notInterestedVisitor, setNotInterestedVisitor] = useState(null);
 
   // =========================
-  // FETCH COURSES (DROPDOWN)
+  // FETCH COURSES
   // =========================
   useEffect(() => {
     const fetchCourses = async () => {
       try {
-        // change this endpoint if your course route is different
-        const res = await axiosInstance.get("/course/all");
-        setCourses(res.data || []);
+        const res = await axiosInstance.get("/courses/all");
+        const list = res.data?.courses || res.data || [];
+        setCourses(Array.isArray(list) ? list : []);
       } catch (err) {
         console.error("Failed to fetch courses", err);
       }
@@ -102,10 +107,7 @@ const Visitors = () => {
       setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
     } else {
       setSortBy(field);
-
-      // default order rules
-      if (field === "createdAt") setSortOrder("desc");
-      else setSortOrder("asc");
+      setSortOrder(field === "createdAt" ? "desc" : "asc");
     }
 
     setPage(1);
@@ -133,7 +135,6 @@ const Visitors = () => {
             ? "font-semibold text-[#112D4E] dark:text-white"
             : "text-[#112D4E] dark:text-[#DBE2EF]"
         }`}
-        title={`Sort by ${label}`}
       >
         <span>{label}</span>
         <span className="text-xs opacity-80">{arrow}</span>
@@ -142,7 +143,7 @@ const Visitors = () => {
   };
 
   // =========================
-  // FILTER PARAMS BUILDER
+  // PARAMS BUILDER
   // =========================
   const buildParams = () => {
     const params = {
@@ -170,9 +171,9 @@ const Visitors = () => {
   };
 
   // =========================
-  // FETCH VISITORS
+  // FETCH VISITORS BY TAB
   // =========================
-  const fetchActiveTab = async ({ initial = false } = {}) => {
+  const fetchVisitors = async ({ initial = false } = {}) => {
     if (initial) setLoading(true);
     else setTableLoading(true);
 
@@ -180,31 +181,23 @@ const Visitors = () => {
 
     try {
       const params = buildParams();
-      let res;
 
-      if (activeTab === "active") {
-        res = await axiosInstance.get("/visitor/allvisitor", { params });
-        setVisitors(res.data.visitors || []);
-      } else if (activeTab === "not-interested") {
-        res = await axiosInstance.get("/visitor/not-interested/list", {
-          params,
-        });
-        setNotInterestedVisitors(res.data.visitors || []);
-      } else if (activeTab === "follow-up") {
-        res = await axiosInstance.get("/visitor/follow-up/list", { params });
-        setFollowUpVisitors(res.data.visitors || []);
-      } else if (activeTab === "converted") {
-        res = await axiosInstance.get("/visitor/converted/list", { params });
-        setConvertedVisitors(res.data.visitors || []);
-      } else if (activeTab === "trash") {
-        res = await axiosInstance.get("/visitor/trash/list", { params });
-        setDeletedVisitors(res.data.visitors || []);
-      }
+      const tabApiMap = {
+        active: getVisitorsApi,
+        "not-interested": getNotInterestedVisitorsApi,
+        "follow-up": getFollowUpVisitorsApi,
+        converted: getConvertedVisitorsApi,
+        trash: getTrashVisitorsApi,
+      };
 
-      setTotalPages(res?.data?.totalPages || 1);
+      const apiFn = tabApiMap[activeTab];
+      const data = await apiFn(params);
+
+      setVisitors(data?.visitors || []);
+      setTotalPages(data?.totalPages || 1);
     } catch (err) {
-      setError("Failed to load visitors");
-      console.error("Error fetching visitors:", err);
+      setError(err?.message || "Failed to load visitors");
+      console.error("Fetch visitors error:", err);
     } finally {
       if (initial) setLoading(false);
       setTableLoading(false);
@@ -213,14 +206,14 @@ const Visitors = () => {
 
   // initial load
   useEffect(() => {
-    fetchActiveTab({ initial: true });
+    fetchVisitors({ initial: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // re-fetch on change
+  // refetch
   useEffect(() => {
     if (loading) return;
-    fetchActiveTab({ initial: false });
+    fetchVisitors({ initial: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     activeTab,
@@ -237,40 +230,6 @@ const Visitors = () => {
   ]);
 
   // =========================
-  // CURRENT TAB DATA
-  // =========================
-  const filteredVisitors =
-    activeTab === "active"
-      ? visitors
-      : activeTab === "not-interested"
-        ? notInterestedVisitors
-        : activeTab === "follow-up"
-          ? followUpVisitors
-          : activeTab === "converted"
-            ? convertedVisitors
-            : deletedVisitors;
-
-  // =========================
-  // COUNTS
-  // =========================
-  const getTabCount = (tab) => {
-    switch (tab) {
-      case "active":
-        return visitors.length;
-      case "not-interested":
-        return notInterestedVisitors.length;
-      case "follow-up":
-        return followUpVisitors.length;
-      case "converted":
-        return convertedVisitors.length;
-      case "trash":
-        return deletedVisitors.length;
-      default:
-        return 0;
-    }
-  };
-
-  // =========================
   // FILTER CHIPS
   // =========================
   const activeFilterChips = useMemo(() => {
@@ -280,8 +239,12 @@ const Visitors = () => {
       chips.push({ key: "status", label: `Status: ${filterStatus}` });
     if (filterSource)
       chips.push({ key: "source", label: `Source: ${filterSource}` });
-    if (filterCourse)
-      chips.push({ key: "course", label: `Course: ${filterCourse}` });
+
+    if (filterCourse) {
+      const courseName =
+        courses.find((c) => c._id === filterCourse)?.title || filterCourse;
+      chips.push({ key: "course", label: `Course: ${courseName}` });
+    }
 
     if (createdFilter) {
       if (createdFilter === "custom") {
@@ -290,10 +253,7 @@ const Visitors = () => {
           label: `Created: ${customFrom || "?"} → ${customTo || "?"}`,
         });
       } else {
-        chips.push({
-          key: "created",
-          label: `Created: ${createdFilter}`,
-        });
+        chips.push({ key: "created", label: `Created: ${createdFilter}` });
       }
     }
 
@@ -305,6 +265,7 @@ const Visitors = () => {
     createdFilter,
     customFrom,
     customTo,
+    courses,
   ]);
 
   const clearSingleFilter = (key) => {
@@ -340,13 +301,13 @@ const Visitors = () => {
   const handleDelete = async () => {
     try {
       setTableLoading(true);
-      await axiosInstance.delete(`/visitor/${deleteVisitor._id}`);
-      await fetchActiveTab({ initial: false });
+      await deleteVisitorApi(deleteVisitor._id);
+      await fetchVisitors({ initial: false });
 
       setOpenDeleteModal(false);
       setDeleteVisitor(null);
-    } catch {
-      alert("Failed to delete visitor");
+    } catch (err) {
+      alert(err?.message || "Failed to delete visitor");
       setTableLoading(false);
     }
   };
@@ -354,10 +315,10 @@ const Visitors = () => {
   const handleRestore = async (id) => {
     try {
       setTableLoading(true);
-      await axiosInstance.patch(`/visitor/${id}/restore`);
-      await fetchActiveTab({ initial: false });
-    } catch {
-      alert("Failed to recover visitor");
+      await restoreVisitorApi(id);
+      await fetchVisitors({ initial: false });
+    } catch (err) {
+      alert(err?.message || "Failed to recover visitor");
       setTableLoading(false);
     }
   };
@@ -373,7 +334,7 @@ const Visitors = () => {
   };
 
   const handleConvertSuccess = async () => {
-    await fetchActiveTab({ initial: false });
+    await fetchVisitors({ initial: false });
     setOpenConvertModal(false);
     setConvertVisitor(null);
   };
@@ -384,7 +345,7 @@ const Visitors = () => {
   };
 
   const handleNotInterestedSuccess = async () => {
-    await fetchActiveTab({ initial: false });
+    await fetchVisitors({ initial: false });
     setOpenNotInterestedModal(false);
     setNotInterestedVisitor(null);
   };
@@ -402,7 +363,7 @@ const Visitors = () => {
 
   return (
     <div className="p-6 space-y-6">
-      {/* ---------- HEADER ---------- */}
+      {/* HEADER */}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
@@ -416,7 +377,7 @@ const Visitors = () => {
         {activeTab === "active" && (
           <button
             onClick={() => setOpenModal(true)}
-            className="flex items-center gap-2 bg-[#3F72AF] text-white px-4 py-2 rounded-lg hover:bg-[#112D4E] dark:bg-[#3F72AF] dark:hover:bg-[#DBE2EF] dark:hover:text-[#112D4E] transition-colors shadow-md"
+            className="flex items-center gap-2 bg-[#3F72AF] text-white px-4 py-2 rounded-lg hover:bg-[#112D4E] transition-colors shadow-md"
           >
             <Plus size={18} />
             Add Visitor
@@ -424,7 +385,7 @@ const Visitors = () => {
         )}
       </div>
 
-      {/* ---------- TABS ---------- */}
+      {/* TABS */}
       <div className="flex gap-4 border-b border-[#DBE2EF] dark:border-[#3F72AF] overflow-x-auto">
         {[
           { key: "active", label: "Active" },
@@ -456,17 +417,17 @@ const Visitors = () => {
               tableLoading ? "opacity-60 cursor-not-allowed" : ""
             } ${
               activeTab === t.key
-                ? "border-b-2 border-[#3F72AF] font-medium text-[#3F72AF] dark:text-[#DBE2EF] dark:border-[#DBE2EF]"
-                : "text-[#3F72AF] dark:text-[#DBE2EF]"
+                ? "border-b-2 border-[#3F72AF] font-medium text-[#3F72AF]"
+                : "text-[#3F72AF]"
             }`}
           >
             {t.icon}
-            {t.label} ({getTabCount(t.key)})
+            {t.label}
           </button>
         ))}
       </div>
 
-      {/* ---------- SEARCH ---------- */}
+      {/* SEARCH */}
       <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-4 shadow-sm">
         <div className="flex items-center gap-3">
           <Search className="text-[#3F72AF] dark:text-[#DBE2EF]" size={18} />
@@ -483,7 +444,7 @@ const Visitors = () => {
         </div>
       </div>
 
-      {/* ---------- FILTERS (DROPDOWNS) ---------- */}
+      {/* FILTERS */}
       <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-4 flex flex-wrap items-center gap-3 shadow-sm">
         {/* STATUS */}
         <select
@@ -502,7 +463,7 @@ const Visitors = () => {
           <option value="converted">Converted</option>
         </select>
 
-        {/* SOURCE */}
+        {/* SOURCE (KEEP SAME AS BACKEND ENUM) */}
         <select
           value={filterSource}
           onChange={(e) => {
@@ -512,12 +473,10 @@ const Visitors = () => {
           className="text-sm border rounded-lg px-3 py-2 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
         >
           <option value="">Source (All)</option>
-          <option value="walkin">Walkin</option>
-          <option value="instagram">Instagram</option>
-          <option value="facebook">Facebook</option>
-          <option value="linkedin">LinkedIn</option>
+          <option value="call">Call</option>
+          <option value="walk-in">Walk-in</option>
+          <option value="email">Email</option>
           <option value="referral">Referral</option>
-          <option value="website">Website</option>
           <option value="other">Other</option>
         </select>
 
@@ -532,7 +491,7 @@ const Visitors = () => {
         >
           <option value="">Course (All)</option>
           {courses.map((c) => (
-            <option key={c._id} value={c.title}>
+            <option key={c._id} value={c._id}>
               {c.title}
             </option>
           ))}
@@ -558,7 +517,6 @@ const Visitors = () => {
           <option value="custom">Custom Range</option>
         </select>
 
-        {/* CUSTOM RANGE */}
         {createdFilter === "custom" && (
           <>
             <input
@@ -582,7 +540,6 @@ const Visitors = () => {
           </>
         )}
 
-        {/* CLEAR ALL */}
         <button
           disabled={tableLoading}
           onClick={clearAllFilters}
@@ -600,7 +557,6 @@ const Visitors = () => {
               key={chip.key}
               onClick={() => clearSingleFilter(chip.key)}
               className="px-3 py-1 text-xs rounded-lg bg-[#DBE2EF] dark:bg-[#0a1f3a] text-[#112D4E] dark:text-[#DBE2EF]"
-              title="Remove filter"
             >
               {chip.label} ✕
             </button>
@@ -610,18 +566,17 @@ const Visitors = () => {
 
       {error && <p className="text-red-600 dark:text-red-400">{error}</p>}
 
-      {/* ---------- TABLE ---------- */}
+      {/* TABLE */}
       <div className="relative">
-        {/* Overlay Loader */}
         {tableLoading && (
           <div className="absolute inset-0 bg-white/60 dark:bg-black/40 flex items-center justify-center z-10 rounded-lg">
-            <div className="px-4 py-2 rounded-lg bg-white dark:bg-[#112D4E] border border-[#DBE2EF] dark:border-[#3F72AF] text-sm text-[#112D4E] dark:text-[#DBE2EF] shadow-lg">
+            <div className="px-4 py-2 rounded-lg bg-white dark:bg-[#112D4E] border border-[#DBE2EF] dark:border-[#3F72AF] text-sm shadow-lg">
               Loading...
             </div>
           </div>
         )}
 
-        {filteredVisitors.length === 0 ? (
+        {visitors.length === 0 ? (
           <div className="border border-[#DBE2EF] dark:border-[#3F72AF] rounded-lg p-10 text-center text-[#3F72AF] dark:text-[#DBE2EF]">
             No visitors found.
           </div>
@@ -630,110 +585,66 @@ const Visitors = () => {
             <table className="w-full text-sm">
               <thead className="bg-[#DBE2EF] dark:bg-[#3F72AF]">
                 <tr>
-                  <th className="border border-[#DBE2EF] dark:border-[#3F72AF] p-3 text-left">
+                  <th className="border p-3 text-left">
                     <SortableHeader label="Name" field="name" />
                   </th>
-
-                  <th className="border border-[#DBE2EF] dark:border-[#3F72AF] p-3 text-left">
+                  <th className="border p-3 text-left">
                     <SortableHeader label="Email" field="email" />
                   </th>
-
-                  <th className="border border-[#DBE2EF] dark:border-[#3F72AF] p-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
-                    Phone
-                  </th>
-
-                  <th className="border border-[#DBE2EF] dark:border-[#3F72AF] p-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
-                    Course
-                  </th>
-
-                  <th className="border border-[#DBE2EF] dark:border-[#3F72AF] p-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
-                    Source
-                  </th>
-
-                  <th className="border border-[#DBE2EF] dark:border-[#3F72AF] p-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
-                    Status
-                  </th>
+                  <th className="border p-3 text-left">Phone</th>
+                  <th className="border p-3 text-left">Course</th>
+                  <th className="border p-3 text-left">Source</th>
+                  <th className="border p-3 text-left">Status</th>
 
                   {activeTab === "not-interested" && (
-                    <th className="border border-[#DBE2EF] dark:border-[#3F72AF] p-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
-                      Reason
-                    </th>
+                    <th className="border p-3 text-left">Reason</th>
                   )}
 
                   {activeTab === "follow-up" && (
-                    <th className="border border-[#DBE2EF] dark:border-[#3F72AF] p-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
-                      Follow-up Date
-                    </th>
+                    <th className="border p-3 text-left">Follow-up Date</th>
                   )}
 
                   {activeTab === "converted" && (
-                    <th className="border border-[#DBE2EF] dark:border-[#3F72AF] p-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
-                      Converted To
-                    </th>
+                    <th className="border p-3 text-left">Converted To</th>
                   )}
 
-                  <th className="border border-[#DBE2EF] dark:border-[#3F72AF] p-3 text-left">
+                  <th className="border p-3 text-left">
                     <SortableHeader label="Created" field="createdAt" />
                   </th>
 
-                  <th className="border border-[#DBE2EF] dark:border-[#3F72AF] p-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
-                    Actions
-                  </th>
+                  <th className="border p-3 text-left">Actions</th>
                 </tr>
               </thead>
 
               <tbody>
-                {filteredVisitors.map((v) => (
+                {visitors.map((v) => (
                   <tr
                     key={v._id}
-                    className="hover:bg-[#DBE2EF] dark:hover:bg-[#0a1f3a] transition-colors"
+                    className="hover:bg-[#DBE2EF] dark:hover:bg-[#0a1f3a]"
                   >
-                    <td className="border border-[#DBE2EF] dark:border-[#3F72AF] p-3 text-[#112D4E] dark:text-[#DBE2EF] font-medium">
-                      {v.name}
-                    </td>
+                    <td className="border p-3 font-medium">{v.name}</td>
+                    <td className="border p-3">{v.email || "—"}</td>
+                    <td className="border p-3">{v.phone || "—"}</td>
 
-                    <td className="border border-[#DBE2EF] dark:border-[#3F72AF] p-3 text-[#3F72AF] dark:text-[#DBE2EF]">
-                      {v.email || "—"}
-                    </td>
+                    {/* IMPORTANT: course is populated */}
+                    <td className="border p-3">{v.course?.title || "—"}</td>
 
-                    <td className="border border-[#DBE2EF] dark:border-[#3F72AF] p-3 text-[#3F72AF] dark:text-[#DBE2EF]">
-                      {v.phone || "—"}
-                    </td>
+                    <td className="border p-3 capitalize">{v.source || "—"}</td>
 
-                    <td className="border border-[#DBE2EF] dark:border-[#3F72AF] p-3 text-[#3F72AF] dark:text-[#DBE2EF]">
-                      {v.course || "—"}
-                    </td>
-
-                    <td className="border border-[#DBE2EF] dark:border-[#3F72AF] p-3 capitalize text-[#3F72AF] dark:text-[#DBE2EF]">
-                      {v.source || "—"}
-                    </td>
-
-                    <td className="border border-[#DBE2EF] dark:border-[#3F72AF] p-3">
-                      <span
-                        className={`px-2 py-1 text-xs rounded-md capitalize ${
-                          v.status === "converted"
-                            ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
-                            : v.status === "contacted"
-                              ? "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300"
-                              : v.status === "not-interested"
-                                ? "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"
-                                : v.status === "follow-up"
-                                  ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300"
-                                  : "bg-gray-100 text-gray-700 dark:bg-gray-600 dark:text-gray-300"
-                        }`}
-                      >
+                    <td className="border p-3">
+                      <span className="px-2 py-1 text-xs rounded-md bg-gray-100 text-gray-700 capitalize">
                         {v.status || "new"}
                       </span>
                     </td>
 
                     {activeTab === "not-interested" && (
-                      <td className="border border-[#DBE2EF] dark:border-[#3F72AF] p-3 text-[#3F72AF] dark:text-[#DBE2EF] text-xs">
+                      <td className="border p-3 text-xs">
                         {v.notInterestedReason || "—"}
                       </td>
                     )}
 
                     {activeTab === "follow-up" && (
-                      <td className="border border-[#DBE2EF] dark:border-[#3F72AF] p-3 text-[#3F72AF] dark:text-[#DBE2EF]">
+                      <td className="border p-3">
                         {v.followUpDate
                           ? new Date(v.followUpDate).toLocaleDateString()
                           : "—"}
@@ -741,68 +652,18 @@ const Visitors = () => {
                     )}
 
                     {activeTab === "converted" && (
-                      <td className="border border-[#DBE2EF] dark:border-[#3F72AF] p-3">
-                        <span className="px-2 py-1 text-xs rounded-md bg-[#DBE2EF] dark:bg-[#3F72AF] text-[#112D4E] dark:text-[#DBE2EF] capitalize">
-                          {v.conversionType || "—"}
-                        </span>
-                      </td>
+                      <td className="border p-3">{v.conversionType || "—"}</td>
                     )}
 
-                    <td className="border border-[#DBE2EF] dark:border-[#3F72AF] p-3 text-[#3F72AF] dark:text-[#DBE2EF]">
+                    <td className="border p-3">
                       {new Date(v.createdAt).toLocaleDateString()}
                     </td>
 
-                    <td className="border border-[#DBE2EF] dark:border-[#3F72AF] p-3 space-x-2">
-                      {activeTab === "active" ? (
-                        <>
-                          <button
-                            onClick={() => handleView(v)}
-                            className="text-[#3F72AF] hover:text-[#112D4E] dark:text-[#DBE2EF] dark:hover:text-white text-sm transition-colors"
-                            title="View"
-                          >
-                            <Eye size={16} className="inline" />
-                          </button>
-
-                          <button
-                            onClick={() => {
-                              setEditVisitor(v);
-                              setOpenEditModal(true);
-                            }}
-                            className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-sm transition-colors"
-                            title="Edit"
-                          >
-                            <Edit size={16} className="inline" />
-                          </button>
-
-                          <button
-                            onClick={() => handleConvertClick(v)}
-                            className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 text-sm transition-colors"
-                            title="Convert"
-                          >
-                            <UserPlus size={16} className="inline" />
-                          </button>
-
-                          <button
-                            onClick={() => handleNotInterestedClick(v)}
-                            className="text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300 text-sm transition-colors"
-                            title="Not Interested"
-                          >
-                            <XCircle size={16} className="inline" />
-                          </button>
-
-                          <button
-                            onClick={() => handleDeleteClick(v)}
-                            className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-sm transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 size={16} className="inline" />
-                          </button>
-                        </>
-                      ) : activeTab === "trash" ? (
+                    <td className="border p-3 space-x-2">
+                      {activeTab === "trash" ? (
                         <button
                           onClick={() => handleRestore(v._id)}
-                          className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 text-sm flex items-center gap-1 transition-colors"
-                          title="Restore"
+                          className="text-green-600 hover:text-green-700 text-sm flex items-center gap-1"
                         >
                           <RotateCcw size={16} />
                           Restore
@@ -811,7 +672,7 @@ const Visitors = () => {
                         <>
                           <button
                             onClick={() => handleView(v)}
-                            className="text-[#3F72AF] hover:text-[#112D4E] dark:text-[#DBE2EF] dark:hover:text-white text-sm transition-colors"
+                            className="text-[#3F72AF] hover:text-[#112D4E]"
                             title="View"
                           >
                             <Eye size={16} className="inline" />
@@ -822,20 +683,38 @@ const Visitors = () => {
                               setEditVisitor(v);
                               setOpenEditModal(true);
                             }}
-                            className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-sm transition-colors"
+                            className="text-blue-600 hover:text-blue-700"
                             title="Edit"
                           >
                             <Edit size={16} className="inline" />
                           </button>
 
-                          {activeTab === "not-interested" && (
-                            <button
-                              onClick={() => handleConvertClick(v)}
-                              className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 text-sm transition-colors"
-                              title="Convert"
-                            >
-                              <UserPlus size={16} className="inline" />
-                            </button>
+                          {activeTab === "active" && (
+                            <>
+                              <button
+                                onClick={() => handleConvertClick(v)}
+                                className="text-green-600 hover:text-green-700"
+                                title="Convert"
+                              >
+                                <UserPlus size={16} className="inline" />
+                              </button>
+
+                              <button
+                                onClick={() => handleNotInterestedClick(v)}
+                                className="text-orange-600 hover:text-orange-700"
+                                title="Not Interested"
+                              >
+                                <XCircle size={16} className="inline" />
+                              </button>
+
+                              <button
+                                onClick={() => handleDeleteClick(v)}
+                                className="text-red-600 hover:text-red-700"
+                                title="Delete"
+                              >
+                                <Trash2 size={16} className="inline" />
+                              </button>
+                            </>
                           )}
                         </>
                       )}
@@ -848,7 +727,7 @@ const Visitors = () => {
         )}
       </div>
 
-      {/* ---------- PAGINATION ---------- */}
+      {/* PAGINATION */}
       <div className={tableLoading ? "opacity-60 pointer-events-none" : ""}>
         <Pagination
           page={page}
@@ -857,12 +736,12 @@ const Visitors = () => {
         />
       </div>
 
-      {/* ---------- MODALS ---------- */}
+      {/* MODALS */}
       <AddVisitorModal
         open={openModal}
         onClose={() => setOpenModal(false)}
         onSuccess={() => {
-          fetchActiveTab({ initial: false });
+          fetchVisitors({ initial: false });
           setOpenModal(false);
         }}
       />
@@ -875,7 +754,7 @@ const Visitors = () => {
           setEditVisitor(null);
         }}
         onSuccess={() => {
-          fetchActiveTab({ initial: false });
+          fetchVisitors({ initial: false });
           setOpenEditModal(false);
           setEditVisitor(null);
         }}

@@ -24,8 +24,8 @@ const RoleRoute = ({ allowedRoles = [], children }) => {
   if (!allowedRoles.includes(user.role)) {
     if (user.role === "admin") return <Navigate to="/admin" replace />;
     if (user.role === "hr") return <Navigate to="/hr" replace />;
-    if (user.role === "instructor")
-      return <Navigate to="/instructor" replace />;
+    if (user.role === "tutor") return <Navigate to="/instructor" replace />;
+
     if (user.role === "student") return <Navigate to="/student" replace />;
 
     return <Navigate to="/" replace />;

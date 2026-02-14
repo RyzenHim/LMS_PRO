@@ -1,36 +1,165 @@
+const mongoose = require("mongoose");
 const Employee = require("../models/employee.model");
+const User = require("../models/authUsers.model");
 
+const nodemailer = require("nodemailer");
+
+// ==============================
+// HELPERS
+// ==============================
 const parseListParams = (req) => {
     const page = Math.max(parseInt(req.query.page || "1", 10), 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit || "10", 10), 1), 100);
     const skip = (page - 1) * limit;
-    const sortBy = req.query.sortBy || "createdAt";
+
+    const sortBy = (req.query.sortBy || "createdAt").trim();
     const sortOrder = req.query.sortOrder === "asc" ? 1 : -1;
+
     const search = (req.query.search || "").trim();
+
     return { page, limit, skip, sortBy, sortOrder, search };
 };
+
+const getSafeSort = (sortBy, sortOrder) => {
+    const allowedSortFields = [
+        "createdAt",
+        "name",
+        "email",
+        "phone",
+        "department",
+        "designation",
+        "salary",
+        "joiningDate",
+        "isActive",
+    ];
+
+    const safeField = allowedSortFields.includes(sortBy) ? sortBy : "createdAt";
+    return { [safeField]: sortOrder };
+};
+
+const buildSearchQuery = (search) => {
+    if (!search) return {};
+
+    return {
+        $or: [
+            { name: { $regex: search, $options: "i" } },
+            { email: { $regex: search, $options: "i" } },
+            { phone: { $regex: search, $options: "i" } },
+            { department: { $regex: search, $options: "i" } },
+            { designation: { $regex: search, $options: "i" } },
+        ],
+    };
+};
+
+/**
+ * ✅ NEW (IMPORTANT)
+ * This matches your frontend filters:
+ * filters = { department, designation, email, isActive }
+ */
+const buildFilterQuery = (req) => {
+    const filter = {};
+
+    if (req.query.department) {
+        filter.department = { $regex: req.query.department, $options: "i" };
+    }
+
+    if (req.query.designation) {
+        filter.designation = { $regex: req.query.designation, $options: "i" };
+    }
+
+    if (req.query.email) {
+        filter.email = { $regex: req.query.email, $options: "i" };
+    }
+
+    // frontend will send: "true" or "false"
+    if (req.query.isActive !== undefined) {
+        if (req.query.isActive === "true") filter.isActive = true;
+        if (req.query.isActive === "false") filter.isActive = false;
+    }
+
+    return filter;
+};
+
+const generatePassword = (length = 10) => {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789@#";
+    let pass = "";
+    for (let i = 0; i < length; i++) {
+        pass += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return pass;
+};
+
+// ==============================
+// NODEMAILER
+// ==============================
+const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+        user: process.env.EMAILID,
+        pass: process.env.PASSKEY,
+    },
+});
+
+const sendEmployeeLoginMail = async ({ toEmail, name, password, role }) => {
+    if (!toEmail) return;
+
+    const mailOptions = {
+        from: process.env.EMAILID,
+        to: toEmail,
+        subject: "Your LMS Employee Account Created - Login Details",
+        html: `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+        <h2>Welcome to LMS</h2>
+        <p>Hello <b>${name || "Employee"}</b>,</p>
+
+        <p>Your employee login has been created successfully.</p>
+
+        <h3>Login Details</h3>
+        <p><b>Email:</b> ${toEmail}</p>
+        <p><b>Password:</b> ${password}</p>
+        <p><b>Role:</b> ${role}</p>
+
+        <p style="margin-top:15px;">
+          Please login and change your password after first login.
+        </p>
+      </div>
+    `,
+    };
+
+    await transporter.sendMail(mailOptions);
+};
+
+const detectRoleFromDesignation = (designation = "") => {
+    const d = String(designation).toLowerCase();
+    if (d.includes("hr")) return "hr";
+    return "admin";
+};
+
+// ==============================
+// CONTROLLERS
+// ==============================
 
 exports.allEmployee = async (req, res) => {
     try {
         const { page, limit, skip, sortBy, sortOrder, search } = parseListParams(req);
-        const searchQuery = search
-            ? {
-                $or: [
-                    { name: { $regex: search, $options: "i" } },
-                    { email: { $regex: search, $options: "i" } },
-                    { department: { $regex: search, $options: "i" } },
-                    { designation: { $regex: search, $options: "i" } },
-                ],
-            }
-            : {};
-        const filter = { isDeleted: false, ...searchQuery };
+
+        // ✅ FIXED: now supports frontend filters too
+        const filter = {
+            isDeleted: false,
+            ...buildSearchQuery(search),
+            ...buildFilterQuery(req),
+        };
+
         const totalEmployes = await Employee.countDocuments(filter);
-        const allEmployes = await Employee.find(filter)
-            .sort({ [sortBy]: sortOrder })
+
+        const employees = await Employee.find(filter)
+            .sort(getSafeSort(sortBy, sortOrder))
             .skip(skip)
-            .limit(limit);
+            .limit(limit)
+            .lean();
+
         return res.status(200).json({
-            allEmployes,
+            allEmployes: employees,
             totalEmployes,
             page,
             limit,
@@ -44,16 +173,25 @@ exports.allEmployee = async (req, res) => {
 
 exports.getEmployeeById = async (req, res) => {
     try {
-        const employee = await Employee.findOne({
-            _id: req.params.id,
-            isDeleted: false
-        });
+        const { id } = req.params;
 
-        if (!employee) {
-            return res.status(404).json({ message: "Employee not found" });
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ message: "Invalid employee id" });
         }
 
-        return res.status(200).json(employee);
+        const employee = await Employee.findOne({
+            _id: id,
+            isDeleted: false,
+        }).lean();
+
+        if (!employee) return res.status(404).json({ message: "Employee not found" });
+
+        const user = await User.findOne({
+            employee: employee._id,
+            isDeleted: false,
+        }).select("email role theme isActive lastLogin createdAt");
+
+        return res.status(200).json({ employee, user });
     } catch (error) {
         console.error("Get employee by id error:", error);
         return res.status(500).json({ message: "Internal Server Error" });
@@ -61,47 +199,94 @@ exports.getEmployeeById = async (req, res) => {
 };
 
 exports.addEmployee = async (req, res) => {
+    console.log("req.body", req.body);
     try {
-        const {
-            name,
-            email,
-            department,
-            designation,
-            salary,
-            joiningDate
-        } = req.body;
+        const { name, email, phone, department, designation, salary, joiningDate } = req.body;
 
-        if (!name || !email || !department || !designation || !salary) {
+        if (!name || !department || !designation || salary === undefined) {
             return res.status(400).json({
-                message: "All required fields must be provided"
+                message: "Name, department, designation and salary are required",
             });
         }
 
-        const existingEmployee = await Employee.findOne({ email, isDeleted: false });
-        if (existingEmployee) {
-            return res.status(400).json({
-                message: "Employee already exists"
+        if (email) {
+            const existsEmail = await Employee.findOne({
+                email: email.toLowerCase().trim()
+                // isDeleted: false,
             });
+            // console.log("req.body", req.body);
+            console.log("existsEmail", existsEmail);
+
+            if (existsEmail) {
+                return res.status(400).json({
+                    message: "Employee with this email already exists",
+                });
+            }
         }
 
         const employee = await Employee.create({
             name,
-            email,
+            // email: email ? email.toLowerCase().trim() : undefined,
+            phone: phone || undefined,
             department,
             designation,
-            salary,
-            joiningDate
+            salary: Number(salary),
+            joiningDate: joiningDate || new Date(),
+
+            isActive: true,
+            isDeleted: false,
+            deletedAt: null,
         });
 
-        res.status(201).json({
-            message: "Employee added successfully",
-            employee
-        });
+        console.log("employee", employee);
+        let createdUser = null;
 
+        if (email) {
+            const role = detectRoleFromDesignation(employee.designation);
+            console.log(`>>>>>>role`, role);
+
+            const normalizedEmail = email.toLowerCase().trim();
+
+            const alreadyUser = await User.findOne({
+                email: normalizedEmail,
+                isDeleted: false,
+            });
+            console.log(`>>>>>>alreadyUser`, alreadyUser);
+
+
+            if (!alreadyUser) {
+                const generatedPassword = generatePassword(10);
+
+                createdUser = await User.create({
+                    email: normalizedEmail,
+                    password: generatedPassword,
+                    role,
+                    employee: employee._id,
+                });
+                console.log("createdUser", createdUser);
+                try {
+                    await sendEmployeeLoginMail({
+                        toEmail: normalizedEmail,
+                        name: employee.name,
+                        password: generatedPassword,
+                        role,
+                    });
+                } catch (mailErr) {
+                    console.error("Employee mail sending failed:", mailErr);
+                }
+            }
+        }
+
+        return res.status(201).json({
+            message:
+                "Employee added successfully" + (createdUser ? " + login created + mail sent" : ""),
+            employee,
+            loginCreated: Boolean(createdUser),
+        });
     } catch (error) {
         console.error("Add employee error:", error);
-        res.status(500).json({
-            message: "Internal server error"
+        return res.status(500).json({
+            message: "Internal server error",
         });
     }
 };
@@ -111,64 +296,77 @@ exports.toggleEmployeeStatus = async (req, res) => {
         const { id } = req.params;
 
         const employee = await Employee.findOne({ _id: id, isDeleted: false });
-
-        if (!employee) {
-            return res.status(404).json({
-                message: "Employee not found",
-            });
-        }
+        if (!employee) return res.status(404).json({ message: "Employee not found" });
 
         employee.isActive = !employee.isActive;
         await employee.save();
 
-        res.status(200).json({
+        // also disable/enable login user
+        await User.updateOne(
+            { employee: employee._id, isDeleted: false },
+            { $set: { isActive: employee.isActive } }
+        );
+
+        return res.status(200).json({
             message: `Employee ${employee.isActive ? "enabled" : "disabled"} successfully`,
             isActive: employee.isActive,
         });
     } catch (error) {
         console.error("Toggle Employee Status Error:", error);
-        res.status(500).json({
-            message: "Internal server error",
-        });
+        return res.status(500).json({ message: "Internal server error" });
     }
 };
 
 exports.updateEmployee = async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, email, department, designation, salary, status } = req.body;
 
-        if (!department && !designation && !salary && !name && !email && !status) {
-            return res.status(400).json({
-                message: "At least one field is required to update",
-            });
-        }
+        const { name, email, phone, department, designation, salary, joiningDate, isActive } =
+            req.body;
 
         const employee = await Employee.findOne({ _id: id, isDeleted: false });
+        if (!employee) return res.status(404).json({ message: "Employee not found" });
 
-        if (!employee) {
-            return res.status(404).json({
-                message: "Employee not found",
-            });
+        if (name !== undefined) employee.name = name;
+
+        if (email !== undefined) {
+            const newEmail = email ? email.toLowerCase().trim() : null;
+
+            if (newEmail) {
+                const exists = await Employee.findOne({
+                    email: newEmail,
+                    _id: { $ne: employee._id },
+                    isDeleted: false,
+                });
+
+                if (exists) {
+                    return res.status(400).json({
+                        message: "Another employee already uses this email",
+                    });
+                }
+            }
+
+            employee.email = newEmail;
         }
 
-        if (name) employee.name = name;
-        if (email) employee.email = email;
-        if (department) employee.department = department;
-        if (designation) employee.designation = designation;
-        if (salary !== undefined) employee.salary = salary;
+        if (phone !== undefined) employee.phone = phone;
+        if (department !== undefined) employee.department = department;
+        if (designation !== undefined) employee.designation = designation;
+        if (salary !== undefined) employee.salary = Number(salary);
+
+        if (joiningDate !== undefined) employee.joiningDate = joiningDate || employee.joiningDate;
+
+        if (isActive !== undefined) employee.isActive = isActive;
 
         await employee.save();
 
-        res.status(200).json({
+        return res.status(200).json({
             message: "Employee updated successfully",
             employee,
         });
     } catch (error) {
         console.error("Update Employee Error:", error);
-        res.status(500).json({
-            message: "Internal server error",
-        });
+        return res.status(500).json({ message: "Internal server error" });
     }
 };
 
@@ -183,14 +381,17 @@ exports.softDeleteEmployee = async (req, res) => {
             { new: true }
         );
 
-        if (!employee) {
-            return res.status(404).json({ message: "Employee not found" });
-        }
+        if (!employee) return res.status(404).json({ message: "Employee not found" });
 
-        res.status(200).json({ message: "Employee moved to trash", employee });
+        await User.updateOne(
+            { employee: employee._id },
+            { $set: { isDeleted: true, deletedAt: new Date() } }
+        );
+
+        return res.status(200).json({ message: "Employee moved to trash", employee });
     } catch (error) {
         console.error("Soft delete employee error:", error);
-        res.status(500).json({ message: "Internal server error" });
+        return res.status(500).json({ message: "Internal server error" });
     }
 };
 
@@ -205,37 +406,42 @@ exports.restoreEmployee = async (req, res) => {
             { new: true }
         );
 
-        if (!employee) {
-            return res.status(404).json({ message: "Employee not found" });
-        }
+        if (!employee) return res.status(404).json({ message: "Employee not found" });
 
-        res.status(200).json({ message: "Employee restored successfully", employee });
+        await User.updateOne(
+            { employee: employee._id },
+            { $set: { isDeleted: false, deletedAt: null } }
+        );
+
+        return res.status(200).json({
+            message: "Employee restored successfully",
+            employee,
+        });
     } catch (error) {
         console.error("Restore employee error:", error);
-        res.status(500).json({ message: "Internal server error" });
+        return res.status(500).json({ message: "Internal server error" });
     }
 };
 
 exports.getDeletedEmployees = async (req, res) => {
     try {
         const { page, limit, skip, sortBy, sortOrder, search } = parseListParams(req);
-        const searchQuery = search
-            ? {
-                $or: [
-                    { name: { $regex: search, $options: "i" } },
-                    { email: { $regex: search, $options: "i" } },
-                    { department: { $regex: search, $options: "i" } },
-                    { designation: { $regex: search, $options: "i" } },
-                ],
-            }
-            : {};
-        const filter = { isDeleted: true, ...searchQuery };
+
+        const filter = {
+            isDeleted: true,
+            ...buildSearchQuery(search),
+            ...buildFilterQuery(req),
+        };
+
         const totalEmployes = await Employee.countDocuments(filter);
+
         const employees = await Employee.find(filter)
-            .sort({ [sortBy]: sortOrder })
+            .sort(getSafeSort(sortBy, sortOrder))
             .skip(skip)
-            .limit(limit);
-        res.status(200).json({
+            .limit(limit)
+            .lean();
+
+        return res.status(200).json({
             allEmployes: employees,
             totalEmployes,
             page,
@@ -244,6 +450,6 @@ exports.getDeletedEmployees = async (req, res) => {
         });
     } catch (error) {
         console.error("Get deleted employees error:", error);
-        res.status(500).json({ message: "Internal server error" });
+        return res.status(500).json({ message: "Internal server error" });
     }
 };

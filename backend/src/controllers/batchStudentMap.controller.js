@@ -2,6 +2,23 @@ const Batch = require("../models/batch.model");
 const Student = require("../models/student.model");
 const BatchStudentMap = require("../models/batchStudentMap.model");
 
+const studentPopulate = {
+    path: "student",
+    select: "status adhaar gender isActive",
+    populate: {
+        path: "visitor",
+        select: "name email phone course",
+    },
+};
+
+const tutorPopulate = {
+    path: "tutor",
+    populate: {
+        path: "employee",
+        select: "name department designation salary joiningDate",
+    },
+};
+
 exports.getStudentsOfBatch = async (req, res) => {
     try {
         const { batchId } = req.params;
@@ -11,7 +28,8 @@ exports.getStudentsOfBatch = async (req, res) => {
             status: "active",
             isDeleted: false,
         })
-            .populate("student", "name email phone status")
+            .populate(studentPopulate)
+            .populate(tutorPopulate)
             .sort({ createdAt: -1 });
 
         return res.status(200).json(mappings);
@@ -38,7 +56,7 @@ exports.getBatchesOfStudent = async (req, res) => {
         const mappings = await BatchStudentMap.find(query)
             .populate("batch", "name startDate endDate status isActive")
             .populate("course", "title category level")
-            .populate("tutor", "name email")
+            .populate(tutorPopulate)
             .sort({ createdAt: -1 });
 
         return res.status(200).json(mappings);
@@ -63,11 +81,6 @@ exports.addStudentsToBatch = async (req, res) => {
             return res.status(404).json({ message: "Batch not found" });
         }
 
-        // if (!batch.isActive) {
-        //   return res.status(400).json({ message: "Batch is disabled" });
-        // }
-
-        // Validate students exist
         const validStudents = await Student.find({
             _id: { $in: students },
             isDeleted: false,
@@ -84,7 +97,7 @@ exports.addStudentsToBatch = async (req, res) => {
             student: studentId,
             course: batch.course,
             tutor: batch.tutor,
-            addedBy: req.user?._id || null, // if auth middleware exists
+            addedBy: req.user?._id || null,
             status: "active",
             joinedAt: new Date(),
         }));
@@ -210,8 +223,8 @@ exports.changeStudentBatch = async (req, res) => {
         const populated = await BatchStudentMap.findById(mapping._id)
             .populate("batch", "name startDate endDate status isActive")
             .populate("course", "title category level")
-            .populate("tutor", "name email")
-            .populate("student", "name email phone status");
+            .populate(tutorPopulate)
+            .populate(studentPopulate);
 
         return res.status(200).json({
             message: "Student batch changed successfully",
@@ -225,10 +238,9 @@ exports.changeStudentBatch = async (req, res) => {
 
 exports.allBatches = async (req, res) => {
     try {
-        const totalBatches = await Batch.countDocuments()
-        return res.status(200).json({ totalBatches })
+        const totalBatches = await Batch.countDocuments();
+        return res.status(200).json({ totalBatches });
     } catch (error) {
         return res.status(500).json({ message: "Internal server error" });
-
     }
-}
+};

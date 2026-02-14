@@ -117,7 +117,6 @@ const AdminTutors = () => {
     }
   };
 
-  // ✅ Fetch based on tab
   useEffect(() => {
     if (activeTab === "active") fetchTutors();
   }, [activeTab, page, search, sortBy, sortOrder, JSON.stringify(filters)]);
@@ -133,13 +132,11 @@ const AdminTutors = () => {
     JSON.stringify(filters),
   ]);
 
-  // ✅ Reset page on tab switch
   useEffect(() => {
     setPage(1);
     setTrashPage(1);
   }, [activeTab]);
 
-  // ✅ CRUD
   const handleAddTutor = async (data) => {
     try {
       await tutorService.create(data);
@@ -279,7 +276,7 @@ const AdminTutors = () => {
             setPage(1);
             setTrashPage(1);
           }}
-          className="w-full outline-none text-sm bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
+          className="w-full outline-none text-sm bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF] px-2 py-2 rounded-md"
         />
       </div>
 
@@ -288,7 +285,7 @@ const AdminTutors = () => {
         <select
           value={filterField}
           onChange={(e) => setFilterField(e.target.value)}
-          className="text-sm border rounded-lg px-2 py-1 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
+          className="text-sm border rounded-lg px-2 py-2 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
         >
           <option value="expertise">Expertise</option>
           <option value="isActive">Is Active</option>
@@ -300,19 +297,19 @@ const AdminTutors = () => {
           value={filterValue}
           onChange={(e) => setFilterValue(e.target.value)}
           placeholder="Filter value"
-          className="text-sm border rounded-lg px-2 py-1 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
+          className="text-sm border rounded-lg px-2 py-2 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
         />
 
         <button
           onClick={addFilter}
-          className="px-3 py-1 rounded-lg bg-[#3F72AF] text-white text-sm"
+          className="px-3 py-2 rounded-lg bg-[#3F72AF] text-white text-sm"
         >
           Add Filter
         </button>
 
         <button
           onClick={clearFilters}
-          className="px-3 py-1 rounded-lg border text-sm"
+          className="px-3 py-2 rounded-lg border text-sm dark:border-[#3F72AF] dark:text-[#DBE2EF]"
         >
           Clear Filters
         </button>
@@ -322,7 +319,7 @@ const AdminTutors = () => {
             <button
               key={key}
               onClick={() => removeFilter(key)}
-              className="px-2 py-1 text-xs rounded-lg bg-[#DBE2EF] dark:bg-[#0a1f3a]"
+              className="px-2 py-1 text-xs rounded-lg bg-[#DBE2EF] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
             >
               {key}: {String(filters[key])} ×
             </button>
@@ -402,19 +399,19 @@ const AdminTutors = () => {
                     className="border-b border-[#DBE2EF] dark:border-[#3F72AF] last:border-none hover:bg-[#DBE2EF] dark:hover:bg-[#0a1f3a] transition-colors"
                   >
                     <td className="px-6 py-4 font-medium text-[#112D4E] dark:text-[#DBE2EF]">
-                      {t.name}
+                      {t.employee?.name || "—"}
                     </td>
 
                     <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
-                      {t.email}
+                      {t.employee?.email || "—"}
                     </td>
 
                     <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
-                      {t.phone || "—"}
+                      {t.employee?.phone || "—"}
                     </td>
 
                     <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
-                      {t.expertise}
+                      {t.expertise || "—"}
                     </td>
 
                     <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
@@ -426,7 +423,7 @@ const AdminTutors = () => {
                     </td>
 
                     <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
-                      ₹{t.salary || 0}
+                      ₹{t.employee?.salary || 0}
                     </td>
 
                     <td className="px-6 py-4">
@@ -543,7 +540,7 @@ const AdminTutors = () => {
           setSelectedTutor(null);
         }}
         onConfirm={handleDelete}
-        title={selectedTutor?.name}
+        title={selectedTutor?.employee?.name || "Tutor"}
       />
     </div>
   );

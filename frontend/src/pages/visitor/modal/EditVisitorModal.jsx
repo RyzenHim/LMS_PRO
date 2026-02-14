@@ -8,7 +8,7 @@ const EditVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
     email: "",
     phone: "",
     source: "other",
-    course: "",
+    course: "", // MUST be courseId
     note: "",
     status: "new",
   });
@@ -21,6 +21,7 @@ const EditVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
     if (open) {
       fetchCourses();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   useEffect(() => {
@@ -30,7 +31,13 @@ const EditVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
         email: visitor.email || "",
         phone: visitor.phone || "",
         source: visitor.source || "other",
-        course: visitor.course || "",
+
+        // IMPORTANT: visitor.course can be object (populated) OR string (id)
+        course:
+          typeof visitor.course === "object"
+            ? visitor.course?._id || ""
+            : visitor.course || "",
+
         note: visitor.note || "",
         status: visitor.status || "new",
       });
@@ -40,7 +47,10 @@ const EditVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
   const fetchCourses = async () => {
     try {
       const res = await courseService.getAll({ limit: 100 });
-      setCourses(res.data.courses || []);
+
+      // service returns res.data directly
+      const list = res?.courses || res || [];
+      setCourses(Array.isArray(list) ? list : []);
     } catch (error) {
       console.error("Error fetching courses", error);
     }
@@ -61,6 +71,11 @@ const EditVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
 
     if (form.phone && !/^\d{10,}$/.test(form.phone)) {
       setError("Phone number must be at least 10 digits");
+      return;
+    }
+
+    if (!form.course) {
+      setError("Please select a course");
       return;
     }
 
@@ -162,7 +177,7 @@ const EditVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
             >
               <option value="">Select Course</option>
               {courses.map((course) => (
-                <option key={course._id} value={course.title}>
+                <option key={course._id} value={course._id}>
                   {course.title}
                 </option>
               ))}

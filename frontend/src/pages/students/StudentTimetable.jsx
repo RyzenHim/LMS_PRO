@@ -30,6 +30,7 @@ const minutesToTime = (m) => {
 
 const StudentTimetable = () => {
   const [student, setStudent] = useState(null);
+  const [mappings, setMappings] = useState([]);
   const [batchId, setBatchId] = useState("");
 
   const [slots, setSlots] = useState([]);
@@ -45,13 +46,18 @@ const StudentTimetable = () => {
         setLoading(true);
         setError("");
 
-        // IMPORTANT: this must be /students/me
         const res = await axiosInstance.get("/students/me");
 
-        const me = res.data?.student;
-        setStudent(me);
+        const studentDoc = res.data?.student;
+        const maps = res.data?.mappings || [];
 
-        const bId = me?.batch?._id || me?.batch || "";
+        setStudent(studentDoc);
+        setMappings(maps);
+
+        // latest active mapping (you are sorting desc in backend)
+        const activeMap = maps?.[0];
+        const bId = activeMap?.batch?._id || "";
+
         setBatchId(bId);
       } catch (err) {
         console.error("Fetch student error:", err);
@@ -76,10 +82,8 @@ const StudentTimetable = () => {
         setTableLoading(true);
         setError("");
 
-        // timetableService must call batch timetable API
         const res = await timetableService.getBatchTimetable(batchId);
 
-        // expected response: { slots: [...] }
         setSlots(res.data?.slots || []);
       } catch (err) {
         console.error("Fetch timetable error:", err);
@@ -129,6 +133,12 @@ const StudentTimetable = () => {
     return { top, height };
   };
 
+  const activeMap = mappings?.[0];
+
+  const studentName = student?.visitor?.name || "Student";
+  const batchName = activeMap?.batch?.name || "";
+  const courseTitle = student?.visitor?.course?.title || "";
+
   if (loading) {
     return (
       <div className="p-6 text-center text-[#3F72AF] dark:text-[#DBE2EF]">
@@ -146,18 +156,18 @@ const StudentTimetable = () => {
         </h1>
 
         <p className="text-sm text-[#3F72AF] dark:text-[#DBE2EF] mt-1">
-          {student?.name ? `Welcome, ${student.name}` : "Student"}
+          Welcome, <span className="font-medium">{studentName}</span>
         </p>
 
-        {student?.batch?.name && (
+        {batchName && (
           <p className="text-xs text-[#3F72AF] dark:text-[#DBE2EF] mt-1">
-            Batch: <span className="font-medium">{student.batch.name}</span>
+            Batch: <span className="font-medium">{batchName}</span>
           </p>
         )}
 
-        {student?.course?.title && (
+        {courseTitle && (
           <p className="text-xs text-[#3F72AF] dark:text-[#DBE2EF] mt-1">
-            Course: <span className="font-medium">{student.course.title}</span>
+            Course: <span className="font-medium">{courseTitle}</span>
           </p>
         )}
       </div>
@@ -250,11 +260,13 @@ const StudentTimetable = () => {
                           </p>
 
                           <p className="text-[#3F72AF] dark:text-[#DBE2EF] mt-1 truncate">
-                            {s.tutor?.name || "Tutor"}
+                            {s.tutor?.employee?.name ||
+                              s.tutor?.name ||
+                              "Tutor"}
                           </p>
 
                           <p className="text-[#3F72AF] dark:text-[#DBE2EF] truncate">
-                            {s.course?.title || "Course"}
+                            {s.course?.title || courseTitle || "Course"}
                           </p>
 
                           {s.room ? (

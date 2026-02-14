@@ -6,14 +6,15 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Fees fields
+  // Fees fields (SUPPORTED by backend)
   const [paymentType, setPaymentType] = useState("full");
   const [paymentMode, setPaymentMode] = useState("offline");
   const [amountPaid, setAmountPaid] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [note, setNote] = useState("");
+  const [batch, setBatch] = useState("");
 
-  // Student fields (schema)
+  // student extra fields (NOT supported by backend yet)
   const [phone, setPhone] = useState("");
   const [adhaar, setAdhaar] = useState("");
   const [address, setAddress] = useState("");
@@ -23,46 +24,53 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
   const [guardianName, setGuardianName] = useState("");
   const [guardianPhone, setGuardianPhone] = useState("");
 
-  // Identity Proof (schema)
+  // Identity Proof
   const [identityType, setIdentityType] = useState("");
   const [identityNumber, setIdentityNumber] = useState("");
   const [identityFrontUrl, setIdentityFrontUrl] = useState("");
   const [identityBackUrl, setIdentityBackUrl] = useState("");
 
-  // Profile Image (schema)
+  // Profile Image
   const [profileImageUrl, setProfileImageUrl] = useState("");
 
   useEffect(() => {
-    if (open) {
-      setPaymentType("full");
-      setPaymentMode("offline");
-      setAmountPaid("");
-      setDueDate("");
-      setNote("");
-      setError("");
+    if (!open) return;
 
-      // reset student fields
-      setPhone(visitor?.phone || "");
-      setAdhaar(visitor?.adhaar || "");
-      setAddress(visitor?.address || "");
-      setDateOfBirth("");
-      setGender("");
-      setStatus("active");
-      setGuardianName("");
-      setGuardianPhone("");
+    setError("");
+    setLoading(false);
 
-      // reset identity proof
-      setIdentityType("");
-      setIdentityNumber("");
-      setIdentityFrontUrl("");
-      setIdentityBackUrl("");
+    // fees defaults
+    setPaymentType("full");
+    setPaymentMode("offline");
+    setAmountPaid("");
+    setDueDate("");
+    setNote("");
+    setBatch("");
 
-      // reset profile
-      setProfileImageUrl("");
-    }
+    // student defaults (prefill from visitor)
+    setPhone(visitor?.phone || "");
+    setAdhaar(visitor?.adhaar || "");
+    setAddress(visitor?.address || "");
+    setDateOfBirth(visitor?.dateOfBirth || "");
+    setGender(visitor?.gender || "");
+    setStatus("active");
+    setGuardianName(visitor?.guardianName || "");
+    setGuardianPhone(visitor?.guardianPhone || "");
+
+    // identity defaults
+    setIdentityType(visitor?.identityProof?.type || "");
+    setIdentityNumber(visitor?.identityProof?.number || "");
+    setIdentityFrontUrl(visitor?.identityProof?.frontImage?.url || "");
+    setIdentityBackUrl(visitor?.identityProof?.backImage?.url || "");
+
+    // profile defaults
+    setProfileImageUrl(visitor?.profileImage?.url || "");
   }, [open, visitor]);
 
   if (!open || !visitor) return null;
+
+  const courseId =
+    typeof visitor.course === "object" ? visitor.course?._id : visitor.course;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -75,14 +83,14 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
       return;
     }
 
-    if (!visitor.course) {
+    if (!courseId) {
       setError("Visitor must have a course before conversion.");
       return;
     }
 
     if (paymentType === "partial") {
       const paid = Number(amountPaid);
-      if (!amountPaid || isNaN(paid) || paid < 0) {
+      if (!amountPaid || isNaN(paid) || paid <= 0) {
         setError("Please enter a valid amountPaid for partial payment.");
         return;
       }
@@ -91,13 +99,23 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
     try {
       setLoading(true);
 
-      // 1) Convert visitor -> student
+      // ✅ Your backend already:
+      // - creates student
+      // - creates user
+      // - creates fees
+      // so we ONLY call convert API
+
       const convertEndpoint = `/visitor/${visitor._id}/convert/student`;
 
-      // NOTE:
-      // This assumes your backend supports updating student fields at conversion time.
-      // If not, you can call another API after conversion: PATCH /student/:id
-      const convertPayload = {
+      const payload = {
+        paymentType,
+        paymentMode,
+        amountPaid: paymentType === "partial" ? Number(amountPaid) : undefined,
+        dueDate: dueDate || null,
+        note: note || "",
+        batch: batch || undefined,
+
+        // ⚠️ student extra fields (backend currently ignores these)
         phone: phone || undefined,
         adhaar: adhaar || undefined,
         address: address || undefined,
@@ -124,38 +142,11 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
             : undefined,
       };
 
-      const convertRes = await axiosInstance.post(
-        convertEndpoint,
-        convertPayload,
-      );
+      const res = await axiosInstance.post(convertEndpoint, payload);
 
-      const student = convertRes?.data?.student;
-      const convertedVisitor = convertRes?.data?.visitor;
+      alert(res?.data?.message || "Visitor converted successfully!");
 
-      if (!student?._id) {
-        const studentId = convertRes?.data?.studentId;
-        if (!studentId)
-          throw new Error("Student not returned from convert API.");
-      }
-
-      const studentId = student?._id || convertRes?.data?.studentId;
-
-      // 2) Add fees
-      const feesPayload = {
-        student: studentId,
-        course: visitor.course,
-        batch: visitor.batch || null,
-        paymentType,
-        paymentMode,
-        amountPaid: paymentType === "partial" ? Number(amountPaid) : undefined,
-        dueDate: dueDate || null,
-        note: note || "",
-      };
-
-      await axiosInstance.post("/fees/addfees", feesPayload);
-
-      alert("Visitor converted + fees added successfully!");
-      onSuccess(convertedVisitor || visitor);
+      onSuccess(res.data?.visitor || visitor);
       onClose();
     } catch (err) {
       setError(
@@ -197,14 +188,11 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
           {/* ================= STUDENT DETAILS ================= */}
           <div className="pt-2 border-t border-[#DBE2EF] dark:border-[#3F72AF]">
             <h3 className="text-sm font-semibold text-[#112D4E] dark:text-[#DBE2EF] mt-3 mb-2">
-              Student Details
+              Student Details (Optional)
             </h3>
 
-            {/* Status (enum) */}
             <div className="mb-3">
-              <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
-                Status *
-              </label>
+              <label className="block text-sm font-medium mb-2">Status *</label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
@@ -216,9 +204,8 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
               </select>
             </div>
 
-            {/* Gender (enum) */}
             <div className="mb-3">
-              <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
+              <label className="block text-sm font-medium mb-2">
                 Gender (Optional)
               </label>
               <select
@@ -233,9 +220,8 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
               </select>
             </div>
 
-            {/* Date of Birth */}
             <div className="mb-3">
-              <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
+              <label className="block text-sm font-medium mb-2">
                 Date of Birth (Optional)
               </label>
               <input
@@ -246,9 +232,8 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
               />
             </div>
 
-            {/* Phone */}
             <div className="mb-3">
-              <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
+              <label className="block text-sm font-medium mb-2">
                 Phone (Optional)
               </label>
               <input
@@ -260,9 +245,8 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
               />
             </div>
 
-            {/* Aadhaar */}
             <div className="mb-3">
-              <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
+              <label className="block text-sm font-medium mb-2">
                 Aadhaar (Optional)
               </label>
               <input
@@ -274,9 +258,8 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
               />
             </div>
 
-            {/* Address */}
             <div className="mb-3">
-              <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
+              <label className="block text-sm font-medium mb-2">
                 Address (Optional)
               </label>
               <textarea
@@ -288,10 +271,9 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
               />
             </div>
 
-            {/* Guardian */}
             <div className="grid grid-cols-1 gap-3">
               <div>
-                <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
+                <label className="block text-sm font-medium mb-2">
                   Guardian Name (Optional)
                 </label>
                 <input
@@ -304,7 +286,7 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
+                <label className="block text-sm font-medium mb-2">
                   Guardian Phone (Optional)
                 </label>
                 <input
@@ -318,104 +300,14 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
             </div>
           </div>
 
-          {/* ================= IDENTITY PROOF ================= */}
-          <div className="pt-2 border-t border-[#DBE2EF] dark:border-[#3F72AF]">
-            <h3 className="text-sm font-semibold text-[#112D4E] dark:text-[#DBE2EF] mt-3 mb-2">
-              Identity Proof (Optional)
-            </h3>
-
-            {/* Identity Type (enum) */}
-            <div className="mb-3">
-              <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
-                Proof Type
-              </label>
-              <select
-                value={identityType}
-                onChange={(e) => setIdentityType(e.target.value)}
-                className="w-full border rounded-lg px-3 py-2 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
-              >
-                <option value="">Select</option>
-                <option value="aadhaar">Aadhaar</option>
-                <option value="pan">PAN</option>
-                <option value="driving-license">Driving License</option>
-                <option value="passport">Passport</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
-
-            {/* Identity Number */}
-            <div className="mb-3">
-              <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
-                Proof Number
-              </label>
-              <input
-                type="text"
-                value={identityNumber}
-                onChange={(e) => setIdentityNumber(e.target.value)}
-                placeholder="Enter proof number"
-                className="w-full border rounded-lg px-3 py-2 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
-              />
-            </div>
-
-            {/* Identity Images URLs (simple inputs) */}
-            <div className="grid grid-cols-1 gap-3">
-              <div>
-                <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
-                  Front Image URL
-                </label>
-                <input
-                  type="text"
-                  value={identityFrontUrl}
-                  onChange={(e) => setIdentityFrontUrl(e.target.value)}
-                  placeholder="Paste front image URL"
-                  className="w-full border rounded-lg px-3 py-2 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
-                  Back Image URL
-                </label>
-                <input
-                  type="text"
-                  value={identityBackUrl}
-                  onChange={(e) => setIdentityBackUrl(e.target.value)}
-                  placeholder="Paste back image URL"
-                  className="w-full border rounded-lg px-3 py-2 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* ================= PROFILE IMAGE ================= */}
-          <div className="pt-2 border-t border-[#DBE2EF] dark:border-[#3F72AF]">
-            <h3 className="text-sm font-semibold text-[#112D4E] dark:text-[#DBE2EF] mt-3 mb-2">
-              Profile Image (Optional)
-            </h3>
-
-            <div>
-              <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
-                Profile Image URL
-              </label>
-              <input
-                type="text"
-                value={profileImageUrl}
-                onChange={(e) => setProfileImageUrl(e.target.value)}
-                placeholder="Paste profile image URL"
-                className="w-full border rounded-lg px-3 py-2 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
-              />
-            </div>
-          </div>
-
           {/* ================= FEES ================= */}
           <div className="pt-2 border-t border-[#DBE2EF] dark:border-[#3F72AF]">
             <h3 className="text-sm font-semibold text-[#112D4E] dark:text-[#DBE2EF] mt-3 mb-2">
               Fees Details
             </h3>
 
-            {/* Payment Type */}
             <div>
-              <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
+              <label className="block text-sm font-medium mb-2">
                 Payment Type *
               </label>
               <select
@@ -428,9 +320,8 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
               </select>
             </div>
 
-            {/* Payment Mode */}
             <div>
-              <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
+              <label className="block text-sm font-medium mb-2">
                 Payment Mode *
               </label>
               <select
@@ -443,10 +334,9 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
               </select>
             </div>
 
-            {/* Amount Paid */}
             {paymentType === "partial" && (
               <div>
-                <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
+                <label className="block text-sm font-medium mb-2">
                   Amount Paid *
                 </label>
                 <input
@@ -459,9 +349,8 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
               </div>
             )}
 
-            {/* Due Date */}
             <div>
-              <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
+              <label className="block text-sm font-medium mb-2">
                 Due Date (Optional)
               </label>
               <input
@@ -472,9 +361,8 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
               />
             </div>
 
-            {/* Note */}
             <div>
-              <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
+              <label className="block text-sm font-medium mb-2">
                 Note (Optional)
               </label>
               <textarea
@@ -492,7 +380,7 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-[#DBE2EF] dark:border-[#3F72AF] rounded-lg text-[#3F72AF] dark:text-[#DBE2EF] hover:bg-[#DBE2EF] dark:hover:bg-[#3F72AF] transition-colors"
+              className="px-4 py-2 border border-[#DBE2EF] dark:border-[#3F72AF] rounded-lg text-[#3F72AF] dark:text-[#DBE2EF] hover:bg-[#DBE2EF] dark:hover:bg-[#3F72AF]"
             >
               Cancel
             </button>
@@ -500,9 +388,9 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-2 bg-[#3F72AF] text-white rounded-lg hover:bg-[#112D4E] dark:bg-[#3F72AF] dark:hover:bg-[#DBE2EF] dark:hover:text-[#112D4E] disabled:opacity-50 transition-colors"
+              className="px-4 py-2 bg-[#3F72AF] text-white rounded-lg hover:bg-[#112D4E] disabled:opacity-50"
             >
-              {loading ? "Converting..." : "Convert + Add Fees"}
+              {loading ? "Converting..." : "Convert Visitor"}
             </button>
           </div>
         </form>

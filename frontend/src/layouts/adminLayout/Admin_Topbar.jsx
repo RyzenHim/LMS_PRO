@@ -21,6 +21,7 @@ const AdminTopbar = () => {
     try {
       const token = localStorage.getItem("token");
 
+      // No token → fallback to system theme
       if (!token) {
         const fallback = getSystemTheme();
         setTheme(fallback);
@@ -28,9 +29,8 @@ const AdminTopbar = () => {
         return;
       }
 
-      const res = await axiosInstance.get("/user/me", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      // axiosInstance already sends token via interceptor
+      const res = await axiosInstance.get("/user/me");
 
       const userTheme = res.data?.theme;
       const systemTheme = getSystemTheme();
@@ -40,15 +40,11 @@ const AdminTopbar = () => {
         ? userTheme
         : systemTheme;
 
-      // First time user login -> sync theme with system theme
+      // First time user login → sync theme with system theme
       if (!themeInitialized) {
         finalTheme = systemTheme;
 
-        await axiosInstance.put(
-          "/user/profile",
-          { theme: finalTheme },
-          { headers: { Authorization: `Bearer ${token}` } },
-        );
+        await axiosInstance.patch("/user/profile", { theme: finalTheme });
 
         localStorage.setItem("themeInitialized", "true");
       }
@@ -76,24 +72,19 @@ const AdminTopbar = () => {
       const token = localStorage.getItem("token");
       if (!token) return;
 
-      await axiosInstance.put(
-        "/user/profile",
-        { theme: nextTheme },
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
+      // ✅ FIX: PATCH instead of PUT
+      await axiosInstance.patch("/user/profile", { theme: nextTheme });
     } catch (error) {
       console.error("Theme update error:", error);
     }
   };
 
   const handleLogout = () => {
-    // remove only auth-related keys
     localStorage.removeItem("token");
     localStorage.removeItem("role");
     localStorage.removeItem("user");
     localStorage.removeItem("themeInitialized");
 
-    // OPTIONAL: reset theme to system theme after logout
     const fallback = getSystemTheme();
     setTheme(fallback);
     applyTheme(fallback);

@@ -30,10 +30,19 @@ const calculateFees = ({ coursePrice, amountPaid }) => {
     };
 };
 
-// ✅ Get all fees
+const studentPopulate = {
+    path: "student",
+    select: "status adhaar isActive",
+    populate: {
+        path: "visitor",
+        select: "name email phone course",
+    },
+};
+
 exports.allFees = async (req, res) => {
     try {
         const { page, limit, skip, sortBy, sortOrder, search } = parseListParams(req);
+
         const searchQuery = search
             ? {
                 $or: [
@@ -45,9 +54,11 @@ exports.allFees = async (req, res) => {
             : {};
 
         const filter = { isDeleted: false, ...searchQuery };
+
         const totalFees = await Fees.countDocuments(filter);
+
         const fees = await Fees.find(filter)
-            .populate("student", "name email phone status")
+            .populate(studentPopulate)
             .populate("course", "title category price duration level")
             .populate("batch", "name startDate status")
             .sort({ [sortBy]: sortOrder })
@@ -67,10 +78,10 @@ exports.allFees = async (req, res) => {
     }
 };
 
-// ✅ Get deleted fees
 exports.getDeletedFees = async (req, res) => {
     try {
         const { page, limit, skip, sortBy, sortOrder, search } = parseListParams(req);
+
         const searchQuery = search
             ? {
                 $or: [
@@ -82,9 +93,11 @@ exports.getDeletedFees = async (req, res) => {
             : {};
 
         const filter = { isDeleted: true, ...searchQuery };
+
         const totalFees = await Fees.countDocuments(filter);
+
         const fees = await Fees.find(filter)
-            .populate("student", "name email phone status")
+            .populate(studentPopulate)
             .populate("course", "title category price duration level")
             .populate("batch", "name startDate status")
             .sort({ [sortBy]: sortOrder })
@@ -104,11 +117,10 @@ exports.getDeletedFees = async (req, res) => {
     }
 };
 
-// ✅ Get by id
 exports.getFeesById = async (req, res) => {
     try {
         const fees = await Fees.findOne({ _id: req.params.id, isDeleted: false })
-            .populate("student", "name email phone status")
+            .populate(studentPopulate)
             .populate("course", "title category price duration level")
             .populate("batch", "name startDate status");
 
@@ -121,19 +133,10 @@ exports.getFeesById = async (req, res) => {
     }
 };
 
-// ✅ Add fees
 exports.addFees = async (req, res) => {
     try {
-        const {
-            student,
-            course,
-            batch,
-            paymentType,
-            paymentMode,
-            amountPaid,
-            dueDate,
-            note,
-        } = req.body;
+        const { student, course, batch, paymentType, paymentMode, amountPaid, dueDate, note } =
+            req.body;
 
         if (!student || !course) {
             return res.status(400).json({ message: "Student and Course are required" });
@@ -146,7 +149,9 @@ exports.addFees = async (req, res) => {
         if (!courseExists) return res.status(404).json({ message: "Course not found" });
 
         if (!courseExists.price || courseExists.price <= 0) {
-            return res.status(400).json({ message: "Course price is missing. Set course price first." });
+            return res
+                .status(400)
+                .json({ message: "Course price is missing. Set course price first." });
         }
 
         let batchDoc = null;
@@ -157,8 +162,7 @@ exports.addFees = async (req, res) => {
 
         const coursePrice = Number(courseExists.price);
 
-        const paid =
-            paymentType === "full" ? coursePrice : Number(amountPaid || 0);
+        const paid = paymentType === "full" ? coursePrice : Number(amountPaid || 0);
 
         const { remainingAmount, status } = calculateFees({
             coursePrice,
@@ -180,7 +184,7 @@ exports.addFees = async (req, res) => {
         });
 
         const populated = await Fees.findById(fees._id)
-            .populate("student", "name email phone status")
+            .populate(studentPopulate)
             .populate("course", "title category price duration level")
             .populate("batch", "name startDate status");
 
@@ -201,17 +205,8 @@ exports.updateFees = async (req, res) => {
         const fees = await Fees.findOne({ _id: id, isDeleted: false });
         if (!fees) return res.status(404).json({ message: "Fees record not found" });
 
-        const {
-            student,
-            course,
-            batch,
-            paymentType,
-            paymentMode,
-            amountPaid,
-            dueDate,
-            note,
-            isActive,
-        } = req.body;
+        const { student, course, batch, paymentType, paymentMode, amountPaid, dueDate, note, isActive } =
+            req.body;
 
         if (student) fees.student = student;
         if (course) fees.course = course;
@@ -229,7 +224,9 @@ exports.updateFees = async (req, res) => {
         }
 
         if (!courseDoc.price || courseDoc.price <= 0) {
-            return res.status(400).json({ message: "Course price is missing. Set course price first." });
+            return res
+                .status(400)
+                .json({ message: "Course price is missing. Set course price first." });
         }
 
         fees.coursePrice = Number(courseDoc.price);
@@ -253,7 +250,7 @@ exports.updateFees = async (req, res) => {
         await fees.save();
 
         const populated = await Fees.findById(fees._id)
-            .populate("student", "name email phone status")
+            .populate(studentPopulate)
             .populate("course", "title category price duration level")
             .populate("batch", "name startDate status");
 

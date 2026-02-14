@@ -1,100 +1,144 @@
-const User = require("../models/authUsers.model")
-const jwt = require("jsonwebtoken")
-const bcrypt = require("bcryptjs")
-const secretKey = process.env.JWT_SECRET
+const User = require("../models/authUsers.model");
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcryptjs");
 
-
+const secretKey = process.env.JWT_SECRET;
 
 exports.signup = async (req, res) => {
     try {
-        const { name, email, password, role } = req.body
+        const { name, email, password, role } = req.body;
 
-        if (!name || !email || !password) {
-            return res.status(400).json({ message: "All feilds are required" })
+        if (!email || !password || !role || !name) {
+            return res
+                .status(400)
+                .json({ message: "Email, password , name and role are required" });
         }
 
-        const existingUser = await User.findOne({ email })
-        if (existingUser) return res.status(400).json({ message: "User already exists" })
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
+            return res.status(400).json({ message: "User already exists" });
+        }
 
-        const createdData = await User.create({ name, email, password, role })
-        console.log("createdData");
+        const createdUser = await User.create({
+            name,
+            email,
+            password,
+            role,
+        });
 
-        res.status(200).json({
-            message: "User added successfully", user: {
-                id: createdData._id,
-                name: createdData.name,
-                email: createdData.email,
-                role: createdData.role
-            }
-        })
+        return res.status(201).json({
+            message: "User created successfully",
+            user: {
+                _id: createdUser._id,
+                name: createdUser.name,
+                email: createdUser.email,
+                role: createdUser.role,
+                theme: createdUser.theme,
+                isActive: createdUser.isActive,
+            },
+        });
     } catch (err) {
         console.error("SIGNUP ERROR:", err);
-        res.status(500).json({ message: "Internal server Error" })
+        return res.status(500).json({ message: "Internal server error" });
     }
-}
-
-
-
+};
 exports.login = async (req, res) => {
     try {
-        const { email, password } = req.body
-        if (!email || !password) return res.status(400).json({ message: "Both field are required" })
-        const existingUser = await User.findOne({ email })
-        if (!existingUser) return res.status(400).json({ message: "User does not exist" })
-        console.log("password", existingUser.password);
-        const match = await bcrypt.compare(password, existingUser.password)
-        if (match) {
-            const token = jwt.sign({
-                _id: existingUser._id,
-                email: existingUser.email,
-                role: existingUser.role
-            }, secretKey, { expiresIn: '1h' })
-            console.log("Loggd in ");
-            return res.status(200).json({
-                message: "Welcome",
-                token,
-                user: {
-                    _id: existingUser._id,
-                    name: existingUser.name,
-                    email: existingUser.email,
-                    role: existingUser.role,
-                    theme: existingUser.theme,
-                    isActive: existingUser.isActive
-                }
-            })
-        } else {
-            return res.status(400).json({ message: "Password is worng" })
+        const { email, password } = req.body;
+
+        if (!email || !password) {
+            return res.status(400).json({ message: "Email and password are required" });
         }
+
+        const normalizedEmail = email.toLowerCase().trim();
+
+        const user = await User.findOne({
+            email: normalizedEmail,
+            isDeleted: false,
+        })
+            .select("+password")
+            .populate("student")
+            .populate("tutor")
+            .populate("employee");
+
+        if (!user) {
+            return res.status(400).json({ message: "User does not exist" });
+        }
+
+        if (!user.isActive) {
+            return res.status(403).json({ message: "Account is inactive" });
+        }
+
+        const match = await bcrypt.compare(password, user.password);
+        if (!match) {
+            return res.status(400).json({ message: "Password is wrong" });
+        }
+
+        user.lastLogin = new Date();
+        await user.save();
+
+        const token = jwt.sign(
+            {
+                _id: user._id,
+                email: user.email,
+                role: user.role,
+            },
+            secretKey,
+            { expiresIn: "1h" }
+        );
+
+        const safeUser = user.toObject();
+        delete safeUser.password;
+
+        const redirectMap = {
+            admin: "/admin",
+            hr: "/hr",
+            tutor: "/tutor",
+            student: "/student",
+        };
+
+        const redirectTo = redirectMap[user.role] || "/";
+
+        return res.status(200).json({
+            message: "Welcome",
+            token,
+            user: safeUser,
+            redirectTo,
+        });
     } catch (error) {
-        console.error("Login Error:", error)
-        return res.status(500).json({ message: "Internal server error " })
+        console.error("Login Error:", error);
+        return res.status(500).json({ message: "Internal server error" });
     }
-}
+};
+
 
 exports.getCurrentUser = async (req, res) => {
     try {
-        const user = await User.findById(req.user._id).select("-password");
+        const user = await User.findById(req.user._id)
+            .select("-password")
+            .populate("student")
+            .populate("tutor")
+            .populate("employee");
+
         if (!user) {
             return res.status(404).json({ message: "User not found" });
         }
-        res.status(200).json(user);
+
+        return res.status(200).json(user);
     } catch (error) {
         console.error("Get current user error:", error);
-        res.status(500).json({ message: "Internal server error" });
+        return res.status(500).json({ message: "Internal server error" });
     }
-}
+};
 
 exports.updateProfile = async (req, res) => {
     try {
-        const { name, password, currentPassword, theme } = req.body;
-        const user = await User.findById(req.user._id);
+        const { password, currentPassword, theme } = req.body;
+
+        const user = await User.findById(req.user._id).select("+password");
 
         if (!user) {
             return res.status(404).json({ message: "User not found" });
-        }
-
-        if (name) {
-            user.name = name;
         }
 
         if (theme !== undefined) {
@@ -106,16 +150,22 @@ exports.updateProfile = async (req, res) => {
 
         if (password) {
             if (!currentPassword) {
-                return res.status(400).json({ message: "Current password is required to change password" });
+                return res.status(400).json({
+                    message: "Current password is required to change password",
+                });
             }
 
             const match = await bcrypt.compare(currentPassword, user.password);
             if (!match) {
-                return res.status(400).json({ message: "Current password is incorrect" });
+                return res
+                    .status(400)
+                    .json({ message: "Current password is incorrect" });
             }
 
             if (password.length < 6) {
-                return res.status(400).json({ message: "Password must be at least 6 characters long" });
+                return res.status(400).json({
+                    message: "Password must be at least 6 characters long",
+                });
             }
 
             user.password = password;
@@ -123,26 +173,32 @@ exports.updateProfile = async (req, res) => {
 
         await user.save();
 
-        const updatedUser = await User.findById(user._id).select("-password");
+        const updatedUser = await User.findById(user._id)
+            .select("-password")
+            .populate("student")
+            .populate("tutor")
+            .populate("employee");
 
-        res.status(200).json({
+        return res.status(200).json({
             message: "Profile updated successfully",
-            user: updatedUser
+            user: updatedUser,
         });
     } catch (error) {
         console.error("Update profile error:", error);
-        res.status(500).json({ message: "Internal server error" });
+        return res.status(500).json({ message: "Internal server error" });
     }
-}
+};
 
 exports.forgotPassword = async (req, res) => {
     try {
         const { email } = req.body;
+
         if (!email) {
             return res.status(400).json({ message: "Email is required" });
         }
 
         const user = await User.findOne({ email });
+
         if (!user) {
             return res.status(404).json({ message: "User not found" });
         }
@@ -153,7 +209,6 @@ exports.forgotPassword = async (req, res) => {
             { expiresIn: "30m" }
         );
 
-        // NOTE: Integrate email sending here. For now, return token for dev/testing.
         return res.status(200).json({
             message: "Password reset link sent to your email",
             token,
@@ -174,7 +229,9 @@ exports.resetPassword = async (req, res) => {
         }
 
         if (!password || password.length < 6) {
-            return res.status(400).json({ message: "Password must be at least 6 characters long" });
+            return res.status(400).json({
+                message: "Password must be at least 6 characters long",
+            });
         }
 
         let decoded;
@@ -189,6 +246,7 @@ exports.resetPassword = async (req, res) => {
         }
 
         const user = await User.findById(decoded._id);
+
         if (!user) {
             return res.status(404).json({ message: "User not found" });
         }
@@ -202,19 +260,13 @@ exports.resetPassword = async (req, res) => {
         return res.status(500).json({ message: "Internal server error" });
     }
 };
-
-
-
-// exports.theme = async (req, res) => {
-//     try {
-//         const { mode } = req.body
-//         if (mode){
-
-//         }
-//     } catch (err) {
-
-//     }
-
-
-
-// }
+exports.logout = async (req, res) => {
+    try {
+        return res.status(200).json({
+            message: "Logged out successfully",
+        });
+    } catch (error) {
+        console.error("Logout error:", error);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+};

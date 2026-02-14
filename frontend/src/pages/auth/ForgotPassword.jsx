@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import axiosInstance from "../../api/axios";
+import { forgotPasswordApi } from "../../services/authService";
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState("");
@@ -10,15 +10,18 @@ const ForgotPassword = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     setLoading(true);
     setError("");
     setMessage("");
 
     try {
-      await axiosInstance.post("/user/forgot-password", { email });
+      await forgotPasswordApi({ email });
+
       setMessage("Password reset link sent to your email");
+      setEmail("");
     } catch (err) {
-      setError(err.response?.data?.message || "Something went wrong");
+      setError(err.message || "Something went wrong");
     } finally {
       setLoading(false);
     }
@@ -35,6 +38,18 @@ const ForgotPassword = () => {
         </p>
       </div>
 
+      {message && (
+        <div className="p-3 rounded-lg bg-green-100 text-green-700 border border-green-300 text-sm">
+          {message}
+        </div>
+      )}
+
+      {error && (
+        <div className="p-3 rounded-lg bg-red-100 text-red-700 border border-red-300 text-sm">
+          {error}
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>
           <label className="text-sm font-medium text-gray-600">
@@ -50,13 +65,9 @@ const ForgotPassword = () => {
           />
         </div>
 
-        {message && <p className="text-sm text-green-600">{message}</p>}
-
-        {error && <p className="text-sm text-red-600">{error}</p>}
-
         <button
           type="submit"
-          className="w-full py-3 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700"
+          className="w-full py-3 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed"
           disabled={loading}
         >
           {loading ? "Sending..." : "Send reset link"}

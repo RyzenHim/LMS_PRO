@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import axiosInstance from "../../api/axios";
+import { loginApi } from "../../services/authService";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -20,41 +20,25 @@ const Login = () => {
     }));
   };
 
-  const redirectByRole = (role) => {
-    // backend roles: student, instructor, admin, hr
-    if (role === "admin") return "/admin";
-    if (role === "hr") return "/hr";
-    if (role === "instructor") return "/instructor";
-    if (role === "student") return "/student";
-
-    // fallback
-    return "/";
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError("");
 
     try {
-      const res = await axiosInstance.post("/user/login", form);
+      const data = await loginApi(form);
 
-      const token = res.data?.token;
-      const user = res.data?.user;
-
-      if (!token || !user) {
+      if (!data?.token || !data?.user) {
         setError("Invalid login response from server");
         return;
       }
 
-      // save token + user in localStorage
-      localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify(user));
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
 
-      const redirectPath = redirectByRole(user.role);
-      navigate(redirectPath, { replace: true });
+      navigate(data.redirectTo || "/", { replace: true });
     } catch (err) {
-      const msg = err.response?.data?.message || err.message || "Login Failed";
+      const msg = err?.message || "Login Failed";
       setError(msg);
     } finally {
       setLoading(false);

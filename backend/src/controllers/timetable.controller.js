@@ -7,7 +7,6 @@ const isOverlap = (existingStart, existingEnd, newStart, newEnd) => {
     return existingStart < newEnd && existingEnd > newStart;
 };
 
-// ============ CREATE SLOT ============
 exports.createSlot = async (req, res) => {
     try {
         const { batch, tutor, course, subject, day, startMinutes, endMinutes, room } =
@@ -25,7 +24,6 @@ exports.createSlot = async (req, res) => {
             return res.status(400).json({ message: "startMinutes must be < endMinutes" });
         }
 
-        // validate refs
         const batchDoc = await Batch.findOne({ _id: batch, isDeleted: false });
         if (!batchDoc) return res.status(404).json({ message: "Batch not found" });
 
@@ -35,9 +33,6 @@ exports.createSlot = async (req, res) => {
         const courseDoc = await Course.findOne({ _id: course, isDeleted: false });
         if (!courseDoc) return res.status(404).json({ message: "Course not found" });
 
-        // ---------------------------
-        // 1) Batch conflict check
-        // ---------------------------
         const batchSlots = await Timetable.find({
             batch,
             day,
@@ -55,14 +50,11 @@ exports.createSlot = async (req, res) => {
             });
         }
 
-        // ---------------------------
-        // 2) Tutor conflict check
-        // ---------------------------
         const tutorSlots = await Timetable.find({
             tutor,
             day,
             isDeleted: false,
-        }).populate("batch", "name title");
+        }).populate("batch", "name startDate endDate status");
 
         const tutorConflict = tutorSlots.find((s) =>
             isOverlap(s.startMinutes, s.endMinutes, startMinutes, endMinutes)
@@ -75,9 +67,6 @@ exports.createSlot = async (req, res) => {
             });
         }
 
-        // ---------------------------
-        // 3) Room conflict (optional)
-        // ---------------------------
         if (room && room.trim()) {
             const roomSlots = await Timetable.find({
                 room: room.trim(),
@@ -109,7 +98,7 @@ exports.createSlot = async (req, res) => {
         });
 
         const populated = await Timetable.findById(slot._id)
-            .populate("batch", "name title")
+            .populate("batch", "name startDate endDate status isActive")
             .populate("tutor", "name email")
             .populate("course", "title category level");
 
@@ -123,7 +112,6 @@ exports.createSlot = async (req, res) => {
     }
 };
 
-// ============ LIST BY BATCH ============
 exports.getBatchTimetable = async (req, res) => {
     try {
         const { batchId } = req.params;
@@ -133,7 +121,7 @@ exports.getBatchTimetable = async (req, res) => {
             isDeleted: false,
         })
             .sort({ day: 1, startMinutes: 1 })
-            .populate("batch", "name title")
+            .populate("batch", "name startDate endDate status isActive")
             .populate("tutor", "name email")
             .populate("course", "title category level");
 
@@ -144,7 +132,6 @@ exports.getBatchTimetable = async (req, res) => {
     }
 };
 
-// ============ UPDATE SLOT ============
 exports.updateSlot = async (req, res) => {
     try {
         const { id } = req.params;
@@ -168,7 +155,15 @@ exports.updateSlot = async (req, res) => {
             return res.status(400).json({ message: "startMinutes must be < endMinutes" });
         }
 
-        // conflicts excluding itself
+        const batchDoc = await Batch.findOne({ _id: next.batch, isDeleted: false });
+        if (!batchDoc) return res.status(404).json({ message: "Batch not found" });
+
+        const tutorDoc = await Tutor.findOne({ _id: next.tutor, isDeleted: false });
+        if (!tutorDoc) return res.status(404).json({ message: "Tutor not found" });
+
+        const courseDoc = await Course.findOne({ _id: next.course, isDeleted: false });
+        if (!courseDoc) return res.status(404).json({ message: "Course not found" });
+
         const batchSlots = await Timetable.find({
             _id: { $ne: id },
             batch: next.batch,
@@ -192,7 +187,7 @@ exports.updateSlot = async (req, res) => {
             tutor: next.tutor,
             day: next.day,
             isDeleted: false,
-        }).populate("batch", "name title");
+        }).populate("batch", "name startDate endDate status");
 
         const tutorConflict = tutorSlots.find((s) =>
             isOverlap(s.startMinutes, s.endMinutes, next.startMinutes, next.endMinutes)
@@ -226,7 +221,7 @@ exports.updateSlot = async (req, res) => {
         }
 
         const updated = await Timetable.findByIdAndUpdate(id, next, { new: true })
-            .populate("batch", "name title")
+            .populate("batch", "name startDate endDate status isActive")
             .populate("tutor", "name email")
             .populate("course", "title category level");
 
@@ -240,18 +235,16 @@ exports.updateSlot = async (req, res) => {
     }
 };
 
-// ============ DELETE SLOT (SOFT) ============
 exports.deleteSlot = async (req, res) => {
     try {
         const { id } = req.params;
 
-        const slot = await Timetable.findByIdAndUpdate(
-            id,
-            { isDeleted: true, deletedAt: new Date() },
-            { new: true }
-        );
-
+        const slot = await Timetable.findOne({ _id: id, isDeleted: false });
         if (!slot) return res.status(404).json({ message: "Slot not found" });
+
+        slot.isDeleted = true;
+        slot.deletedAt = new Date();
+        await slot.save();
 
         return res.status(200).json({ message: "Slot deleted successfully" });
     } catch (error) {

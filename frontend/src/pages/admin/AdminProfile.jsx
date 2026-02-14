@@ -6,12 +6,14 @@ const AdminProfile = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+
   const [form, setForm] = useState({
     name: "",
     password: "",
     currentPassword: "",
     confirmPassword: "",
   });
+
   const [errors, setErrors] = useState({});
   const [success, setSuccess] = useState("");
 
@@ -21,22 +23,22 @@ const AdminProfile = () => {
 
   const fetchUser = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const res = await axiosInstance.get("/user/me", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      setUser(res.data);
+      const res = await axiosInstance.get("/user/me");
+
+      const currentUser = res.data?.user || res.data; // ✅ IMPORTANT
+      console.log("ME API RESPONSE:", res.data);
+
+      setUser(currentUser);
+
       setForm({
-        name: res.data.name || "",
+        name: currentUser?.name || "",
         password: "",
         currentPassword: "",
         confirmPassword: "",
       });
     } catch (error) {
       console.error("Error fetching user", error);
-      alert("Failed to load profile");
+      alert(error.response?.data?.message || "Failed to load profile");
     } finally {
       setLoading(false);
     }
@@ -49,14 +51,17 @@ const AdminProfile = () => {
       newErrors.name = "Name is required";
     }
 
-    if (form.password) {
-      if (form.password.length < 6) {
-        newErrors.password = "Password must be at least 6 characters long";
-      }
-
+    // If user wants to change password
+    if (form.password || form.currentPassword || form.confirmPassword) {
       if (!form.currentPassword) {
         newErrors.currentPassword =
           "Current password is required to change password";
+      }
+
+      if (!form.password) {
+        newErrors.password = "New password is required";
+      } else if (form.password.length < 6) {
+        newErrors.password = "Password must be at least 6 characters long";
       }
 
       if (form.password !== form.confirmPassword) {
@@ -70,16 +75,19 @@ const AdminProfile = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm({
-      ...form,
+
+    setForm((prev) => ({
+      ...prev,
       [name]: value,
-    });
+    }));
+
     if (errors[name]) {
-      setErrors({
-        ...errors,
+      setErrors((prev) => ({
+        ...prev,
         [name]: "",
-      });
+      }));
     }
+
     setSuccess("");
   };
 
@@ -87,41 +95,48 @@ const AdminProfile = () => {
     e.preventDefault();
     setSuccess("");
 
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
 
     setUpdating(true);
+
     try {
-      const token = localStorage.getItem("token");
       const updateData = {
-        name: form.name,
+        name: form.name.trim(),
       };
 
+      // only send password fields if user is changing password
       if (form.password) {
         updateData.password = form.password;
         updateData.currentPassword = form.currentPassword;
       }
 
-      const res = await axiosInstance.put("/user/profile", updateData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      // ✅ FIX: PUT -> PATCH
+      const res = await axiosInstance.patch("/user/profile", updateData);
+      const updatedUser = res.data?.user || res.data;
+      setUser(updatedUser);
 
-      setUser(res.data.user);
       setForm({
-        name: res.data.user.name,
+        name: updatedUser?.name || "",
         password: "",
         currentPassword: "",
         confirmPassword: "",
       });
+
       setSuccess("Profile updated successfully!");
     } catch (error) {
       console.error("Update profile error", error);
-      const errorMessage =
-        error.response?.data?.message || "Failed to update profile";
-      alert(errorMessage);
+
+      const msg = error.response?.data?.message || "Failed to update profile";
+
+      // Optional: show field based error
+      if (msg.toLowerCase().includes("current password")) {
+        setErrors((prev) => ({
+          ...prev,
+          currentPassword: msg,
+        }));
+      } else {
+        alert(msg);
+      }
     } finally {
       setUpdating(false);
     }
@@ -159,6 +174,7 @@ const AdminProfile = () => {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* LEFT CARD */}
         <div className="lg:col-span-1">
           <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-6 shadow-lg">
             <div className="flex flex-col items-center text-center">
@@ -168,9 +184,11 @@ const AdminProfile = () => {
                   className="text-[#3F72AF] dark:text-[#DBE2EF]"
                 />
               </div>
+
               <h2 className="text-xl font-semibold text-[#112D4E] dark:text-[#DBE2EF] mb-2">
                 {user.name}
               </h2>
+
               <p className="text-sm text-[#3F72AF] dark:text-[#DBE2EF] mb-6">
                 {user.email}
               </p>
@@ -222,6 +240,7 @@ const AdminProfile = () => {
           </div>
         </div>
 
+        {/* RIGHT FORM */}
         <div className="lg:col-span-2">
           <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-6 shadow-lg">
             <h3 className="text-lg font-semibold text-[#112D4E] dark:text-[#DBE2EF] mb-6">
@@ -229,6 +248,7 @@ const AdminProfile = () => {
             </h3>
 
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* NAME */}
               <div>
                 <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
                   Full Name *
@@ -252,6 +272,7 @@ const AdminProfile = () => {
                 )}
               </div>
 
+              {/* EMAIL */}
               <div>
                 <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
                   Email
@@ -267,6 +288,7 @@ const AdminProfile = () => {
                 </p>
               </div>
 
+              {/* ROLE */}
               <div>
                 <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
                   Role
@@ -282,14 +304,17 @@ const AdminProfile = () => {
                 </p>
               </div>
 
+              {/* PASSWORD SECTION */}
               <div className="pt-6 border-t border-[#DBE2EF] dark:border-[#3F72AF]">
                 <h4 className="text-md font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-4">
                   Change Password
                 </h4>
+
                 <p className="text-sm text-[#3F72AF] dark:text-[#DBE2EF] mb-4">
                   Leave blank if you don't want to change your password
                 </p>
 
+                {/* CURRENT PASSWORD */}
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
                     Current Password
@@ -312,6 +337,7 @@ const AdminProfile = () => {
                   )}
                 </div>
 
+                {/* NEW PASSWORD */}
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
                     New Password
@@ -334,6 +360,7 @@ const AdminProfile = () => {
                   )}
                 </div>
 
+                {/* CONFIRM PASSWORD */}
                 <div>
                   <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
                     Confirm New Password
@@ -357,6 +384,7 @@ const AdminProfile = () => {
                 </div>
               </div>
 
+              {/* SUBMIT */}
               <div className="flex justify-end pt-4">
                 <button
                   type="submit"

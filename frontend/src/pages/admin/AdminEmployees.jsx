@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Search, Plus, Eye, Edit, Trash2, RotateCcw } from "lucide-react";
 
 import AddEmployeeModal from "./modal/AddEmployeeModal";
@@ -23,6 +23,10 @@ const AdminEmployees = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [trashTotalPages, setTrashTotalPages] = useState(1);
 
+  // ✅ NEW (for correct tab counts)
+  const [totalActive, setTotalActive] = useState(0);
+  const [totalTrash, setTotalTrash] = useState(0);
+
   const [sortBy, setSortBy] = useState("createdAt");
   const [sortOrder, setSortOrder] = useState("desc");
 
@@ -40,7 +44,7 @@ const AdminEmployees = () => {
   const [selectedEmp, setSelectedEmp] = useState(null);
 
   // =========================
-  // SORT + FILTER FUNCTIONS
+  // SORT
   // =========================
   const handleSort = (field) => {
     if (sortBy === field) {
@@ -54,12 +58,19 @@ const AdminEmployees = () => {
     setTrashPage(1);
   };
 
+  // =========================
+  // FILTERS
+  // =========================
   const addFilter = () => {
     if (!filterField || !filterValue) return;
 
+    // ✅ FIX: backend expects query string values
+    const value =
+      filterField === "isActive" ? String(filterValue) : filterValue.trim();
+
     setFilters((prev) => ({
       ...prev,
-      [filterField]: filterValue,
+      [filterField]: value,
     }));
 
     setFilterValue("");
@@ -85,7 +96,7 @@ const AdminEmployees = () => {
   };
 
   // =========================
-  // API CALLS
+  // API
   // =========================
   const fetchEmployees = async () => {
     setLoading(true);
@@ -101,6 +112,9 @@ const AdminEmployees = () => {
 
       setAllEmp(res.data.allEmployes || []);
       setTotalPages(res.data.totalPages || 1);
+
+      // ✅ NEW
+      setTotalActive(res.data.totalEmployes || 0);
     } catch (error) {
       console.error("Error fetching employees", error);
     } finally {
@@ -122,6 +136,9 @@ const AdminEmployees = () => {
 
       setDeletedEmployees(res.data.allEmployes || []);
       setTrashTotalPages(res.data.totalPages || 1);
+
+      // ✅ NEW
+      setTotalTrash(res.data.totalEmployes || 0);
     } catch (error) {
       console.error("Error fetching deleted employees", error);
     } finally {
@@ -130,14 +147,11 @@ const AdminEmployees = () => {
   };
 
   // =========================
-  // FETCH BASED ON ACTIVE TAB
+  // FETCH ON CHANGE
   // =========================
   useEffect(() => {
-    if (activeTab === "active") {
-      fetchEmployees();
-    } else {
-      fetchDeletedEmployees();
-    }
+    if (activeTab === "active") fetchEmployees();
+    else fetchDeletedEmployees();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     activeTab,
@@ -151,12 +165,12 @@ const AdminEmployees = () => {
 
   // reset correct page when tab changes
   useEffect(() => {
-    if (activeTab === "active") setPage(1);
-    else setTrashPage(1);
+    setPage(1);
+    setTrashPage(1);
   }, [activeTab]);
 
   // =========================
-  // CRUD HANDLERS
+  // CRUD
   // =========================
   const handleEdit = (emp) => {
     setSelectedEmp(emp);
@@ -170,13 +184,10 @@ const AdminEmployees = () => {
 
   const handleUpdateEmployee = async (data) => {
     try {
-      const res = await employeeService.update(selectedEmp._id, data);
+      await employeeService.update(selectedEmp._id, data);
 
-      setAllEmp((prev) =>
-        prev.map((emp) =>
-          emp._id === selectedEmp._id ? res.data.employee : emp,
-        ),
-      );
+      // safest: refetch
+      await fetchEmployees();
 
       setOpenEdit(false);
       setSelectedEmp(null);
@@ -188,13 +199,8 @@ const AdminEmployees = () => {
 
   const handleToggleStatus = async (id) => {
     try {
-      const res = await employeeService.toggleStatus(id);
-
-      setAllEmp((prev) =>
-        prev.map((emp) =>
-          emp._id === id ? { ...emp, isActive: res.data.isActive } : emp,
-        ),
-      );
+      await employeeService.toggleStatus(id);
+      await fetchEmployees();
     } catch (error) {
       console.error("Error toggling employee status", error);
       alert(error.response?.data?.message || "Failed to toggle status");
@@ -210,8 +216,7 @@ const AdminEmployees = () => {
     try {
       await employeeService.softDelete(selectedEmp._id);
 
-      setAllEmp((prev) => prev.filter((emp) => emp._id !== selectedEmp._id));
-
+      await fetchEmployees();
       await fetchDeletedEmployees();
 
       setOpenDelete(false);
@@ -226,9 +231,8 @@ const AdminEmployees = () => {
     try {
       await employeeService.restore(id);
 
-      setDeletedEmployees((prev) => prev.filter((emp) => emp._id !== id));
-
       await fetchEmployees();
+      await fetchDeletedEmployees();
     } catch (error) {
       console.error("Restore failed", error);
       alert(error.response?.data?.message || "Failed to restore employee");
@@ -238,21 +242,16 @@ const AdminEmployees = () => {
   const handleAddEmployee = async (data) => {
     try {
       const empData = {
-        name: data.name,
-        email: data.email,
-        department: data.department,
-        designation: data.role,
-        salary: Number(data.salary),
+        name: data.name.trim(),
+        email: data.email.trim(),
+        department: data.department.trim(),
+        designation: data.designation,
+        salary: Number(data.salary || 0),
       };
 
-      const res = await employeeService.create(empData);
+      await employeeService.create(empData);
 
-      // if on page 1, show instantly
-      if (activeTab === "active" && page === 1) {
-        setAllEmp((prev) => [res.data.employee, ...prev]);
-      } else {
-        await fetchEmployees();
-      }
+      await fetchEmployees();
 
       setOpenAdd(false);
     } catch (error) {
@@ -263,16 +262,18 @@ const AdminEmployees = () => {
 
   const filteredEmployees = activeTab === "active" ? allEmp : deletedEmployees;
 
+  const activeCount = useMemo(() => totalActive, [totalActive]);
+  const trashCount = useMemo(() => totalTrash, [totalTrash]);
+
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
             Employees
           </h1>
           <p className="text-sm text-[#3F72AF] dark:text-[#DBE2EF]">
-            Manage admin & HR employees
+            Manage admin, HR, and teachers
           </p>
         </div>
 
@@ -287,7 +288,6 @@ const AdminEmployees = () => {
         )}
       </div>
 
-      {/* Tabs */}
       <div className="flex gap-4 border-b border-[#DBE2EF] dark:border-[#3F72AF]">
         <button
           onClick={() => setActiveTab("active")}
@@ -297,7 +297,7 @@ const AdminEmployees = () => {
               : "text-[#3F72AF] dark:text-[#DBE2EF]"
           }`}
         >
-          Active
+          Active ({activeCount})
         </button>
 
         <button
@@ -308,29 +308,27 @@ const AdminEmployees = () => {
               : "text-[#3F72AF] dark:text-[#DBE2EF]"
           }`}
         >
-          Trash
+          Trash ({trashCount})
         </button>
       </div>
 
-      {/* Search */}
       <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-4 shadow-sm">
         <div className="flex items-center gap-3">
           <Search className="text-[#3F72AF] dark:text-[#DBE2EF]" size={18} />
           <input
             type="text"
-            placeholder="Search by name, email, or department"
+            placeholder="Search by name, email, department, designation..."
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
               setPage(1);
               setTrashPage(1);
             }}
-            className="w-full outline-none text-sm bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
+            className="w-full outline-none text-sm bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF] px-2 py-1 rounded-md"
           />
         </div>
       </div>
 
-      {/* Filters */}
       <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-4 flex flex-wrap items-center gap-3 shadow-sm">
         <select
           value={filterField}
@@ -343,12 +341,24 @@ const AdminEmployees = () => {
           <option value="email">Email</option>
         </select>
 
-        <input
-          value={filterValue}
-          onChange={(e) => setFilterValue(e.target.value)}
-          placeholder="Filter value"
-          className="text-sm border rounded-lg px-2 py-1 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
-        />
+        {filterField === "isActive" ? (
+          <select
+            value={filterValue}
+            onChange={(e) => setFilterValue(e.target.value)}
+            className="text-sm border rounded-lg px-2 py-1 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
+          >
+            <option value="">Select</option>
+            <option value="true">Active</option>
+            <option value="false">Inactive</option>
+          </select>
+        ) : (
+          <input
+            value={filterValue}
+            onChange={(e) => setFilterValue(e.target.value)}
+            placeholder="Filter value"
+            className="text-sm border rounded-lg px-2 py-1 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
+          />
+        )}
 
         <button
           onClick={addFilter}
@@ -359,9 +369,9 @@ const AdminEmployees = () => {
 
         <button
           onClick={clearFilters}
-          className="px-3 py-1 rounded-lg border text-sm"
+          className="px-3 py-1 rounded-lg border text-sm dark:text-[#DBE2EF]"
         >
-          Clear Filters
+          Clear
         </button>
 
         <div className="flex flex-wrap gap-2">
@@ -369,7 +379,7 @@ const AdminEmployees = () => {
             <button
               key={key}
               onClick={() => removeFilter(key)}
-              className="px-2 py-1 text-xs rounded-lg bg-[#DBE2EF] dark:bg-[#0a1f3a]"
+              className="px-2 py-1 text-xs rounded-lg bg-[#DBE2EF] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
             >
               {key}: {String(filters[key])} ×
             </button>
@@ -437,18 +447,6 @@ const AdminEmployees = () => {
                   </th>
 
                   <th className="px-4 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
-                    Joining Date
-                  </th>
-
-                  <th className="px-4 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
-                    Created At
-                  </th>
-
-                  <th className="px-4 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
-                    Updated At
-                  </th>
-
-                  <th className="px-4 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
                     Actions
                   </th>
                 </tr>
@@ -465,21 +463,21 @@ const AdminEmployees = () => {
                     </td>
 
                     <td className="px-4 py-3 text-[#3F72AF] dark:text-[#DBE2EF]">
-                      {emp.email}
+                      {emp.email || "—"}
                     </td>
 
                     <td className="px-4 py-3 text-[#112D4E] dark:text-[#DBE2EF]">
-                      {emp.department}
+                      {emp.department || "—"}
                     </td>
 
                     <td className="px-4 py-3">
-                      <span className="px-2 py-1 text-xs rounded-md bg-[#DBE2EF] dark:bg-[#3F72AF] text-[#112D4E] dark:text-[#DBE2EF]">
-                        {emp.designation}
+                      <span className="px-2 py-1 text-xs rounded-md bg-[#DBE2EF] dark:bg-[#0a1f3a] text-[#112D4E] dark:text-[#DBE2EF] border border-[#3F72AF]">
+                        {emp.designation || "—"}
                       </span>
                     </td>
 
                     <td className="px-4 py-3 text-[#112D4E] dark:text-[#DBE2EF]">
-                      ₹{emp.salary}
+                      ₹{Number(emp.salary || 0)}
                     </td>
 
                     <td className="px-4 py-3">
@@ -492,20 +490,6 @@ const AdminEmployees = () => {
                       >
                         {emp.isActive ? "Active" : "Inactive"}
                       </span>
-                    </td>
-
-                    <td className="px-4 py-3 text-[#3F72AF] dark:text-[#DBE2EF]">
-                      {emp.joiningDate
-                        ? new Date(emp.joiningDate).toLocaleDateString()
-                        : "—"}
-                    </td>
-
-                    <td className="px-4 py-3 text-[#3F72AF] dark:text-[#DBE2EF]">
-                      {new Date(emp.createdAt).toLocaleString()}
-                    </td>
-
-                    <td className="px-4 py-3 text-[#3F72AF] dark:text-[#DBE2EF]">
-                      {new Date(emp.updatedAt).toLocaleString()}
                     </td>
 
                     <td className="px-4 py-3 text-right space-x-2">
@@ -577,7 +561,6 @@ const AdminEmployees = () => {
         }
       />
 
-      {/* Modals */}
       <AddEmployeeModal
         open={openAdd}
         onClose={() => setOpenAdd(false)}

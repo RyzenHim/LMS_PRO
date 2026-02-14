@@ -10,22 +10,32 @@ const parseListParams = (req) => {
     const search = (req.query.search || "").trim();
     return { page, limit, skip, sortBy, sortOrder, search };
 };
+
+const tutorPopulate = {
+    path: "tutor",
+    populate: {
+        path: "employee",
+        select: "name department designation salary joiningDate",
+    },
+};
+
 exports.getAllBatches = async (req, res) => {
     try {
         const { page, limit, skip, sortBy, sortOrder, search } = parseListParams(req);
+
         const searchQuery = search
             ? {
-                $or: [
-                    { name: { $regex: search, $options: "i" } },
-                ],
+                $or: [{ name: { $regex: search, $options: "i" } }],
             }
             : {};
 
         const filter = { isDeleted: false, ...searchQuery };
+
         const totalBatches = await Batch.countDocuments(filter);
+
         const batches = await Batch.find(filter)
             .populate("course", "title category level")
-            .populate("tutor", "name email")
+            .populate(tutorPopulate)
             .sort({ [sortBy]: sortOrder })
             .skip(skip)
             .limit(limit);
@@ -38,6 +48,7 @@ exports.getAllBatches = async (req, res) => {
             totalPages: Math.ceil(totalBatches / limit),
         });
     } catch (error) {
+        console.error("getAllBatches error:", error);
         return res.status(500).json({ message: "Internal Server Error" });
     }
 };
@@ -45,19 +56,20 @@ exports.getAllBatches = async (req, res) => {
 exports.getDeletedBatches = async (req, res) => {
     try {
         const { page, limit, skip, sortBy, sortOrder, search } = parseListParams(req);
+
         const searchQuery = search
             ? {
-                $or: [
-                    { name: { $regex: search, $options: "i" } },
-                ],
+                $or: [{ name: { $regex: search, $options: "i" } }],
             }
             : {};
 
         const filter = { isDeleted: true, ...searchQuery };
+
         const totalBatches = await Batch.countDocuments(filter);
+
         const deleted = await Batch.find(filter)
             .populate("course", "title category level")
-            .populate("tutor", "name email")
+            .populate(tutorPopulate)
             .sort({ [sortBy]: sortOrder })
             .skip(skip)
             .limit(limit);
@@ -70,6 +82,7 @@ exports.getDeletedBatches = async (req, res) => {
             totalPages: Math.ceil(totalBatches / limit),
         });
     } catch (error) {
+        console.error("getDeletedBatches error:", error);
         return res.status(500).json({ message: "Internal Server Error" });
     }
 };
@@ -93,13 +106,14 @@ exports.createBatch = async (req, res) => {
 
         const populatedBatch = await Batch.findById(batch._id)
             .populate("course", "title category level")
-            .populate("tutor", "name email");
+            .populate(tutorPopulate);
 
         return res.status(201).json({
             message: "Batch created successfully",
             batch: populatedBatch,
         });
     } catch (error) {
+        console.error("createBatch error:", error);
         return res.status(500).json({ message: "Internal Server Error" });
     }
 };
@@ -108,13 +122,16 @@ exports.updateBatch = async (req, res) => {
     try {
         const { id } = req.params;
 
-        const updated = await Batch.findByIdAndUpdate(
-            id,
-            { ...req.body },
-            { new: true }
-        )
+        const allowedFields = ["name", "course", "tutor", "startDate", "endDate", "status"];
+        const updateData = {};
+
+        allowedFields.forEach((key) => {
+            if (req.body[key] !== undefined) updateData[key] = req.body[key];
+        });
+
+        const updated = await Batch.findByIdAndUpdate(id, updateData, { new: true })
             .populate("course", "title category level")
-            .populate("tutor", "name email");
+            .populate(tutorPopulate);
 
         if (!updated) {
             return res.status(404).json({ message: "Batch not found" });
@@ -125,6 +142,7 @@ exports.updateBatch = async (req, res) => {
             batch: updated,
         });
     } catch (error) {
+        console.error("updateBatch error:", error);
         return res.status(500).json({ message: "Internal Server Error" });
     }
 };
@@ -145,6 +163,7 @@ exports.softDeleteBatch = async (req, res) => {
 
         return res.status(200).json({ message: "Batch deleted successfully" });
     } catch (error) {
+        console.error("softDeleteBatch error:", error);
         return res.status(500).json({ message: "Internal Server Error" });
     }
 };
@@ -165,6 +184,7 @@ exports.restoreBatch = async (req, res) => {
 
         return res.status(200).json({ message: "Batch restored successfully" });
     } catch (error) {
+        console.error("restoreBatch error:", error);
         return res.status(500).json({ message: "Internal Server Error" });
     }
 };
@@ -187,28 +207,28 @@ exports.toggleBatchStatus = async (req, res) => {
             isActive: batch.isActive,
         });
     } catch (error) {
+        console.error("toggleBatchStatus error:", error);
         return res.status(500).json({ message: "Internal Server Error" });
     }
 };
 
-
-
 exports.allBatchesWithCount = async (req, res) => {
     try {
         const { page, limit, skip, sortBy, sortOrder, search } = parseListParams(req);
+
         const searchQuery = search
             ? {
-                $or: [
-                    { name: { $regex: search, $options: "i" } },
-                ],
+                $or: [{ name: { $regex: search, $options: "i" } }],
             }
             : {};
 
         const filter = { isDeleted: false, ...searchQuery };
+
         const totalBatches = await Batch.countDocuments(filter);
+
         const batches = await Batch.find(filter)
             .populate("course", "title")
-            .populate("tutor", "name")
+            .populate(tutorPopulate)
             .sort({ [sortBy]: sortOrder })
             .skip(skip)
             .limit(limit)
@@ -216,7 +236,6 @@ exports.allBatchesWithCount = async (req, res) => {
 
         const batchIds = batches.map((b) => b._id);
 
-        // count students for each batch
         const counts = await BatchStudentMap.aggregate([
             {
                 $match: {
@@ -263,11 +282,13 @@ exports.getBatchesByCourse = async (req, res) => {
         const batches = await Batch.find({
             course: courseId,
             isDeleted: false,
-        }).sort({ createdAt: -1 });
+        })
+            .populate(tutorPopulate)
+            .sort({ createdAt: -1 });
 
-        res.status(200).json({ batches });
+        return res.status(200).json({ batches });
     } catch (err) {
         console.log("Get batches by course error:", err);
-        res.status(500).json({ message: "Internal server error" });
+        return res.status(500).json({ message: "Internal server error" });
     }
 };

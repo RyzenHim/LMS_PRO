@@ -13,16 +13,21 @@ const parseListParams = (req) => {
 exports.allCourses = async (req, res) => {
     try {
         const { page, limit, skip, sortBy, sortOrder, search } = parseListParams(req);
+
         const searchQuery = search
             ? {
                 $or: [
                     { title: { $regex: search, $options: "i" } },
                     { category: { $regex: search, $options: "i" } },
-                    { tutorName: { $regex: search, $options: "i" } },
+                    { level: { $regex: search, $options: "i" } },
+                    { status: { $regex: search, $options: "i" } },
                 ],
             }
             : {};
+
         const filter = { isDeleted: false, ...searchQuery };
+
+        const totalCourses = await Course.countDocuments(filter);
 
         const courses = await Course.find(filter)
             .populate("tutor", "name email")
@@ -30,8 +35,8 @@ exports.allCourses = async (req, res) => {
             .sort({ [sortBy]: sortOrder })
             .skip(skip)
             .limit(limit);
-        const totalCourses = await Course.countDocuments(filter);
-        res.status(200).json({
+
+        return res.status(200).json({
             courses,
             totalCourses,
             page,
@@ -40,7 +45,7 @@ exports.allCourses = async (req, res) => {
         });
     } catch (error) {
         console.error("Get courses error:", error);
-        res.status(500).json({ message: "Internal server error" });
+        return res.status(500).json({ message: "Internal server error" });
     }
 };
 
@@ -48,7 +53,7 @@ exports.getCourseById = async (req, res) => {
     try {
         const course = await Course.findOne({
             _id: req.params.id,
-            isDeleted: false
+            isDeleted: false,
         })
             .populate("tutor", "name email")
             .populate("skills", "name description category");
@@ -57,10 +62,10 @@ exports.getCourseById = async (req, res) => {
             return res.status(404).json({ message: "Course not found" });
         }
 
-        res.status(200).json(course);
+        return res.status(200).json(course);
     } catch (error) {
         console.error("Get course by id error:", error);
-        res.status(500).json({ message: "Internal server error" });
+        return res.status(500).json({ message: "Internal server error" });
     }
 };
 
@@ -71,14 +76,13 @@ exports.addCourse = async (req, res) => {
             description,
             category,
             tutor,
-            tutorName,
             price,
             duration,
             level,
             status,
             startDate,
             endDate,
-            skills
+            skills,
         } = req.body;
 
         if (!title || !category) {
@@ -86,47 +90,67 @@ exports.addCourse = async (req, res) => {
         }
 
         if (price === undefined || Number(price) <= 0) {
-            return res.status(400).json({ message: "Course price is required and must be greater than 0" });
+            return res
+                .status(400)
+                .json({ message: "Course price is required and must be greater than 0" });
         }
+
+        const tutorArray =
+            tutor === undefined || tutor === null
+                ? []
+                : Array.isArray(tutor)
+                    ? tutor
+                    : [tutor];
+
+        const skillsArray =
+            skills === undefined || skills === null
+                ? []
+                : Array.isArray(skills)
+                    ? skills
+                    : [skills];
 
         const course = await Course.create({
             title,
             description,
             category,
-            tutor,
-            tutorName,
+            tutor: tutorArray,
             price: Number(price),
             duration: duration || 0,
             level: level || "beginner",
             status: status || "draft",
-            startDate,
-            endDate,
-            skills: skills || []
+            startDate: startDate || null,
+            endDate: endDate || null,
+            skills: skillsArray,
         });
 
         const populatedCourse = await Course.findById(course._id)
             .populate("tutor", "name email")
             .populate("skills", "name description category");
 
-        res.status(201).json({
+        return res.status(201).json({
             message: "Course added successfully",
             course: populatedCourse,
         });
     } catch (error) {
         console.error("Add course error:", error);
-        res.status(500).json({ message: "Internal server error" });
+        return res.status(500).json({ message: "Internal server error" });
     }
 };
 
 exports.updateCourse = async (req, res) => {
     try {
         const { id } = req.params;
+
+        const course = await Course.findOne({ _id: id, isDeleted: false });
+        if (!course) {
+            return res.status(404).json({ message: "Course not found" });
+        }
+
         const {
             title,
             description,
             category,
             tutor,
-            tutorName,
             price,
             duration,
             level,
@@ -134,32 +158,39 @@ exports.updateCourse = async (req, res) => {
             startDate,
             endDate,
             studentsEnrolled,
-            skills
+            skills,
         } = req.body;
 
-        const course = await Course.findOne({ _id: id, isDeleted: false });
-        if (!course) {
-            return res.status(404).json({ message: "Course not found" });
+        if (title !== undefined) course.title = title;
+        if (description !== undefined) course.description = description;
+        if (category !== undefined) course.category = category;
+
+        if (tutor !== undefined) {
+            course.tutor =
+                tutor === null ? [] : Array.isArray(tutor) ? tutor : [tutor];
         }
 
-        if (title) course.title = title;
-        if (description !== undefined) course.description = description;
-        if (category) course.category = category;
-        if (tutor) course.tutor = tutor;
-        if (tutorName !== undefined) course.tutorName = tutorName;
         if (price !== undefined) {
             if (Number(price) <= 0) {
                 return res.status(400).json({ message: "Course price must be greater than 0" });
             }
             course.price = Number(price);
         }
-        if (duration !== undefined) course.duration = duration;
-        if (level) course.level = level;
-        if (status) course.status = status;
-        if (startDate) course.startDate = startDate;
-        if (endDate) course.endDate = endDate;
-        if (studentsEnrolled !== undefined) course.studentsEnrolled = studentsEnrolled;
-        if (skills !== undefined) course.skills = skills;
+
+        if (duration !== undefined) course.duration = Number(duration || 0);
+        if (level !== undefined) course.level = level;
+        if (status !== undefined) course.status = status;
+        if (startDate !== undefined) course.startDate = startDate || null;
+        if (endDate !== undefined) course.endDate = endDate || null;
+
+        if (studentsEnrolled !== undefined) {
+            course.studentsEnrolled = Number(studentsEnrolled || 0);
+        }
+
+        if (skills !== undefined) {
+            course.skills =
+                skills === null ? [] : Array.isArray(skills) ? skills : [skills];
+        }
 
         await course.save();
 
@@ -167,19 +198,23 @@ exports.updateCourse = async (req, res) => {
             .populate("tutor", "name email")
             .populate("skills", "name description category");
 
-        res.status(200).json({
+        return res.status(200).json({
             message: "Course updated successfully",
             course: populatedCourse,
         });
     } catch (error) {
         console.error("Update course error:", error);
-        res.status(500).json({ message: "Internal server error" });
+        return res.status(500).json({ message: "Internal server error" });
     }
 };
 
 exports.toggleCourseStatus = async (req, res) => {
     try {
-        const course = await Course.findOne({ _id: req.params.id, isDeleted: false });
+        const course = await Course.findOne({
+            _id: req.params.id,
+            isDeleted: false,
+        });
+
         if (!course) {
             return res.status(404).json({ message: "Course not found" });
         }
@@ -187,13 +222,13 @@ exports.toggleCourseStatus = async (req, res) => {
         course.isActive = !course.isActive;
         await course.save();
 
-        res.status(200).json({
+        return res.status(200).json({
             message: "Course status updated",
             isActive: course.isActive,
         });
     } catch (error) {
         console.error("Toggle course status error:", error);
-        res.status(500).json({ message: "Internal server error" });
+        return res.status(500).json({ message: "Internal server error" });
     }
 };
 
@@ -212,10 +247,10 @@ exports.softDeleteCourse = async (req, res) => {
             return res.status(404).json({ message: "Course not found" });
         }
 
-        res.status(200).json({ message: "Course moved to trash", course });
+        return res.status(200).json({ message: "Course moved to trash", course });
     } catch (error) {
         console.error("Soft delete course error:", error);
-        res.status(500).json({ message: "Internal server error" });
+        return res.status(500).json({ message: "Internal server error" });
     }
 };
 
@@ -234,35 +269,40 @@ exports.restoreCourse = async (req, res) => {
             return res.status(404).json({ message: "Course not found" });
         }
 
-        res.status(200).json({ message: "Course restored successfully", course });
+        return res.status(200).json({ message: "Course restored successfully", course });
     } catch (error) {
         console.error("Restore course error:", error);
-        res.status(500).json({ message: "Internal server error" });
+        return res.status(500).json({ message: "Internal server error" });
     }
 };
 
 exports.getDeletedCourses = async (req, res) => {
     try {
         const { page, limit, skip, sortBy, sortOrder, search } = parseListParams(req);
+
         const searchQuery = search
             ? {
                 $or: [
                     { title: { $regex: search, $options: "i" } },
                     { category: { $regex: search, $options: "i" } },
-                    { tutorName: { $regex: search, $options: "i" } },
+                    { level: { $regex: search, $options: "i" } },
+                    { status: { $regex: search, $options: "i" } },
                 ],
             }
             : {};
 
         const filter = { isDeleted: true, ...searchQuery };
+
         const totalCourses = await Course.countDocuments(filter);
+
         const courses = await Course.find(filter)
             .populate("tutor", "name email")
             .populate("skills", "name description category")
             .sort({ [sortBy]: sortOrder })
             .skip(skip)
             .limit(limit);
-        res.status(200).json({
+
+        return res.status(200).json({
             courses,
             totalCourses,
             page,
@@ -271,7 +311,6 @@ exports.getDeletedCourses = async (req, res) => {
         });
     } catch (error) {
         console.error("Get deleted courses error:", error);
-        res.status(500).json({ message: "Internal server error" });
+        return res.status(500).json({ message: "Internal server error" });
     }
 };
-

@@ -1,5 +1,8 @@
-const Student = require('../models/student.model');
-const Course = require("../models/course.model");
+const mongoose = require("mongoose");
+const Student = require("../models/student.model");
+const Visitor = require("../models/visitor.model");
+const User = require("../models/authUsers.model");
+const BatchStudentMap = require("../models/batchStudentMap.model");
 
 const parseListParams = (req) => {
     const page = Math.max(parseInt(req.query.page || "1", 10), 1);
@@ -15,138 +18,173 @@ exports.allStudents = async (req, res) => {
     try {
         const { page, limit, skip, sortBy, sortOrder, search } = parseListParams(req);
 
-        const searchQuery = search
+        const visitorSearchQuery = search
             ? {
                 $or: [
                     { name: { $regex: search, $options: "i" } },
                     { email: { $regex: search, $options: "i" } },
                     { phone: { $regex: search, $options: "i" } },
-                    { adhaar: { $regex: search, $options: "i" } },
                 ],
             }
             : {};
 
-        const filter = { isDeleted: false, ...searchQuery };
-        const totalStudents = await Student.countDocuments(filter);
+        const studentSearchQuery = search
+            ? {
+                $or: [{ adhaar: { $regex: search, $options: "i" } }],
+            }
+            : {};
 
-        const students = await Student.find(filter)
-            .populate("course", "title category price level")
+        const studentsFilter = { isDeleted: false, ...studentSearchQuery };
+
+        const students = await Student.find(studentsFilter)
+            .populate({
+                path: "visitor",
+                match: { isDeleted: false, ...visitorSearchQuery },
+                select: "name email phone course status createdAt",
+                populate: {
+                    path: "course",
+                    select: "title category price duration level",
+                },
+            })
             .sort({ [sortBy]: sortOrder })
             .skip(skip)
-            .limit(limit);
+            .limit(limit)
+            .lean();
 
-        res.status(200).json({
-            students,
+        const filteredStudents = students.filter((s) => s.visitor);
+
+        const totalStudents = await Student.countDocuments({ isDeleted: false });
+
+        return res.status(200).json({
+            students: filteredStudents,
             totalStudents,
             page,
             limit,
             totalPages: Math.ceil(totalStudents / limit),
         });
     } catch (error) {
-        console.error("Get students error:", error);
-        res.status(500).json({ message: "Internal server error" });
+        console.error("allStudents error:", error);
+        return res.status(500).json({ message: "Internal server error" });
     }
 };
 
 exports.getStudentById = async (req, res) => {
     try {
+        const { id } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ message: "Invalid student id" });
+        }
+
         const student = await Student.findOne({
-            _id: req.params.id,
-            isDeleted: false
-        }).populate("course", "title category price level");
+            _id: id,
+            isDeleted: false,
+        })
+            .populate({
+                path: "visitor",
+                select: "name email phone course status",
+                populate: {
+                    path: "course",
+                    select: "title category price duration level",
+                },
+            })
+            .lean();
 
         if (!student) {
             return res.status(404).json({ message: "Student not found" });
         }
 
-        res.status(200).json(student);
+        const user = await User.findOne({
+            role: "student",
+            student: student._id,
+            isDeleted: false,
+        }).select("email role theme isActive lastLogin createdAt");
+
+        return res.status(200).json({ student, user });
     } catch (error) {
-        console.error("Get student by id error:", error);
-        res.status(500).json({ message: "Internal server error" });
-    }
-};
-
-exports.addStudent = async (req, res) => {
-    try {
-        const { name, email, phone, course, address, dateOfBirth, guardianName, guardianPhone, status } = req.body;
-
-        if (!name || !email || !course) {
-            return res.status(400).json({ message: "Name, email, and course are required" });
-        }
-
-        const exists = await Student.findOne({ email, isDeleted: false });
-        if (exists) {
-            return res.status(400).json({ message: "Student already exists" });
-        }
-
-        const courseDoc = await Course.findOne({ _id: course, isDeleted: false });
-        if (!courseDoc) {
-            return res.status(404).json({ message: "Course not found" });
-        }
-
-        const student = await Student.create({
-            name,
-            email,
-            phone,
-            course: courseDoc._id,
-            address,
-            dateOfBirth,
-            guardianName,
-            guardianPhone,
-            status: status || "active"
-        });
-
-        const populatedStudent = await Student.findById(student._id)
-            .populate("course", "title category price level");
-
-        res.status(201).json({
-            message: "Student added successfully",
-            student: populatedStudent,
-        });
-    } catch (error) {
-        console.error("Add student error:", error);
-        res.status(500).json({ message: "Internal server error" });
+        console.error("getStudentById error:", error);
+        return res.status(500).json({ message: "Internal server error" });
     }
 };
 
 exports.updateStudent = async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, email, phone, course, address, dateOfBirth, guardianName, guardianPhone, status } = req.body;
+
+        const {
+            name,
+            email,
+            phone,
+            course,
+            adhaar,
+            enrollmentDate,
+            status,
+            address,
+            dateOfBirth,
+            gender,
+            guardianName,
+            guardianPhone,
+            profileImage,
+            identityProof,
+            documents,
+            isActive,
+        } = req.body;
 
         const student = await Student.findOne({ _id: id, isDeleted: false });
         if (!student) {
             return res.status(404).json({ message: "Student not found" });
         }
 
-        if (name) student.name = name;
-        if (email) student.email = email;
-        if (phone !== undefined) student.phone = phone;
-        if (course) {
-            const courseDoc = await Course.findOne({ _id: course, isDeleted: false });
-            if (!courseDoc) {
-                return res.status(404).json({ message: "Course not found" });
-            }
-            student.course = courseDoc._id;
+        const visitor = await Visitor.findOne({
+            _id: student.visitor,
+            isDeleted: false,
+        });
+
+        if (!visitor) {
+            return res.status(404).json({ message: "Visitor record not found for this student" });
         }
+
+        if (adhaar !== undefined) student.adhaar = adhaar || null;
+        if (enrollmentDate !== undefined) student.enrollmentDate = enrollmentDate || null;
+        if (status !== undefined) student.status = status;
         if (address !== undefined) student.address = address;
-        if (dateOfBirth) student.dateOfBirth = dateOfBirth;
+        if (dateOfBirth !== undefined) student.dateOfBirth = dateOfBirth || null;
+        if (gender !== undefined) student.gender = gender;
         if (guardianName !== undefined) student.guardianName = guardianName;
         if (guardianPhone !== undefined) student.guardianPhone = guardianPhone;
-        if (status) student.status = status;
+
+        if (profileImage !== undefined) student.profileImage = profileImage;
+        if (identityProof !== undefined) student.identityProof = identityProof;
+        if (documents !== undefined) student.documents = documents;
+
+        if (isActive !== undefined) student.isActive = isActive;
+
+        if (name !== undefined) visitor.name = name;
+        if (email !== undefined) visitor.email = email;
+        if (phone !== undefined) visitor.phone = phone;
+        if (course !== undefined) visitor.course = course;
 
         await student.save();
+        await visitor.save();
 
-        const populatedStudent = await Student.findById(student._id)
-            .populate("course", "title category price level");
+        const populated = await Student.findById(student._id)
+            .populate({
+                path: "visitor",
+                select: "name email phone course status",
+                populate: {
+                    path: "course",
+                    select: "title category price duration level",
+                },
+            })
+            .lean();
 
-        res.status(200).json({
+        return res.status(200).json({
             message: "Student updated successfully",
-            student: populatedStudent,
+            student: populated,
         });
     } catch (error) {
-        console.error("Update student error:", error);
-        res.status(500).json({ message: "Internal server error" });
+        console.error("updateStudent error:", error);
+        return res.status(500).json({ message: "Internal server error" });
     }
 };
 
@@ -160,146 +198,167 @@ exports.toggleStudentStatus = async (req, res) => {
         student.isActive = !student.isActive;
         await student.save();
 
-        res.status(200).json({
+        return res.status(200).json({
             message: "Student status updated",
             isActive: student.isActive,
         });
     } catch (error) {
-        console.error("Toggle student status error:", error);
-        res.status(500).json({ message: "Internal server error" });
+        console.error("toggleStudentStatus error:", error);
+        return res.status(500).json({ message: "Internal server error" });
     }
 };
 
 exports.softDeleteStudent = async (req, res) => {
     try {
-        const student = await Student.findByIdAndUpdate(
-            req.params.id,
-            {
-                isDeleted: true,
-                deletedAt: new Date(),
-            },
-            { new: true }
+        const student = await Student.findOne({ _id: req.params.id, isDeleted: false });
+        if (!student) return res.status(404).json({ message: "Student not found" });
+
+        student.isDeleted = true;
+        student.deletedAt = new Date();
+        await student.save();
+
+        await User.updateOne(
+            { student: student._id, role: "student" },
+            { $set: { isDeleted: true, deletedAt: new Date() } }
         );
 
-        if (!student) {
-            return res.status(404).json({ message: "Student not found" });
-        }
-
-        res.status(200).json({ message: "Student moved to trash", student });
+        return res.status(200).json({ message: "Student moved to trash" });
     } catch (error) {
-        console.error("Soft delete student error:", error);
-        res.status(500).json({ message: "Internal server error" });
+        console.error("softDeleteStudent error:", error);
+        return res.status(500).json({ message: "Internal server error" });
     }
 };
 
 exports.restoreStudent = async (req, res) => {
     try {
-        const student = await Student.findByIdAndUpdate(
-            req.params.id,
-            {
-                isDeleted: false,
-                deletedAt: null,
-            },
-            { new: true }
+        const student = await Student.findOne({ _id: req.params.id, isDeleted: true });
+        if (!student) return res.status(404).json({ message: "Student not found" });
+
+        student.isDeleted = false;
+        student.deletedAt = null;
+        await student.save();
+
+        await User.updateOne(
+            { student: student._id, role: "student" },
+            { $set: { isDeleted: false, deletedAt: null } }
         );
 
-        if (!student) {
-            return res.status(404).json({ message: "Student not found" });
-        }
-
-        res.status(200).json({ message: "Student restored successfully", student });
+        return res.status(200).json({ message: "Student restored successfully" });
     } catch (error) {
-        console.error("Restore student error:", error);
-        res.status(500).json({ message: "Internal server error" });
+        console.error("restoreStudent error:", error);
+        return res.status(500).json({ message: "Internal server error" });
     }
 };
 
 exports.getDeletedStudents = async (req, res) => {
     try {
         const { page, limit, skip, sortBy, sortOrder, search } = parseListParams(req);
-        const searchQuery = search
+
+        const visitorSearchQuery = search
             ? {
                 $or: [
                     { name: { $regex: search, $options: "i" } },
                     { email: { $regex: search, $options: "i" } },
                     { phone: { $regex: search, $options: "i" } },
-                    { adhaar: { $regex: search, $options: "i" } },
                 ],
             }
             : {};
-        const filter = { isDeleted: true, ...searchQuery };
-        const totalStudents = await Student.countDocuments(filter);
-        const students = await Student.find(filter)
-            .populate("course", "title category price level")
+
+        const studentSearchQuery = search
+            ? {
+                $or: [{ adhaar: { $regex: search, $options: "i" } }],
+            }
+            : {};
+
+        const students = await Student.find({ isDeleted: true, ...studentSearchQuery })
+            .populate({
+                path: "visitor",
+                match: { isDeleted: false, ...visitorSearchQuery },
+                select: "name email phone course status createdAt",
+                populate: {
+                    path: "course",
+                    select: "title category price duration level",
+                },
+            })
             .sort({ [sortBy]: sortOrder })
             .skip(skip)
-            .limit(limit);
-        res.status(200).json({
-            students,
+            .limit(limit)
+            .lean();
+
+        const filtered = students.filter((s) => s.visitor);
+
+        const totalStudents = await Student.countDocuments({ isDeleted: true });
+
+        return res.status(200).json({
+            students: filtered,
             totalStudents,
             page,
             limit,
             totalPages: Math.ceil(totalStudents / limit),
         });
     } catch (error) {
-        console.error("Get deleted students error:", error);
-        res.status(500).json({ message: "Internal server error" });
+        console.error("getDeletedStudents error:", error);
+        return res.status(500).json({ message: "Internal server error" });
     }
 };
+
 exports.getMeStudent = async (req, res) => {
     try {
-        const userId = req.user._id;
-        const email = req.user.email;
+        const userId = req.user?._id;
 
-        if (!userId && !email) {
-            return res.status(401).json({ message: "Unauthorized" });
+        const user = await User.findOne({
+            _id: userId,
+            role: "student",
+            isDeleted: false,
+        })
+            .select("email role theme isActive student")
+            .lean();
+
+        if (!user || !user.student) {
+            return res.status(404).json({ message: "Student profile not found" });
         }
 
         const student = await Student.findOne({
-            email: email,
+            _id: user.student,
             isDeleted: false,
         })
-            .populate("course", "title category level price")
-            .populate("batch", "name title");
+            .populate({
+                path: "visitor",
+                select: "name email phone course status",
+                populate: {
+                    path: "course",
+                    select: "title category price duration level",
+                },
+            })
+            .lean();
 
         if (!student) {
             return res.status(404).json({ message: "Student profile not found" });
         }
 
-        return res.status(200).json({ student });
-    } catch (error) {
-        console.error("Get me student error:", error);
-        return res.status(500).json({ message: "Internal server error" });
-    }
-};
-exports.getMyStudentProfile = async (req, res) => {
-    try {
-        const student = await Student.findOne({ authUserId: req.user._id });
+        const mappings = await BatchStudentMap.find({
+            student: student._id,
+            status: "active",
+            isDeleted: false,
+        })
+            .populate("batch", "name startDate endDate status isActive")
+            .populate("course", "title category level price")
+            .populate({
+                path: "tutor",
+                populate: {
+                    path: "employee",
+                    select: "name",
+                },
+            })
+            .sort({ createdAt: -1 });
 
-        if (!student) {
-            return res.status(404).json({ message: "Student not found" });
-        }
-
-        res.json(student);
-    } catch (err) {
-        console.log("Get my student profile error:", err);
-        res.status(500).json({ message: "Server error" });
-    }
-};
-
-exports.getMyTimetable = async (req, res) => {
-    try {
-        const student = await Student.findOne({ authUserId: req.user._id });
-
-        if (!student) {
-            return res.status(404).json({ message: "Student not found" });
-        }
-
-        res.status(200).json({
-            timetable: student.timetable || [],
+        return res.status(200).json({
+            user,
+            student,
+            mappings,
         });
-    } catch (err) {
-        console.log("Get timetable error:", err);
-        res.status(500).json({ message: "Server error" });
+    } catch (error) {
+        console.error("getMeStudent error:", error);
+        return res.status(500).json({ message: "Internal server error" });
     }
 };

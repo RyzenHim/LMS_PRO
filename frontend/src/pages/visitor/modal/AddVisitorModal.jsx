@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import axiosInstance from "../../../api/axios";
-import { courseService } from "../../../services/courseService";
 
 const AddVisitorModal = ({ open, onClose, onSuccess }) => {
   const [form, setForm] = useState({
@@ -8,7 +7,7 @@ const AddVisitorModal = ({ open, onClose, onSuccess }) => {
     email: "",
     phone: "",
     source: "other",
-    course: "",
+    course: "", // MUST be courseId
     note: "",
   });
 
@@ -20,12 +19,17 @@ const AddVisitorModal = ({ open, onClose, onSuccess }) => {
     if (open) {
       fetchCourses();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const fetchCourses = async () => {
     try {
-      const res = await courseService.getAll({ limit: 100 });
-      setCourses(res.data?.courses || []);
+      const res = await axiosInstance.get("/courses/all", {
+        params: { limit: 100 },
+      });
+
+      const list = res.data?.courses || res.data || [];
+      setCourses(Array.isArray(list) ? list : []);
     } catch (error) {
       console.error("Error fetching courses", error);
     }
@@ -57,11 +61,16 @@ const AddVisitorModal = ({ open, onClose, onSuccess }) => {
     try {
       setLoading(true);
 
-      const res = await axiosInstance.post("/visitor/add", form);
+      const payload = {
+        ...form,
+        phone: form.phone ? Number(form.phone) : undefined,
+      };
+
+      const res = await axiosInstance.post("/visitor/add", payload);
 
       if (res?.data) {
         onSuccess(res.data);
-        onClose();
+
         setForm({
           name: "",
           email: "",
@@ -70,6 +79,8 @@ const AddVisitorModal = ({ open, onClose, onSuccess }) => {
           course: "",
           note: "",
         });
+
+        onClose();
       }
     } catch (err) {
       setError(err?.response?.data?.message || "Failed to add visitor");
@@ -162,8 +173,9 @@ const AddVisitorModal = ({ open, onClose, onSuccess }) => {
               className="w-full border border-[#DBE2EF] dark:border-[#3F72AF] p-2 rounded-lg bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
             >
               <option value="">Select Course</option>
+
               {courses.map((course) => (
-                <option key={course._id} value={course.title}>
+                <option key={course._id} value={course._id}>
                   {course.title}
                 </option>
               ))}

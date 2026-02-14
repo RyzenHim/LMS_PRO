@@ -20,6 +20,7 @@ const employeeSchema = new mongoose.Schema(
             trim: true,
         },
 
+
         salary: {
             type: Number,
             required: true,

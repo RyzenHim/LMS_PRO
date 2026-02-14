@@ -3,9 +3,6 @@ import React, { useEffect, useState } from "react";
 const Admin_EditEmployeeModal = ({ open, onClose, employee, onSubmit }) => {
   const [form, setForm] = useState(null);
 
-  /* ----------------------------------
-     Sync employee → form
-  ---------------------------------- */
   useEffect(() => {
     if (employee && open) {
       setForm({
@@ -20,103 +17,93 @@ const Admin_EditEmployeeModal = ({ open, onClose, employee, onSubmit }) => {
 
   if (!open || !form) return null;
 
-  /* ----------------------------------
-     Handle input change
-  ---------------------------------- */
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  /* ----------------------------------
-     Submit
-  ---------------------------------- */
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    // send ONLY fields controller allows
     const payload = {
       name: form.name.trim(),
       email: form.email.trim(),
       department: form.department.trim(),
       designation: form.designation,
-      salary: Number(form.salary),
+      salary: Number(form.salary || 0),
     };
 
     onSubmit(payload);
-    onClose();
   };
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl p-6 w-full max-w-lg">
-        <h2 className="text-lg font-semibold mb-4">Edit Employee</h2>
+      <div className="bg-white dark:bg-[#112D4E] rounded-xl p-6 w-full max-w-lg border border-[#DBE2EF] dark:border-[#3F72AF]">
+        <h2 className="text-lg font-semibold text-[#112D4E] dark:text-[#DBE2EF] mb-4">
+          Edit Employee
+        </h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Name */}
           <input
             name="name"
             value={form.name}
             onChange={handleChange}
-            className="w-full border rounded-lg px-3 py-2"
+            className="w-full border rounded-lg px-3 py-2 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF] dark:border-[#3F72AF]"
             placeholder="Full Name"
             required
           />
 
-          {/* Email */}
           <input
             name="email"
             type="email"
             value={form.email}
             onChange={handleChange}
-            className="w-full border rounded-lg px-3 py-2"
+            className="w-full border rounded-lg px-3 py-2 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF] dark:border-[#3F72AF]"
             placeholder="Email"
             required
           />
 
-          {/* Department */}
           <input
             name="department"
             value={form.department}
             onChange={handleChange}
-            className="w-full border rounded-lg px-3 py-2"
+            className="w-full border rounded-lg px-3 py-2 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF] dark:border-[#3F72AF]"
             placeholder="Department"
           />
 
-          {/* Designation */}
           <select
             name="designation"
             value={form.designation}
             onChange={handleChange}
-            className="w-full border rounded-lg px-3 py-2"
+            className="w-full border rounded-lg px-3 py-2 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF] dark:border-[#3F72AF]"
           >
             <option value="admin">Admin</option>
             <option value="hr">HR</option>
+            <option value="teacher">Teacher</option>
           </select>
 
-          {/* Salary */}
           <input
             name="salary"
             type="number"
             value={form.salary}
             onChange={handleChange}
-            className="w-full border rounded-lg px-3 py-2"
+            className="w-full border rounded-lg px-3 py-2 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF] dark:border-[#3F72AF]"
             placeholder="Salary"
             min="0"
           />
 
-          {/* Actions */}
           <div className="flex justify-end gap-3 pt-4">
             <button
               type="button"
               onClick={onClose}
-              className="border px-4 py-2 rounded-lg"
+              className="border px-4 py-2 rounded-lg dark:border-[#3F72AF] dark:text-[#DBE2EF]"
             >
               Cancel
             </button>
+
             <button
               type="submit"
-              className="bg-indigo-600 text-white px-4 py-2 rounded-lg"
+              className="bg-[#3F72AF] text-white px-4 py-2 rounded-lg hover:bg-[#112D4E]"
             >
               Update
             </button>

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import axiosInstance from "../../api/axios";
+import { resetPasswordApi } from "../../services/authService";
 
 const ResetPassword = () => {
   const { token } = useParams();
@@ -22,12 +22,11 @@ const ResetPassword = () => {
     setError("");
 
     try {
-      await axiosInstance.post(`/user/reset-password/${token}`, {
-        password,
-      });
-      navigate("/auth/login");
+      await resetPasswordApi(token, { password });
+
+      navigate("/auth/login", { replace: true });
     } catch (err) {
-      setError(err.response?.data?.message || "Reset failed");
+      setError(err.message || "Reset failed");
     } finally {
       setLoading(false);
     }

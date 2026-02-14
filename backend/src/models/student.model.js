@@ -9,6 +9,7 @@ const fileSchema = new mongoose.Schema(
     },
     { _id: false }
 );
+
 const studentSchema = new mongoose.Schema(
     {
         visitor: {
@@ -24,12 +25,6 @@ const studentSchema = new mongoose.Schema(
             trim: true,
             unique: true,
             sparse: true,
-        },
-
-        batch: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "Batch",
-            default: null,
         },
 
         enrollmentDate: {

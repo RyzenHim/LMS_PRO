@@ -13,6 +13,7 @@ const parseListParams = (req) => {
 exports.allSkills = async (req, res) => {
     try {
         const { page, limit, skip, sortBy, sortOrder, search } = parseListParams(req);
+
         const searchQuery = search
             ? {
                 $or: [
@@ -22,13 +23,17 @@ exports.allSkills = async (req, res) => {
                 ],
             }
             : {};
+
         const filter = { isDeleted: false, ...searchQuery };
+
         const totalSkills = await Skill.countDocuments(filter);
+
         const skills = await Skill.find(filter)
             .sort({ [sortBy]: sortOrder })
             .skip(skip)
             .limit(limit);
-        res.status(200).json({
+
+        return res.status(200).json({
             skills,
             totalSkills,
             page,
@@ -37,7 +42,7 @@ exports.allSkills = async (req, res) => {
         });
     } catch (error) {
         console.error("Get skills error:", error);
-        res.status(500).json({ message: "Internal server error" });
+        return res.status(500).json({ message: "Internal server error" });
     }
 };
 
@@ -45,17 +50,17 @@ exports.getSkillById = async (req, res) => {
     try {
         const skill = await Skill.findOne({
             _id: req.params.id,
-            isDeleted: false
+            isDeleted: false,
         });
 
         if (!skill) {
             return res.status(404).json({ message: "Skill not found" });
         }
 
-        res.status(200).json(skill);
+        return res.status(200).json(skill);
     } catch (error) {
         console.error("Get skill by id error:", error);
-        res.status(500).json({ message: "Internal server error" });
+        return res.status(500).json({ message: "Internal server error" });
     }
 };
 
@@ -63,31 +68,34 @@ exports.addSkill = async (req, res) => {
     try {
         const { name, description, category } = req.body;
 
-        if (!name) {
+        if (!name || !name.trim()) {
             return res.status(400).json({ message: "Skill name is required" });
         }
 
-        const existingSkill = await Skill.findOne({ 
-            name: name.toLowerCase().trim(),
-            isDeleted: false 
+        const normalizedName = name.toLowerCase().trim();
+
+        const existingSkill = await Skill.findOne({
+            name: normalizedName,
+            isDeleted: false,
         });
+
         if (existingSkill) {
             return res.status(400).json({ message: "Skill already exists" });
         }
 
         const skill = await Skill.create({
-            name: name.toLowerCase().trim(),
+            name: normalizedName,
             description,
-            category
+            category,
         });
 
-        res.status(201).json({
+        return res.status(201).json({
             message: "Skill added successfully",
             skill,
         });
     } catch (error) {
         console.error("Add skill error:", error);
-        res.status(500).json({ message: "Internal server error" });
+        return res.status(500).json({ message: "Internal server error" });
     }
 };
 
@@ -101,35 +109,48 @@ exports.updateSkill = async (req, res) => {
             return res.status(404).json({ message: "Skill not found" });
         }
 
-        if (name) {
-            const existingSkill = await Skill.findOne({ 
-                name: name.toLowerCase().trim(),
+        if (name !== undefined) {
+            if (!name.trim()) {
+                return res.status(400).json({ message: "Skill name cannot be empty" });
+            }
+
+            const normalizedName = name.toLowerCase().trim();
+
+            const existingSkill = await Skill.findOne({
+                name: normalizedName,
                 _id: { $ne: id },
-                isDeleted: false 
+                isDeleted: false,
             });
+
             if (existingSkill) {
                 return res.status(400).json({ message: "Skill name already exists" });
             }
-            skill.name = name.toLowerCase().trim();
+
+            skill.name = normalizedName;
         }
+
         if (description !== undefined) skill.description = description;
         if (category !== undefined) skill.category = category;
 
         await skill.save();
 
-        res.status(200).json({
+        return res.status(200).json({
             message: "Skill updated successfully",
             skill,
         });
     } catch (error) {
         console.error("Update skill error:", error);
-        res.status(500).json({ message: "Internal server error" });
+        return res.status(500).json({ message: "Internal server error" });
     }
 };
 
 exports.toggleSkillStatus = async (req, res) => {
     try {
-        const skill = await Skill.findOne({ _id: req.params.id, isDeleted: false });
+        const skill = await Skill.findOne({
+            _id: req.params.id,
+            isDeleted: false,
+        });
+
         if (!skill) {
             return res.status(404).json({ message: "Skill not found" });
         }
@@ -137,13 +158,13 @@ exports.toggleSkillStatus = async (req, res) => {
         skill.isActive = !skill.isActive;
         await skill.save();
 
-        res.status(200).json({
+        return res.status(200).json({
             message: "Skill status updated",
             isActive: skill.isActive,
         });
     } catch (error) {
         console.error("Toggle skill status error:", error);
-        res.status(500).json({ message: "Internal server error" });
+        return res.status(500).json({ message: "Internal server error" });
     }
 };
 
@@ -162,10 +183,10 @@ exports.softDeleteSkill = async (req, res) => {
             return res.status(404).json({ message: "Skill not found" });
         }
 
-        res.status(200).json({ message: "Skill moved to trash", skill });
+        return res.status(200).json({ message: "Skill moved to trash", skill });
     } catch (error) {
         console.error("Soft delete skill error:", error);
-        res.status(500).json({ message: "Internal server error" });
+        return res.status(500).json({ message: "Internal server error" });
     }
 };
 
@@ -184,16 +205,17 @@ exports.restoreSkill = async (req, res) => {
             return res.status(404).json({ message: "Skill not found" });
         }
 
-        res.status(200).json({ message: "Skill restored successfully", skill });
+        return res.status(200).json({ message: "Skill restored successfully", skill });
     } catch (error) {
         console.error("Restore skill error:", error);
-        res.status(500).json({ message: "Internal server error" });
+        return res.status(500).json({ message: "Internal server error" });
     }
 };
 
 exports.getDeletedSkills = async (req, res) => {
     try {
         const { page, limit, skip, sortBy, sortOrder, search } = parseListParams(req);
+
         const searchQuery = search
             ? {
                 $or: [
@@ -203,13 +225,17 @@ exports.getDeletedSkills = async (req, res) => {
                 ],
             }
             : {};
+
         const filter = { isDeleted: true, ...searchQuery };
+
         const totalSkills = await Skill.countDocuments(filter);
+
         const skills = await Skill.find(filter)
             .sort({ [sortBy]: sortOrder })
             .skip(skip)
             .limit(limit);
-        res.status(200).json({
+
+        return res.status(200).json({
             skills,
             totalSkills,
             page,
@@ -218,6 +244,6 @@ exports.getDeletedSkills = async (req, res) => {
         });
     } catch (error) {
         console.error("Get deleted skills error:", error);
-        res.status(500).json({ message: "Internal server error" });
+        return res.status(500).json({ message: "Internal server error" });
     }
 };

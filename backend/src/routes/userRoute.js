@@ -1,60 +1,18 @@
-const express = require("express")
-const router = express.Router()
-const userController = require('../controllers/auth.controller')
-const authenticate = require("../middleware/auth.middleware")
+const express = require("express");
+const router = express.Router();
 
-router.post('/signup', userController.signup)
-router.post('/login', userController.login)
-router.post('/forgot-password', userController.forgotPassword)
-router.post('/reset-password/:token', userController.resetPassword)
-router.get('/me', authenticate, userController.getCurrentUser)
-router.put('/profile', authenticate, userController.updateProfile)
+const userController = require("../controllers/auth.controller");
+const authenticate = require("../middleware/auth.middleware");
 
-module.exports = router
+router.post("/signup", userController.signup);
+router.post("/login", userController.login);
+router.post("/logout", authenticate, userController.logout);
 
+router.post("/forgot-password", userController.forgotPassword);
+router.post("/reset-password/:token", userController.resetPassword);
 
+router.get("/me", authenticate, userController.getCurrentUser);
+router.patch("/profile", authenticate, userController.updateProfile);
+console.log("Inside userRoute.js ✅");
 
-
-// backend/
-//  ├─ src/
-//  │   ├─ config/
-//  │   │   ├─ db.js
-//  │   │   └─ env.js
-//  │   │
-//  │   ├─ models/
-//  │   │   ├─ User.model.js
-//  │   │   ├─ Course.model.js
-//  │   │   ├─ Enrollment.model.js
-//  │   │   └─ Assignment.model.js
-//  │   │
-//  │   ├─ middlewares/
-//  │   │   ├─ auth.middleware.js        # JWT verify
-//  │   │   ├─ role.middleware.js        # allowRoles(...)
-//  │   │   └─ error.middleware.js
-//  │   │
-//  │   ├─ services/
-//  │   │   ├─ auth.service.js
-//  │   │   ├─ admin.service.js
-//  │   │   ├─ tutor.service.js
-//  │   │   └─ student.service.js
-//  │   │
-//  │   ├─ controllers/
-//  │   │   ├─ auth.controller.js
-//  │   │   ├─ admin.controller.js
-//  │   │   ├─ tutor.controller.js
-//  │   │   └─ student.controller.js
-//  │   │
-//  │   ├─ routes/
-//  │   │   ├─ auth.routes.js
-//  │   │   ├─ admin.routes.js
-//  │   │   ├─ tutor.routes.js
-//  │   │   └─ student.routes.js
-//  │   │
-//  │   ├─ utils/
-//  │   │   ├─ token.js
-//  │   │   └─ mail.js
-//  │   │
-//  │   ├─ app.js
-//  │   └─ server.js
-//  │
-//  └─ package.json
+module.exports = router;
