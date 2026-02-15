@@ -18,7 +18,8 @@ const ViewStudentModal = ({ open, onClose, student }) => {
 
   const fetchBatchHistory = async (studentId) => {
     try {
-      const res = await batchStudentMapService.getBatchHistoryOfStudent(studentId);
+      const res =
+        await batchStudentMapService.getBatchHistoryOfStudent(studentId);
       setBatchHistory(res.data || []);
     } catch (error) {
       console.error("fetchBatchHistory error:", error);
@@ -50,21 +51,27 @@ const ViewStudentModal = ({ open, onClose, student }) => {
               <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
                 Name
               </label>
-              <p className="text-gray-900 dark:text-white">{student.name}</p>
+              <p className="text-gray-900 dark:text-white">
+                {student.visitor.name}
+              </p>
             </div>
 
             <div>
               <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
                 Email
               </label>
-              <p className="text-gray-900 dark:text-white">{student.email}</p>
+              <p className="text-gray-900 dark:text-white">
+                {student.visitor.email}
+              </p>
             </div>
 
             <div>
               <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
                 Phone
               </label>
-              <p className="text-gray-900 dark:text-white">{student.phone || "—"}</p>
+              <p className="text-gray-900 dark:text-white">
+                {student.visitor.phone || "—"}
+              </p>
             </div>
 
             <div>
@@ -72,7 +79,7 @@ const ViewStudentModal = ({ open, onClose, student }) => {
                 Course
               </label>
               <p className="text-gray-900 dark:text-white">
-                {student.course?.title || "—"}
+                {student.visitor.course?.title || "—"}
               </p>
             </div>
 
@@ -80,7 +87,9 @@ const ViewStudentModal = ({ open, onClose, student }) => {
               <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
                 Status
               </label>
-              <p className="text-gray-900 dark:text-white capitalize">{student.status}</p>
+              <p className="text-gray-900 dark:text-white capitalize">
+                {student.status}
+              </p>
             </div>
 
             <div>
@@ -127,21 +136,27 @@ const ViewStudentModal = ({ open, onClose, student }) => {
               <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
                 Address
               </label>
-              <p className="text-gray-900 dark:text-white">{student.address || "—"}</p>
+              <p className="text-gray-900 dark:text-white">
+                {student.address || "—"}
+              </p>
             </div>
 
             <div>
               <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
                 Guardian Name
               </label>
-              <p className="text-gray-900 dark:text-white">{student.guardianName || "—"}</p>
+              <p className="text-gray-900 dark:text-white">
+                {student.guardianName || "—"}
+              </p>
             </div>
 
             <div>
               <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
                 Guardian Phone
               </label>
-              <p className="text-gray-900 dark:text-white">{student.guardianPhone || "—"}</p>
+              <p className="text-gray-900 dark:text-white">
+                {student.guardianPhone || "—"}
+              </p>
             </div>
 
             <div>
@@ -169,7 +184,9 @@ const ViewStudentModal = ({ open, onClose, student }) => {
             </label>
             <div className="mt-2 space-y-2">
               {batchHistory.length === 0 && (
-                <p className="text-sm text-gray-500 dark:text-gray-400">No batch history</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  No batch history
+                </p>
               )}
               {batchHistory.map((b) => (
                 <div
@@ -214,4 +231,3 @@ const ViewStudentModal = ({ open, onClose, student }) => {
 };
 
 export default ViewStudentModal;
-

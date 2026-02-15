@@ -40,7 +40,6 @@ const AdminTutors = () => {
 
   const [selectedTutor, setSelectedTutor] = useState(null);
 
-  // ✅ SORT
   const handleSort = (field) => {
     if (sortBy === field) {
       setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
@@ -52,7 +51,6 @@ const AdminTutors = () => {
     setTrashPage(1);
   };
 
-  // ✅ FILTERS
   const addFilter = () => {
     if (!filterField || !filterValue) return;
     setFilters((prev) => ({ ...prev, [filterField]: filterValue }));
@@ -77,7 +75,6 @@ const AdminTutors = () => {
     setTrashPage(1);
   };
 
-  // ✅ API
   const fetchTutors = async () => {
     setLoading(true);
     try {
@@ -91,6 +88,7 @@ const AdminTutors = () => {
       });
 
       setTutors(res.data.tutors || []);
+      console.log("res.data.tutors", res.data.tutors);
       setTotalPages(res.data.totalPages || 1);
     } catch (error) {
       console.error("Error fetching tutors", error);
@@ -399,15 +397,15 @@ const AdminTutors = () => {
                     className="border-b border-[#DBE2EF] dark:border-[#3F72AF] last:border-none hover:bg-[#DBE2EF] dark:hover:bg-[#0a1f3a] transition-colors"
                   >
                     <td className="px-6 py-4 font-medium text-[#112D4E] dark:text-[#DBE2EF]">
-                      {t.employee?.name || "—"}
+                      {t?.name || "—"}
                     </td>
 
                     <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
-                      {t.employee?.email || "—"}
+                      {t?.email || "—"}
                     </td>
 
                     <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
-                      {t.employee?.phone || "—"}
+                      {t?.phone || "—"}
                     </td>
 
                     <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">

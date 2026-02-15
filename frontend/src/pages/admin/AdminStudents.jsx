@@ -1,17 +1,8 @@
 import React, { useEffect, useState } from "react";
-import {
-  Search,
-  Plus,
-  Eye,
-  Edit,
-  Trash2,
-  RotateCcw,
-  Repeat,
-} from "lucide-react";
+import { Search, Eye, Edit, Trash2, RotateCcw, Repeat } from "lucide-react";
 
 import { studentService } from "../../services/studentService";
 
-import AddStudentModal from "./modal/AddStudentModal";
 import EditStudentModal from "./modal/EditStudentModal";
 import ViewStudentModal from "./modal/ViewStudentModal";
 import ConfirmDeleteModal from "./modal/ConfirmDeleteModal";
@@ -42,7 +33,6 @@ const AdminStudents = () => {
 
   const [activeTab, setActiveTab] = useState("active");
 
-  const [openAdd, setOpenAdd] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [openView, setOpenView] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
@@ -87,7 +77,6 @@ const AdminStudents = () => {
     setTrashPage(1);
   };
 
-  // ✅ API CALLS
   const fetchStudents = async () => {
     setLoading(true);
     try {
@@ -101,6 +90,7 @@ const AdminStudents = () => {
       });
 
       setStudents(res.data.students || []);
+      // console.log("res.data.students", res.data.students);
       setTotalPages(res.data.totalPages || 1);
     } catch (error) {
       console.error("Error fetching students", error);
@@ -150,20 +140,6 @@ const AdminStudents = () => {
   }, [activeTab]);
 
   // ✅ CRUD
-  const handleAddStudent = async (data) => {
-    try {
-      await studentService.create(data);
-
-      // Best practice: refresh from backend (pagination safe)
-      await fetchStudents();
-
-      setOpenAdd(false);
-    } catch (error) {
-      console.error("Add student failed", error);
-      alert(error.response?.data?.message || "Failed to add student");
-    }
-  };
-
   const handleEdit = (student) => {
     setSelectedStudent(student);
     setOpenEdit(true);
@@ -248,16 +224,6 @@ const AdminStudents = () => {
             Manage enrolled students
           </p>
         </div>
-
-        {activeTab === "active" && (
-          <button
-            onClick={() => setOpenAdd(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#3F72AF] text-white hover:bg-[#112D4E] dark:bg-[#3F72AF] dark:hover:bg-[#DBE2EF] dark:hover:text-[#112D4E] transition-colors shadow-md"
-          >
-            <Plus size={18} />
-            Add Student
-          </button>
-        )}
       </div>
 
       {/* Tabs */}
@@ -425,19 +391,19 @@ const AdminStudents = () => {
                     className="border-b border-[#DBE2EF] dark:border-[#3F72AF] last:border-none hover:bg-[#DBE2EF] dark:hover:bg-[#0a1f3a] transition-colors"
                   >
                     <td className="px-6 py-4 font-medium text-[#112D4E] dark:text-[#DBE2EF]">
-                      {s.name}
+                      {s.visitor?.name || "—"}
                     </td>
 
                     <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
-                      {s.email}
+                      {s.visitor?.email || "—"}
                     </td>
 
                     <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
-                      {s.phone || "—"}
+                      {s.visitor?.phone || "—"}
                     </td>
 
                     <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
-                      {s.course?.title || "—"}
+                      {s.visitor?.course?.title || "—"}
                     </td>
 
                     <td className="px-6 py-4">
@@ -540,7 +506,6 @@ const AdminStudents = () => {
         )}
       </div>
 
-      {/* Pagination */}
       <Pagination
         page={activeTab === "active" ? page : trashPage}
         totalPages={activeTab === "active" ? totalPages : trashTotalPages}
@@ -550,12 +515,6 @@ const AdminStudents = () => {
       />
 
       {/* Modals */}
-      <AddStudentModal
-        open={openAdd}
-        onClose={() => setOpenAdd(false)}
-        onSubmit={handleAddStudent}
-      />
-
       <EditStudentModal
         open={openEdit}
         student={selectedStudent}
@@ -592,7 +551,7 @@ const AdminStudents = () => {
           setSelectedStudent(null);
         }}
         onConfirm={handleDelete}
-        title={selectedStudent?.name}
+        title={selectedStudent?.visitor?.name || "Student"}
       />
     </div>
   );

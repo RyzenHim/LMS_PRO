@@ -2,98 +2,96 @@ import React, { useState, useEffect } from "react";
 
 const EditTutorModal = ({ open, onClose, tutor, onSubmit }) => {
   const [form, setForm] = useState({
-    name: "",
-    email: "",
-    phone: "",
     expertise: "",
     experience: "",
     qualification: "",
     bio: "",
-    salary: "",
   });
 
   useEffect(() => {
-    if (tutor) {
+    if (open && tutor) {
       setForm({
-        name: tutor.name || "",
-        email: tutor.email || "",
-        phone: tutor.phone || "",
         expertise: tutor.expertise || "",
-        experience: tutor.experience || "",
+        experience: tutor.experience ?? "",
         qualification: tutor.qualification || "",
         bio: tutor.bio || "",
-        salary: tutor.salary || "",
       });
     }
-  }, [tutor]);
+  }, [open, tutor]);
 
   if (!open) return null;
 
   const handleChange = (e) => {
-    setForm({
-      ...form,
+    setForm((prev) => ({
+      ...prev,
       [e.target.name]: e.target.value,
-    });
+    }));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit?.(form);
+
+    const payload = {
+      expertise: form.expertise.trim(),
+      experience: Number(form.experience || 0),
+      qualification: form.qualification.trim(),
+      bio: form.bio.trim(),
+    };
+
+    onSubmit?.(payload);
   };
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 overflow-y-auto">
-      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-2xl my-8">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+      <div className="bg-white dark:bg-[#112D4E] rounded-xl p-6 w-full max-w-2xl my-8 border border-[#DBE2EF] dark:border-[#3F72AF]">
+        <h2 className="text-lg font-semibold text-[#112D4E] dark:text-[#DBE2EF] mb-4">
           Edit Tutor
         </h2>
 
-        <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto">
+        {/* Read-only Employee Info */}
+        <div className="grid grid-cols-2 gap-4 mb-6 text-sm">
+          <div>
+            <p className="text-[#3F72AF] dark:text-[#DBE2EF] font-medium">
+              Name
+            </p>
+            <p className="text-[#112D4E] dark:text-[#DBE2EF]">
+              {tutor?.employee?.name || "—"}
+            </p>
+          </div>
+
+          <div>
+            <p className="text-[#3F72AF] dark:text-[#DBE2EF] font-medium">
+              Email
+            </p>
+            <p className="text-[#112D4E] dark:text-[#DBE2EF]">
+              {tutor?.employee?.email || "—"}
+            </p>
+          </div>
+
+          <div>
+            <p className="text-[#3F72AF] dark:text-[#DBE2EF] font-medium">
+              Phone
+            </p>
+            <p className="text-[#112D4E] dark:text-[#DBE2EF]">
+              {tutor?.employee?.phone || "—"}
+            </p>
+          </div>
+
+          <div>
+            <p className="text-[#3F72AF] dark:text-[#DBE2EF] font-medium">
+              Salary
+            </p>
+            <p className="text-[#112D4E] dark:text-[#DBE2EF]">
+              ₹{Number(tutor?.employee?.salary || 0)}
+            </p>
+          </div>
+        </div>
+
+        {/* Editable Tutor Fields */}
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                Full Name *
-              </label>
-              <input
-                name="name"
-                value={form.name}
-                onChange={handleChange}
-                placeholder="Tutor name"
-                required
-                className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                Email *
-              </label>
-              <input
-                name="email"
-                type="email"
-                value={form.email}
-                onChange={handleChange}
-                placeholder="tutor@example.com"
-                required
-                className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                Phone
-              </label>
-              <input
-                name="phone"
-                value={form.phone}
-                onChange={handleChange}
-                placeholder="Phone number"
-                className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
+              <label className="text-sm font-medium text-[#3F72AF] dark:text-[#DBE2EF]">
                 Expertise *
               </label>
               <input
@@ -102,12 +100,12 @@ const EditTutorModal = ({ open, onClose, tutor, onSubmit }) => {
                 onChange={handleChange}
                 placeholder="e.g., React, Node.js"
                 required
-                className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                className="w-full px-3 py-2 border rounded-lg bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF] dark:border-[#3F72AF]"
               />
             </div>
 
             <div>
-              <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
+              <label className="text-sm font-medium text-[#3F72AF] dark:text-[#DBE2EF]">
                 Experience (years)
               </label>
               <input
@@ -117,12 +115,12 @@ const EditTutorModal = ({ open, onClose, tutor, onSubmit }) => {
                 onChange={handleChange}
                 placeholder="0"
                 min="0"
-                className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                className="w-full px-3 py-2 border rounded-lg bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF] dark:border-[#3F72AF]"
               />
             </div>
 
             <div>
-              <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
+              <label className="text-sm font-medium text-[#3F72AF] dark:text-[#DBE2EF]">
                 Qualification
               </label>
               <input
@@ -130,51 +128,37 @@ const EditTutorModal = ({ open, onClose, tutor, onSubmit }) => {
                 value={form.qualification}
                 onChange={handleChange}
                 placeholder="e.g., M.Tech, B.E."
-                className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                className="w-full px-3 py-2 border rounded-lg bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF] dark:border-[#3F72AF]"
               />
             </div>
+          </div>
 
-            <div>
-              <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                Salary
-              </label>
-              <input
-                name="salary"
-                type="number"
-                value={form.salary}
-                onChange={handleChange}
-                placeholder="0"
-                min="0"
-                className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              />
-            </div>
-
-            <div className="col-span-2">
-              <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                Bio
-              </label>
-              <textarea
-                name="bio"
-                value={form.bio}
-                onChange={handleChange}
-                placeholder="Brief bio about the tutor"
-                rows="3"
-                className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              />
-            </div>
+          <div>
+            <label className="text-sm font-medium text-[#3F72AF] dark:text-[#DBE2EF]">
+              Bio
+            </label>
+            <textarea
+              name="bio"
+              value={form.bio}
+              onChange={handleChange}
+              placeholder="Brief bio about the tutor"
+              rows="4"
+              className="w-full px-3 py-2 border rounded-lg bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF] dark:border-[#3F72AF]"
+            />
           </div>
 
           <div className="flex justify-end gap-3 pt-4">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border rounded-lg dark:border-gray-600 dark:text-gray-300"
+              className="px-4 py-2 border rounded-lg dark:border-[#3F72AF] dark:text-[#DBE2EF]"
             >
               Cancel
             </button>
+
             <button
               type="submit"
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+              className="px-4 py-2 bg-[#3F72AF] text-white rounded-lg hover:bg-[#112D4E]"
             >
               Update Tutor
             </button>
@@ -186,4 +170,3 @@ const EditTutorModal = ({ open, onClose, tutor, onSubmit }) => {
 };
 
 export default EditTutorModal;
-

@@ -79,12 +79,3 @@ userSchema.pre("save", async function () {
 module.exports = mongoose.model("User", userSchema);
 
 
-// user
-// employee
-// course
-// skill
-// mapping->teacher mapping , employeeid -> class subject mapper id
-// batch
-// visitor
-
-

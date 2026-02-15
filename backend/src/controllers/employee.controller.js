@@ -4,9 +4,6 @@ const User = require("../models/authUsers.model");
 
 const nodemailer = require("nodemailer");
 
-// ==============================
-// HELPERS
-// ==============================
 const parseListParams = (req) => {
     const page = Math.max(parseInt(req.query.page || "1", 10), 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit || "10", 10), 1), 100);
@@ -51,11 +48,6 @@ const buildSearchQuery = (search) => {
     };
 };
 
-/**
- * ✅ NEW (IMPORTANT)
- * This matches your frontend filters:
- * filters = { department, designation, email, isActive }
- */
 const buildFilterQuery = (req) => {
     const filter = {};
 
@@ -71,7 +63,6 @@ const buildFilterQuery = (req) => {
         filter.email = { $regex: req.query.email, $options: "i" };
     }
 
-    // frontend will send: "true" or "false"
     if (req.query.isActive !== undefined) {
         if (req.query.isActive === "true") filter.isActive = true;
         if (req.query.isActive === "false") filter.isActive = false;
@@ -89,9 +80,6 @@ const generatePassword = (length = 10) => {
     return pass;
 };
 
-// ==============================
-// NODEMAILER
-// ==============================
 const transporter = nodemailer.createTransport({
     service: "gmail",
     auth: {
@@ -135,15 +123,11 @@ const detectRoleFromDesignation = (designation = "") => {
     return "admin";
 };
 
-// ==============================
-// CONTROLLERS
-// ==============================
 
 exports.allEmployee = async (req, res) => {
     try {
         const { page, limit, skip, sortBy, sortOrder, search } = parseListParams(req);
 
-        // ✅ FIXED: now supports frontend filters too
         const filter = {
             isDeleted: false,
             ...buildSearchQuery(search),
@@ -200,8 +184,10 @@ exports.getEmployeeById = async (req, res) => {
 
 exports.addEmployee = async (req, res) => {
     console.log("req.body", req.body);
+
     try {
-        const { name, email, phone, department, designation, salary, joiningDate } = req.body;
+        const { name, email, phone, department, designation, salary, joiningDate } =
+            req.body;
 
         if (!name || !department || !designation || salary === undefined) {
             return res.status(400).json({
@@ -209,12 +195,17 @@ exports.addEmployee = async (req, res) => {
             });
         }
 
-        if (email) {
+        // normalize
+        const normalizedEmail = email ? email.toLowerCase().trim() : null;
+        const normalizedDesignation = String(designation).toLowerCase().trim();
+
+        // ✅ Check duplicate employee email
+        if (normalizedEmail) {
             const existsEmail = await Employee.findOne({
-                email: email.toLowerCase().trim()
-                // isDeleted: false,
+                email: normalizedEmail,
+                isDeleted: false,
             });
-            // console.log("req.body", req.body);
+
             console.log("existsEmail", existsEmail);
 
             if (existsEmail) {
@@ -224,12 +215,13 @@ exports.addEmployee = async (req, res) => {
             }
         }
 
+        // ✅ Create employee
         const employee = await Employee.create({
             name,
-            // email: email ? email.toLowerCase().trim() : undefined,
+            email: normalizedEmail || undefined,
             phone: phone || undefined,
             department,
-            designation,
+            designation: normalizedDesignation,
             salary: Number(salary),
             joiningDate: joiningDate || new Date(),
 
@@ -239,20 +231,57 @@ exports.addEmployee = async (req, res) => {
         });
 
         console.log("employee", employee);
+
+        // =====================================
+        // ✅ Create tutor profile if TEACHER
+        // =====================================
+        let createdTutor = null;
+
+        if (normalizedDesignation === "teacher") {
+            const existsTutor = await Tutor.findOne({
+                employee: employee._id,
+                isDeleted: false,
+            });
+
+            if (!existsTutor) {
+                createdTutor = await Tutor.create({
+                    employee: employee._id,
+
+                    // default values (can be updated later)
+                    expertise: "Not Updated",
+                    experience: 0,
+                    qualification: "",
+                    bio: "",
+
+                    isActive: true,
+                    isDeleted: false,
+                    deletedAt: null,
+                });
+            }
+        }
+
+        // =====================================
+        // ✅ Create user login
+        // =====================================
         let createdUser = null;
 
-        if (email) {
-            const role = detectRoleFromDesignation(employee.designation);
-            console.log(`>>>>>>role`, role);
+        if (normalizedEmail) {
+            // detect role
+            let role = detectRoleFromDesignation(employee.designation);
 
-            const normalizedEmail = email.toLowerCase().trim();
+            // 🔥 If designation is teacher => role MUST be tutor
+            if (normalizedDesignation === "teacher") {
+                role = "tutor";
+            }
+
+            console.log(">>>>>>role", role);
 
             const alreadyUser = await User.findOne({
                 email: normalizedEmail,
                 isDeleted: false,
             });
-            console.log(`>>>>>>alreadyUser`, alreadyUser);
 
+            console.log(">>>>>>alreadyUser", alreadyUser);
 
             if (!alreadyUser) {
                 const generatedPassword = generatePassword(10);
@@ -262,8 +291,13 @@ exports.addEmployee = async (req, res) => {
                     password: generatedPassword,
                     role,
                     employee: employee._id,
+
+                    // ✅ link tutor if teacher
+                    tutor: createdTutor?._id || null,
                 });
+
                 console.log("createdUser", createdUser);
+
                 try {
                     await sendEmployeeLoginMail({
                         toEmail: normalizedEmail,
@@ -279,9 +313,13 @@ exports.addEmployee = async (req, res) => {
 
         return res.status(201).json({
             message:
-                "Employee added successfully" + (createdUser ? " + login created + mail sent" : ""),
+                "Employee added successfully" +
+                (createdUser ? " + login created + mail sent" : "") +
+                (createdTutor ? " + tutor profile created" : ""),
             employee,
+            tutor: createdTutor,
             loginCreated: Boolean(createdUser),
+            tutorCreated: Boolean(createdTutor),
         });
     } catch (error) {
         console.error("Add employee error:", error);
@@ -290,7 +328,6 @@ exports.addEmployee = async (req, res) => {
         });
     }
 };
-
 exports.toggleEmployeeStatus = async (req, res) => {
     try {
         const { id } = req.params;

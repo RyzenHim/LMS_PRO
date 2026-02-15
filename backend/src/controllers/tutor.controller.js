@@ -4,9 +4,6 @@ const User = require("../models/authUsers.model");
 
 const nodemailer = require("nodemailer");
 
-// ==============================
-// HELPERS
-// ==============================
 const parseListParams = (req) => {
     const page = Math.max(parseInt(req.query.page || "1", 10), 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit || "10", 10), 1), 100);
@@ -138,9 +135,7 @@ const sendTutorLoginMail = async ({ toEmail, name, password }) => {
     await transporter.sendMail(mailOptions);
 };
 
-// ==============================
-// CONTROLLERS
-// ==============================
+
 exports.allTutors = async (req, res) => {
     try {
         const { page, limit, skip, sortBy, sortOrder, search } = parseListParams(req);
@@ -222,9 +217,6 @@ exports.getTutorById = async (req, res) => {
     }
 };
 
-// ==============================
-// ADD TUTOR (WITH LOGIN + EMAIL)
-// ==============================
 exports.addTutor = async (req, res) => {
     try {
         const { employee, expertise, experience, qualification, bio } = req.body;

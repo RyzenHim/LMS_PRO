@@ -51,6 +51,7 @@ exports.allStudents = async (req, res) => {
             .limit(limit)
             .lean();
 
+        // console.log(`>>>>>>students`, students);
         const filteredStudents = students.filter((s) => s.visitor);
 
         const totalStudents = await Student.countDocuments({ isDeleted: false });

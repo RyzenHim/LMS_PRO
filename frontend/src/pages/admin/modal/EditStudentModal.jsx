@@ -24,10 +24,10 @@ const EditStudentModal = ({ open, onClose, student, onSubmit }) => {
   useEffect(() => {
     if (student) {
       setForm({
-        name: student.name || "",
-        email: student.email || "",
-        phone: student.phone || "",
-        course: student.course?._id || student.course || "",
+        name: student.visitor.name || "",
+        email: student.visitor.email || "",
+        phone: student.visitor.phone || "",
+        course: student.visitor.course?._id || student.course || "",
         address: student.address || "",
         dateOfBirth: student.dateOfBirth
           ? new Date(student.dateOfBirth).toISOString().split("T")[0]
@@ -42,7 +42,9 @@ const EditStudentModal = ({ open, onClose, student, onSubmit }) => {
   const fetchCourses = async () => {
     try {
       const res = await courseService.getAll({ limit: 100 });
-      setCourses((res.data?.courses || []).filter((c) => c.isDeleted === false));
+      setCourses(
+        (res.data?.courses || []).filter((c) => c.isDeleted === false),
+      );
     } catch (error) {
       console.error("fetchCourses error:", error);
     }
@@ -72,7 +74,10 @@ const EditStudentModal = ({ open, onClose, student, onSubmit }) => {
           Edit Student
         </h2>
 
-        <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto">
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-4 max-h-[70vh] overflow-y-auto"
+        >
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
@@ -228,4 +233,3 @@ const EditStudentModal = ({ open, onClose, student, onSubmit }) => {
 };
 
 export default EditStudentModal;
-
