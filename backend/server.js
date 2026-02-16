@@ -66,3 +66,9 @@ app.use("/timetable", timetableRoutes);
 
 const reportRoutes = require("./src/routes/reports.routes");
 app.use("/reports", reportRoutes);
+
+const assignmentRoutes = require("./src/routes/assignment.routes");
+app.use("/assignments", assignmentRoutes);
+
+const roomRoutes = require("./src/routes/room.routes");
+app.use("/rooms", roomRoutes);

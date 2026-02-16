@@ -12,8 +12,8 @@ exports.createSlot = async (req, res) => {
         const { batch, tutor, course, subject, day, startMinutes, endMinutes, room } =
             req.body;
 
-        if (!batch || !tutor || !course || !day) {
-            return res.status(400).json({ message: "batch, tutor, course, day required" });
+        if (!batch || !tutor || !day) {
+            return res.status(400).json({ message: "batch, tutor and day are required" });
         }
 
         if (startMinutes === undefined || endMinutes === undefined) {
@@ -30,8 +30,13 @@ exports.createSlot = async (req, res) => {
         const tutorDoc = await Tutor.findOne({ _id: tutor, isDeleted: false });
         if (!tutorDoc) return res.status(404).json({ message: "Tutor not found" });
 
-        const courseDoc = await Course.findOne({ _id: course, isDeleted: false });
+        const finalCourseId = course || batchDoc.course;
+        const courseDoc = await Course.findOne({ _id: finalCourseId, isDeleted: false });
         if (!courseDoc) return res.status(404).json({ message: "Course not found" });
+
+        if (String(batchDoc.course) !== String(finalCourseId)) {
+            return res.status(400).json({ message: "Selected course does not belong to this batch" });
+        }
 
         const batchSlots = await Timetable.find({
             batch,
@@ -89,17 +94,23 @@ exports.createSlot = async (req, res) => {
         const slot = await Timetable.create({
             batch,
             tutor,
-            course,
+            course: finalCourseId,
             subject: subject || "",
             day,
             startMinutes,
             endMinutes,
-            room: room || "",
+            room: String(room || "").trim(),
         });
 
         const populated = await Timetable.findById(slot._id)
             .populate("batch", "name startDate endDate status isActive")
-            .populate("tutor", "name email")
+            .populate({
+                path: "tutor",
+                populate: {
+                    path: "employee",
+                    select: "name email",
+                },
+            })
             .populate("course", "title category level");
 
         return res.status(201).json({
@@ -122,7 +133,13 @@ exports.getBatchTimetable = async (req, res) => {
         })
             .sort({ day: 1, startMinutes: 1 })
             .populate("batch", "name startDate endDate status isActive")
-            .populate("tutor", "name email")
+            .populate({
+                path: "tutor",
+                populate: {
+                    path: "employee",
+                    select: "name email",
+                },
+            })
             .populate("course", "title category level");
 
         return res.status(200).json({ slots });
@@ -142,21 +159,21 @@ exports.updateSlot = async (req, res) => {
         const next = {
             batch: req.body.batch ?? existing.batch,
             tutor: req.body.tutor ?? existing.tutor,
-            course: req.body.course ?? existing.course,
             subject: req.body.subject ?? existing.subject,
             day: req.body.day ?? existing.day,
             startMinutes: req.body.startMinutes ?? existing.startMinutes,
             endMinutes: req.body.endMinutes ?? existing.endMinutes,
-            room: req.body.room ?? existing.room,
+            room: String(req.body.room ?? existing.room ?? "").trim(),
             note: req.body.note ?? existing.note,
         };
+
+        const batchDoc = await Batch.findOne({ _id: next.batch, isDeleted: false });
+        if (!batchDoc) return res.status(404).json({ message: "Batch not found" });
+        next.course = batchDoc.course;
 
         if (next.startMinutes >= next.endMinutes) {
             return res.status(400).json({ message: "startMinutes must be < endMinutes" });
         }
-
-        const batchDoc = await Batch.findOne({ _id: next.batch, isDeleted: false });
-        if (!batchDoc) return res.status(404).json({ message: "Batch not found" });
 
         const tutorDoc = await Tutor.findOne({ _id: next.tutor, isDeleted: false });
         if (!tutorDoc) return res.status(404).json({ message: "Tutor not found" });
@@ -222,7 +239,13 @@ exports.updateSlot = async (req, res) => {
 
         const updated = await Timetable.findByIdAndUpdate(id, next, { new: true })
             .populate("batch", "name startDate endDate status isActive")
-            .populate("tutor", "name email")
+            .populate({
+                path: "tutor",
+                populate: {
+                    path: "employee",
+                    select: "name email",
+                },
+            })
             .populate("course", "title category level");
 
         return res.status(200).json({

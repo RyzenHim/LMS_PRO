@@ -1,5 +1,5 @@
-
 import axios from "axios";
+import { triggerSessionExpired } from "../utils/authEvents";
 
 const axiosInstance = axios.create({
   baseURL: "http://localhost:8080",
@@ -15,5 +15,19 @@ axiosInstance.interceptors.request.use((config) => {
 
   return config;
 });
+
+axiosInstance.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error?.response?.status;
+
+    if (status === 401) {
+      localStorage.removeItem("token");
+      triggerSessionExpired(); // will trigger ONLY ONCE
+    }
+
+    return Promise.reject(error);
+  }
+);
 
 export default axiosInstance;

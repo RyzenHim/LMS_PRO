@@ -14,6 +14,8 @@ const SkillReport = () => {
   const [status, setStatus] = useState(""); // active / inactive
   const [category, setCategory] = useState("");
   const [level, setLevel] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
 
   // Sorting
   const [sortBy, setSortBy] = useState("title"); // title / category / level / status
@@ -27,7 +29,16 @@ const SkillReport = () => {
       setLoading(true);
       setError("");
 
-      const res = await axiosInstance.get("/skills/all");
+      const res = await axiosInstance.get("/reports/skills", {
+        params: {
+          from,
+          to,
+          isActive:
+            status === "active" ? "true" : status === "inactive" ? "false" : "",
+          category,
+          search,
+        },
+      });
 
       console.log("SKILL REPORT API:", res.data);
 
@@ -309,6 +320,36 @@ const SkillReport = () => {
             <option value="inactive">Inactive</option>
           </select>
 
+          <input
+            type="date"
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+            className="
+              px-3 py-2.5 rounded-2xl
+              border border-slate-200 dark:border-slate-700
+              bg-slate-50 dark:bg-slate-800
+              text-sm text-slate-800 dark:text-slate-100
+              shadow-sm transition-all duration-300
+              hover:shadow-md
+              focus:outline-none focus:ring-2 focus:ring-indigo-500/30
+            "
+          />
+
+          <input
+            type="date"
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+            className="
+              px-3 py-2.5 rounded-2xl
+              border border-slate-200 dark:border-slate-700
+              bg-slate-50 dark:bg-slate-800
+              text-sm text-slate-800 dark:text-slate-100
+              shadow-sm transition-all duration-300
+              hover:shadow-md
+              focus:outline-none focus:ring-2 focus:ring-indigo-500/30
+            "
+          />
+
           {/* Sorting */}
           <select
             value={sortBy}
@@ -356,6 +397,8 @@ const SkillReport = () => {
                 setStatus("");
                 setCategory("");
                 setLevel("");
+                setFrom("");
+                setTo("");
                 setSortBy("title");
                 setSortOrder("asc");
               }}
@@ -370,6 +413,19 @@ const SkillReport = () => {
               "
             >
               Reset
+            </button>
+            <button
+              onClick={loadSkills}
+              className="
+                px-4 py-2.5 rounded-2xl
+                bg-indigo-600 text-white
+                text-sm font-semibold
+                shadow-sm transition-all duration-300
+                hover:shadow-xl hover:-translate-y-[1px] hover:bg-indigo-500
+                active:translate-y-0
+              "
+            >
+              Apply
             </button>
           </div>
         </div>

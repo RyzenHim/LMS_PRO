@@ -6,30 +6,33 @@ import ReportTableWrapper from "./components/ReportTableWrapper";
 
 const EmployeeReport = () => {
   const [employees, setEmployees] = useState([]);
+  const [filters, setFilters] = useState({ from: "", to: "" });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const loadEmployees = async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const res = await axiosInstance.get("/reports/employees", {
+        params: filters,
+      });
+
+      console.log("EMPLOYEE REPORT API:", res.data);
+
+      const arr = res.data?.employees || res.data?.allEmployes || res.data || [];
+      setEmployees(Array.isArray(arr) ? arr : []);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to load employees.");
+      setEmployees([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const loadEmployees = async () => {
-      try {
-        setLoading(true);
-        setError("");
-
-        const res = await axiosInstance.get("/employees/allEmp");
-
-        console.log("EMPLOYEE REPORT API:", res.data);
-
-        const arr = res.data?.employees || res.data || [];
-        setEmployees(Array.isArray(arr) ? arr : []);
-      } catch (err) {
-        console.error(err);
-        setError("Failed to load employees.");
-        setEmployees([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadEmployees();
   }, []);
 
@@ -49,9 +52,29 @@ const EmployeeReport = () => {
     <div className="p-6 space-y-6">
       <ReportPageHeader
         title="Employee Report"
-        subtitle="Export employee list report."
+        subtitle="Export employee list report by selected date range."
         right={
-          <ExportCSVButton rows={exportRows} filename="employee-report.csv" />
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              value={filters.from}
+              onChange={(e) => setFilters((p) => ({ ...p, from: e.target.value }))}
+              className="px-3 py-2 rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] bg-white dark:bg-[#0a1f3a] text-sm"
+            />
+            <input
+              type="date"
+              value={filters.to}
+              onChange={(e) => setFilters((p) => ({ ...p, to: e.target.value }))}
+              className="px-3 py-2 rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] bg-white dark:bg-[#0a1f3a] text-sm"
+            />
+            <button
+              onClick={loadEmployees}
+              className="px-3 py-2 rounded-xl bg-[#3F72AF] text-white text-sm font-medium hover:opacity-90"
+            >
+              Apply
+            </button>
+            <ExportCSVButton rows={exportRows} filename="employee-report.csv" />
+          </div>
         }
       />
 

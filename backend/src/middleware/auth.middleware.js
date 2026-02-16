@@ -40,6 +40,7 @@ const authenticate = async (req, res, next) => {
         }
 
         req.user = user;
+        console.log("req.user", req.user);
         next();
     } catch (error) {
         console.error("Auth middleware error:", error);

@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from "react";
+import { X } from "lucide-react";
 
 const AddEmployeeModal = ({ open, onClose, onSubmit }) => {
   const [form, setForm] = useState({
     name: "",
     email: "",
+    phone: "",
     designation: "admin",
-    department: "",
+    department: "management",
     salary: "",
   });
 
@@ -14,12 +16,30 @@ const AddEmployeeModal = ({ open, onClose, onSubmit }) => {
       setForm({
         name: "",
         email: "",
+        phone: "",
         designation: "admin",
-        department: "",
+        department: "management",
         salary: "",
       });
     }
   }, [open]);
+
+  // auto department
+  useEffect(() => {
+    if (!open) return;
+
+    if (form.designation === "hr") {
+      setForm((prev) => ({ ...prev, department: "hr" }));
+    }
+
+    if (form.designation === "teacher") {
+      setForm((prev) => ({ ...prev, department: "teaching" }));
+    }
+
+    if (form.designation === "admin") {
+      setForm((prev) => ({ ...prev, department: "management" }));
+    }
+  }, [form.designation, open]);
 
   if (!open) return null;
 
@@ -32,15 +52,45 @@ const AddEmployeeModal = ({ open, onClose, onSubmit }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit?.(form);
+
+    // ============================
+    // ✅ Backend required fields
+    // ============================
+    if (!form.name.trim()) return alert("Name is required");
+    if (!form.department.trim()) return alert("Department is required");
+    if (!form.designation.trim()) return alert("Designation is required");
+    if (form.salary === "" || Number(form.salary) <= 0) {
+      return alert("Salary is required and must be greater than 0");
+    }
+
+    const payload = {
+      name: form.name.trim(),
+      email: form.email.trim() || "",
+      phone: form.phone.trim() || "",
+      designation: form.designation,
+      department: form.department.trim(),
+      salary: Number(form.salary),
+    };
+
+    onSubmit?.(payload);
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-[#112D4E] rounded-xl p-6 w-full max-w-lg border border-[#DBE2EF] dark:border-[#3F72AF]">
-        <h2 className="text-lg font-semibold text-[#112D4E] dark:text-[#DBE2EF] mb-4">
-          Add Employee
-        </h2>
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+      <div className="bg-white dark:bg-[#112D4E] rounded-2xl p-6 w-full max-w-lg border border-[#DBE2EF] dark:border-[#3F72AF] shadow-xl">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-lg font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
+            Add Employee
+          </h2>
+
+          <button
+            onClick={onClose}
+            className="p-2 rounded-lg hover:bg-[#DBE2EF] dark:hover:bg-[#0a1f3a] transition"
+          >
+            <X size={18} className="text-[#3F72AF] dark:text-[#DBE2EF]" />
+          </button>
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Name */}
@@ -54,14 +104,14 @@ const AddEmployeeModal = ({ open, onClose, onSubmit }) => {
               onChange={handleChange}
               placeholder="Employee name"
               required
-              className="w-full px-3 py-2 border rounded-lg bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF] dark:border-[#3F72AF]"
+              className="w-full mt-1 px-3 py-2 border rounded-xl bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF] dark:border-[#3F72AF]"
             />
           </div>
 
           {/* Email */}
           <div>
             <label className="text-sm font-medium text-[#3F72AF] dark:text-[#DBE2EF]">
-              Email *
+              Email (Login will be created)
             </label>
             <input
               name="email"
@@ -69,8 +119,21 @@ const AddEmployeeModal = ({ open, onClose, onSubmit }) => {
               value={form.email}
               onChange={handleChange}
               placeholder="employee@lms.com"
-              required
-              className="w-full px-3 py-2 border rounded-lg bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF] dark:border-[#3F72AF]"
+              className="w-full mt-1 px-3 py-2 border rounded-xl bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF] dark:border-[#3F72AF]"
+            />
+          </div>
+
+          {/* Phone */}
+          <div>
+            <label className="text-sm font-medium text-[#3F72AF] dark:text-[#DBE2EF]">
+              Phone
+            </label>
+            <input
+              name="phone"
+              value={form.phone}
+              onChange={handleChange}
+              placeholder="10 digit number"
+              className="w-full mt-1 px-3 py-2 border rounded-xl bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF] dark:border-[#3F72AF]"
             />
           </div>
 
@@ -83,7 +146,7 @@ const AddEmployeeModal = ({ open, onClose, onSubmit }) => {
               name="designation"
               value={form.designation}
               onChange={handleChange}
-              className="w-full px-3 py-2 border rounded-lg bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF] dark:border-[#3F72AF]"
+              className="w-full mt-1 px-3 py-2 border rounded-xl bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF] dark:border-[#3F72AF]"
             >
               <option value="admin">Admin</option>
               <option value="hr">HR</option>
@@ -94,21 +157,22 @@ const AddEmployeeModal = ({ open, onClose, onSubmit }) => {
           {/* Department */}
           <div>
             <label className="text-sm font-medium text-[#3F72AF] dark:text-[#DBE2EF]">
-              Department
+              Department *
             </label>
             <input
               name="department"
               value={form.department}
               onChange={handleChange}
-              placeholder="HR / Management / Teaching"
-              className="w-full px-3 py-2 border rounded-lg bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF] dark:border-[#3F72AF]"
+              placeholder="management / hr / teaching"
+              required
+              className="w-full mt-1 px-3 py-2 border rounded-xl bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF] dark:border-[#3F72AF]"
             />
           </div>
 
           {/* Salary */}
           <div>
             <label className="text-sm font-medium text-[#3F72AF] dark:text-[#DBE2EF]">
-              Salary
+              Salary (Monthly) *
             </label>
             <input
               name="salary"
@@ -117,7 +181,8 @@ const AddEmployeeModal = ({ open, onClose, onSubmit }) => {
               onChange={handleChange}
               placeholder="Monthly salary"
               min="0"
-              className="w-full px-3 py-2 border rounded-lg bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF] dark:border-[#3F72AF]"
+              required
+              className="w-full mt-1 px-3 py-2 border rounded-xl bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF] dark:border-[#3F72AF]"
             />
           </div>
 
@@ -126,14 +191,14 @@ const AddEmployeeModal = ({ open, onClose, onSubmit }) => {
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border rounded-lg dark:border-[#3F72AF] dark:text-[#DBE2EF]"
+              className="px-4 py-2 border rounded-xl dark:border-[#3F72AF] dark:text-[#DBE2EF]"
             >
               Cancel
             </button>
 
             <button
               type="submit"
-              className="px-4 py-2 bg-[#3F72AF] text-white rounded-lg hover:bg-[#112D4E]"
+              className="px-4 py-2 bg-[#3F72AF] text-white rounded-xl hover:bg-[#112D4E]"
             >
               Add Employee
             </button>

@@ -34,17 +34,17 @@ const FeeReport = () => {
     }
   };
 
-  const getStudentName = (f) => f?.student?.name || "";
-  const getStudentEmail = (f) => f?.student?.email || "";
+  const getStudentName = (f) => f?.student?.visitor?.name || "";
+  const getStudentEmail = (f) => f?.student?.visitor?.email || "";
 
   const getAmount = (f) => {
-    const a = Number(f?.amount ?? 0);
+    const a = Number(f?.amountPaid ?? 0);
     return Number.isNaN(a) ? 0 : a;
   };
 
   const getPaidOnTime = (f) => {
-    if (!f?.paidOn) return null;
-    const t = new Date(f.paidOn).getTime();
+    if (!f?.createdAt) return null;
+    const t = new Date(f.createdAt).getTime();
     return Number.isNaN(t) ? null : t;
   };
 
@@ -56,7 +56,14 @@ const FeeReport = () => {
       setLoading(true);
       setError("");
 
-      const res = await axiosInstance.get("/fees/all");
+      const res = await axiosInstance.get("/reports/fees", {
+        params: {
+          status: filters.status || "",
+          search: filters.search || "",
+          from: filters.fromDate || "",
+          to: filters.toDate || "",
+        },
+      });
 
       console.log("FEES API:", res.data);
 
@@ -164,11 +171,13 @@ const FeeReport = () => {
   // =========================
   const exportRows = useMemo(() => {
     return safeArr(filteredFees).map((f) => ({
-      Student: f?.student?.name || "",
-      Email: f?.student?.email || "",
-      Amount: f?.amount ?? "",
+      Student: f?.student?.visitor?.name || "",
+      Email: f?.student?.visitor?.email || "",
+      AmountPaid: f?.amountPaid ?? "",
+      TotalFees: f?.coursePrice ?? "",
+      RemainingAmount: f?.remainingAmount ?? "",
       Status: f?.status || "",
-      PaidOn: f?.paidOn ? new Date(f.paidOn).toLocaleDateString() : "",
+      Date: f?.createdAt ? new Date(f.createdAt).toLocaleDateString() : "",
     }));
   }, [filteredFees]);
 
@@ -313,9 +322,8 @@ const FeeReport = () => {
           >
             <option value="">All Status</option>
             <option value="paid">Paid</option>
-            <option value="pending">Pending</option>
-            <option value="overdue">Overdue</option>
-            <option value="failed">Failed</option>
+            <option value="partial">Partial</option>
+            <option value="unpaid">Unpaid</option>
           </select>
 
           {/* Min amount */}
@@ -434,8 +442,8 @@ const FeeReport = () => {
             <option value="asc">Order: Ascending</option>
           </select>
 
-          {/* Reset */}
-          <div className="md:col-span-2 flex justify-end">
+          {/* Buttons */}
+          <div className="md:col-span-2 flex justify-end gap-3">
             <button
               onClick={() =>
                 setFilters({
@@ -460,6 +468,19 @@ const FeeReport = () => {
               "
             >
               Reset Filters
+            </button>
+            <button
+              onClick={fetchFees}
+              className="
+                px-4 py-2.5 rounded-2xl
+                bg-indigo-600 text-white
+                text-sm font-semibold
+                shadow-sm transition-all duration-300
+                hover:shadow-xl hover:-translate-y-[1px] hover:bg-indigo-500
+                active:translate-y-0
+              "
+            >
+              Apply
             </button>
           </div>
         </div>
@@ -527,15 +548,15 @@ const FeeReport = () => {
                     className="border-t border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
                   >
                     <td className="p-4 font-semibold text-slate-800 dark:text-slate-100">
-                      {f?.student?.name || "-"}
+                      {f?.student?.visitor?.name || "-"}
                     </td>
 
                     <td className="p-4 text-slate-600 dark:text-slate-300">
-                      {f?.student?.email || "-"}
+                      {f?.student?.visitor?.email || "-"}
                     </td>
 
                     <td className="p-4 text-slate-700 dark:text-slate-200 font-medium">
-                      ₹{f?.amount ?? "-"}
+                      ₹{f?.amountPaid ?? "-"}
                     </td>
 
                     <td className="p-4 capitalize">
@@ -545,9 +566,9 @@ const FeeReport = () => {
                           ${
                             (f?.status || "").toLowerCase() === "paid"
                               ? "bg-emerald-100 text-emerald-700"
-                              : (f?.status || "").toLowerCase() === "pending"
+                              : (f?.status || "").toLowerCase() === "partial"
                                 ? "bg-amber-100 text-amber-700"
-                                : (f?.status || "").toLowerCase() === "overdue"
+                                : (f?.status || "").toLowerCase() === "unpaid"
                                   ? "bg-red-100 text-red-700"
                                   : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"
                           }
@@ -558,7 +579,7 @@ const FeeReport = () => {
                     </td>
 
                     <td className="p-4 text-slate-600 dark:text-slate-300">
-                      {f?.paidOn ? toDateOnly(f.paidOn) : "-"}
+                      {f?.createdAt ? toDateOnly(f.createdAt) : "-"}
                     </td>
                   </tr>
                 ))}

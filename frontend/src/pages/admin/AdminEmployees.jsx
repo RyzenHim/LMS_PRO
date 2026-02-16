@@ -23,7 +23,7 @@ const AdminEmployees = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [trashTotalPages, setTrashTotalPages] = useState(1);
 
-  // ✅ NEW (for correct tab counts)
+  // counts
   const [totalActive, setTotalActive] = useState(0);
   const [totalTrash, setTotalTrash] = useState(0);
 
@@ -64,7 +64,6 @@ const AdminEmployees = () => {
   const addFilter = () => {
     if (!filterField || !filterValue) return;
 
-    // ✅ FIX: backend expects query string values
     const value =
       filterField === "isActive" ? String(filterValue) : filterValue.trim();
 
@@ -112,8 +111,6 @@ const AdminEmployees = () => {
 
       setAllEmp(res.data.allEmployes || []);
       setTotalPages(res.data.totalPages || 1);
-
-      // ✅ NEW
       setTotalActive(res.data.totalEmployes || 0);
     } catch (error) {
       console.error("Error fetching employees", error);
@@ -136,8 +133,6 @@ const AdminEmployees = () => {
 
       setDeletedEmployees(res.data.allEmployes || []);
       setTrashTotalPages(res.data.totalPages || 1);
-
-      // ✅ NEW
       setTotalTrash(res.data.totalEmployes || 0);
     } catch (error) {
       console.error("Error fetching deleted employees", error);
@@ -147,11 +142,14 @@ const AdminEmployees = () => {
   };
 
   // =========================
-  // FETCH ON CHANGE
+  // FETCH ON CHANGE (FIXED)
   // =========================
   useEffect(() => {
-    if (activeTab === "active") fetchEmployees();
-    else fetchDeletedEmployees();
+    if (activeTab === "active") {
+      fetchEmployees();
+    } else {
+      fetchDeletedEmployees();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     activeTab,
@@ -163,7 +161,7 @@ const AdminEmployees = () => {
     JSON.stringify(filters),
   ]);
 
-  // reset correct page when tab changes
+  // reset pages when tab changes
   useEffect(() => {
     setPage(1);
     setTrashPage(1);
@@ -186,8 +184,9 @@ const AdminEmployees = () => {
     try {
       await employeeService.update(selectedEmp._id, data);
 
-      // safest: refetch
-      await fetchEmployees();
+      // refresh current tab
+      if (activeTab === "active") await fetchEmployees();
+      else await fetchDeletedEmployees();
 
       setOpenEdit(false);
       setSelectedEmp(null);
@@ -242,9 +241,10 @@ const AdminEmployees = () => {
   const handleAddEmployee = async (data) => {
     try {
       const empData = {
-        name: data.name.trim(),
-        email: data.email.trim(),
-        department: data.department.trim(),
+        name: data.name?.trim(),
+        email: data.email?.trim() || "", // ✅ safe
+        phone: data.phone?.trim() || "",
+        department: data.department?.trim(),
         designation: data.designation,
         salary: Number(data.salary || 0),
       };
@@ -267,6 +267,7 @@ const AdminEmployees = () => {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
@@ -288,6 +289,7 @@ const AdminEmployees = () => {
         )}
       </div>
 
+      {/* Tabs */}
       <div className="flex gap-4 border-b border-[#DBE2EF] dark:border-[#3F72AF]">
         <button
           onClick={() => setActiveTab("active")}
@@ -312,6 +314,7 @@ const AdminEmployees = () => {
         </button>
       </div>
 
+      {/* Search */}
       <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-4 shadow-sm">
         <div className="flex items-center gap-3">
           <Search className="text-[#3F72AF] dark:text-[#DBE2EF]" size={18} />
@@ -324,16 +327,17 @@ const AdminEmployees = () => {
               setPage(1);
               setTrashPage(1);
             }}
-            className="w-full outline-none text-sm bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF] px-2 py-1 rounded-md"
+            className="w-full outline-none text-sm bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF] px-2 py-2 rounded-md"
           />
         </div>
       </div>
 
+      {/* Filters */}
       <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-4 flex flex-wrap items-center gap-3 shadow-sm">
         <select
           value={filterField}
           onChange={(e) => setFilterField(e.target.value)}
-          className="text-sm border rounded-lg px-2 py-1 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
+          className="text-sm border rounded-lg px-2 py-2 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
         >
           <option value="department">Department</option>
           <option value="designation">Designation</option>
@@ -345,7 +349,7 @@ const AdminEmployees = () => {
           <select
             value={filterValue}
             onChange={(e) => setFilterValue(e.target.value)}
-            className="text-sm border rounded-lg px-2 py-1 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
+            className="text-sm border rounded-lg px-2 py-2 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
           >
             <option value="">Select</option>
             <option value="true">Active</option>
@@ -356,20 +360,20 @@ const AdminEmployees = () => {
             value={filterValue}
             onChange={(e) => setFilterValue(e.target.value)}
             placeholder="Filter value"
-            className="text-sm border rounded-lg px-2 py-1 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
+            className="text-sm border rounded-lg px-2 py-2 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
           />
         )}
 
         <button
           onClick={addFilter}
-          className="px-3 py-1 rounded-lg bg-[#3F72AF] text-white text-sm"
+          className="px-3 py-2 rounded-lg bg-[#3F72AF] text-white text-sm"
         >
           Add Filter
         </button>
 
         <button
           onClick={clearFilters}
-          className="px-3 py-1 rounded-lg border text-sm dark:text-[#DBE2EF]"
+          className="px-3 py-2 rounded-lg border text-sm dark:text-[#DBE2EF]"
         >
           Clear
         </button>
@@ -446,7 +450,7 @@ const AdminEmployees = () => {
                     Status
                   </th>
 
-                  <th className="px-4 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                  <th className="px-4 py-3 text-right text-[#112D4E] dark:text-[#DBE2EF]">
                     Actions
                   </th>
                 </tr>
@@ -530,7 +534,7 @@ const AdminEmployees = () => {
                       ) : (
                         <button
                           onClick={() => handleRestore(emp._id)}
-                          className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 text-sm flex items-center gap-1 transition-colors"
+                          className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 text-sm inline-flex items-center gap-1 transition-colors"
                           title="Restore"
                         >
                           <RotateCcw size={16} />
@@ -561,6 +565,7 @@ const AdminEmployees = () => {
         }
       />
 
+      {/* Modals */}
       <AddEmployeeModal
         open={openAdd}
         onClose={() => setOpenAdd(false)}
@@ -593,7 +598,7 @@ const AdminEmployees = () => {
           setSelectedEmp(null);
         }}
         onConfirm={handleDelete}
-        title={selectedEmp?.name}
+        title={selectedEmp?.name || "Employee"}
       />
     </div>
   );

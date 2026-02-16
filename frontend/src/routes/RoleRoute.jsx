@@ -12,7 +12,7 @@ const RoleRoute = ({ allowedRoles = [], children }) => {
 
   try {
     user = JSON.parse(userStr);
-  } catch (err) {
+  } catch {
     localStorage.clear();
     return <Navigate to="/auth/login" replace />;
   }

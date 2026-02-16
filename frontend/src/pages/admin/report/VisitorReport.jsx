@@ -4,6 +4,8 @@ import ExportCSVButton from "./components/ExportCSVButton";
 
 const VisitorReport = () => {
   const [type, setType] = useState("all");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
   const [visitors, setVisitors] = useState([]);
 
   const [loading, setLoading] = useState(true);
@@ -14,16 +16,20 @@ const VisitorReport = () => {
       setLoading(true);
       setError("");
 
-      const url =
-        type === "all"
-          ? "/visitors/allvisitor"
-          : type === "followup"
-            ? "/visitors/follow-up/list"
-            : type === "converted"
-              ? "/visitors/converted/list"
-              : "/visitors/not-interested/list";
+      const statusMap = {
+        all: "",
+        followup: "follow-up",
+        converted: "converted",
+        notInterested: "not-interested",
+      };
 
-      const res = await axiosInstance.get(url);
+      const res = await axiosInstance.get("/reports/visitors", {
+        params: {
+          status: statusMap[type] || "",
+          from,
+          to,
+        },
+      });
 
       console.log("VISITOR REPORT API:", type, res.data);
 
@@ -74,16 +80,30 @@ const VisitorReport = () => {
       )}
 
       <div className="p-4 rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] bg-white dark:bg-[#112D4E] flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
-        <select
-          value={type}
-          onChange={(e) => setType(e.target.value)}
-          className="px-3 py-2 rounded-lg border border-[#DBE2EF] dark:border-[#3F72AF] bg-white dark:bg-[#0a1f3a] text-sm"
-        >
-          <option value="all">All Visitors</option>
-          <option value="followup">Follow Up</option>
-          <option value="converted">Converted</option>
-          <option value="notInterested">Not Interested</option>
-        </select>
+        <div className="flex flex-col md:flex-row gap-3">
+          <select
+            value={type}
+            onChange={(e) => setType(e.target.value)}
+            className="px-3 py-2 rounded-lg border border-[#DBE2EF] dark:border-[#3F72AF] bg-white dark:bg-[#0a1f3a] text-sm"
+          >
+            <option value="all">All Visitors</option>
+            <option value="followup">Follow Up</option>
+            <option value="converted">Converted</option>
+            <option value="notInterested">Not Interested</option>
+          </select>
+          <input
+            type="date"
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+            className="px-3 py-2 rounded-lg border border-[#DBE2EF] dark:border-[#3F72AF] bg-white dark:bg-[#0a1f3a] text-sm"
+          />
+          <input
+            type="date"
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+            className="px-3 py-2 rounded-lg border border-[#DBE2EF] dark:border-[#3F72AF] bg-white dark:bg-[#0a1f3a] text-sm"
+          />
+        </div>
 
         <button
           onClick={fetchVisitors}

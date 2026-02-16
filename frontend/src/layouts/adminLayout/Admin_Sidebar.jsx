@@ -11,6 +11,7 @@ import {
   IndianRupee,
   CalendarCheck,
   FileText,
+  Building2,
 } from "lucide-react";
 
 const AdminSidebar = () => {
@@ -59,6 +60,11 @@ const AdminSidebar = () => {
       name: "Time Table",
       icon: CalendarCheck,
       path: "/admin/timetable",
+    },
+    {
+      name: "Rooms",
+      icon: Building2,
+      path: "/admin/rooms",
     },
     {
       name: "Visitors",

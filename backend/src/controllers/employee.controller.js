@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const Employee = require("../models/employee.model");
 const User = require("../models/authUsers.model");
-
+const Tutor = require("../models/tutor.model")
 const nodemailer = require("nodemailer");
 
 const parseListParams = (req) => {
@@ -206,8 +206,6 @@ exports.addEmployee = async (req, res) => {
                 isDeleted: false,
             });
 
-            console.log("existsEmail", existsEmail);
-
             if (existsEmail) {
                 return res.status(400).json({
                     message: "Employee with this email already exists",
@@ -229,8 +227,6 @@ exports.addEmployee = async (req, res) => {
             isDeleted: false,
             deletedAt: null,
         });
-
-        console.log("employee", employee);
 
         // =====================================
         // ✅ Create tutor profile if TEACHER
@@ -274,14 +270,10 @@ exports.addEmployee = async (req, res) => {
                 role = "tutor";
             }
 
-            console.log(">>>>>>role", role);
-
             const alreadyUser = await User.findOne({
                 email: normalizedEmail,
                 isDeleted: false,
             });
-
-            console.log(">>>>>>alreadyUser", alreadyUser);
 
             if (!alreadyUser) {
                 const generatedPassword = generatePassword(10);
@@ -295,8 +287,6 @@ exports.addEmployee = async (req, res) => {
                     // ✅ link tutor if teacher
                     tutor: createdTutor?._id || null,
                 });
-
-                console.log("createdUser", createdUser);
 
                 try {
                     await sendEmployeeLoginMail({
@@ -328,6 +318,7 @@ exports.addEmployee = async (req, res) => {
         });
     }
 };
+
 exports.toggleEmployeeStatus = async (req, res) => {
     try {
         const { id } = req.params;

@@ -6,21 +6,29 @@ const ViewEmployeeModal = ({ open, onClose, employee }) => {
   const safeDate = (d) => (d ? new Date(d).toLocaleString() : "—");
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-[#112D4E] rounded-xl p-6 w-full max-w-2xl border border-[#DBE2EF] dark:border-[#3F72AF]">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
-            Employee Details
-          </h2>
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+      <div className="bg-white dark:bg-[#112D4E] rounded-2xl p-6 w-full max-w-2xl border border-[#DBE2EF] dark:border-[#3F72AF] shadow-xl">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-5">
+          <div>
+            <h2 className="text-lg font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
+              Employee Details
+            </h2>
+            <p className="text-sm text-[#3F72AF] dark:text-[#DBE2EF]">
+              View employee profile information
+            </p>
+          </div>
+
           <button
             onClick={onClose}
-            className="text-[#3F72AF] hover:text-[#112D4E] dark:text-[#DBE2EF]"
+            className="px-3 py-1 rounded-lg text-[#3F72AF] hover:text-[#112D4E] dark:text-[#DBE2EF] dark:hover:text-white"
           >
             ✕
           </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 text-sm">
+        {/* Body */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
           <div>
             <p className="text-[#3F72AF] dark:text-[#DBE2EF]">Name</p>
             <p className="text-[#112D4E] dark:text-white font-medium">
@@ -36,6 +44,13 @@ const ViewEmployeeModal = ({ open, onClose, employee }) => {
           </div>
 
           <div>
+            <p className="text-[#3F72AF] dark:text-[#DBE2EF]">Phone</p>
+            <p className="text-[#112D4E] dark:text-white font-medium">
+              {employee.phone || "—"}
+            </p>
+          </div>
+
+          <div>
             <p className="text-[#3F72AF] dark:text-[#DBE2EF]">Department</p>
             <p className="text-[#112D4E] dark:text-white font-medium">
               {employee.department || "—"}
@@ -44,7 +59,7 @@ const ViewEmployeeModal = ({ open, onClose, employee }) => {
 
           <div>
             <p className="text-[#3F72AF] dark:text-[#DBE2EF]">Designation</p>
-            <p className="text-[#112D4E] dark:text-white font-medium">
+            <p className="text-[#112D4E] dark:text-white font-medium capitalize">
               {employee.designation || "—"}
             </p>
           </div>
@@ -58,9 +73,15 @@ const ViewEmployeeModal = ({ open, onClose, employee }) => {
 
           <div>
             <p className="text-[#3F72AF] dark:text-[#DBE2EF]">Status</p>
-            <p className="text-[#112D4E] dark:text-white font-medium">
+            <span
+              className={`inline-flex px-2 py-1 text-xs rounded-md font-medium ${
+                employee.isActive
+                  ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
+                  : "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"
+              }`}
+            >
               {employee.isActive ? "Active" : "Inactive"}
-            </p>
+            </span>
           </div>
 
           <div>
@@ -87,10 +108,11 @@ const ViewEmployeeModal = ({ open, onClose, employee }) => {
           </div>
         </div>
 
+        {/* Footer */}
         <div className="flex justify-end pt-6">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-lg bg-[#3F72AF] text-white hover:bg-[#112D4E]"
+            className="px-4 py-2 rounded-xl bg-[#3F72AF] text-white hover:bg-[#112D4E]"
           >
             Close
           </button>

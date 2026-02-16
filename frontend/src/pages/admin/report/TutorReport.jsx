@@ -12,6 +12,8 @@ const TutorReport = () => {
   const [filters, setFilters] = useState({
     search: "",
     status: "",
+    from: "",
+    to: "",
     sortBy: "name",
     sortOrder: "asc",
   });
@@ -24,12 +26,30 @@ const TutorReport = () => {
       setLoading(true);
       setError("");
 
-      const res = await axiosInstance.get("/tutors/all");
+      const res = await axiosInstance.get("/reports/tutors", {
+        params: {
+          search: filters.search || "",
+          isActive:
+            filters.status === "active"
+              ? "true"
+              : filters.status === "inactive"
+                ? "false"
+                : "",
+          from: filters.from || "",
+          to: filters.to || "",
+        },
+      });
 
       console.log("TUTORS API:", res.data);
 
       const arr = res.data?.tutors || res.data || [];
-      setTutors(Array.isArray(arr) ? arr : []);
+      const normalized = (Array.isArray(arr) ? arr : []).map((t) => ({
+        ...t,
+        name: t?.employee?.name || "",
+        email: t?.employee?.email || "",
+        phone: t?.employee?.phone || "",
+      }));
+      setTutors(normalized);
     } catch (err) {
       console.error("Tutor report error:", err);
       setError("Failed to load tutors.");
@@ -248,6 +268,36 @@ const TutorReport = () => {
             <option value="inactive">Inactive</option>
           </select>
 
+          <input
+            type="date"
+            value={filters.from}
+            onChange={(e) => setFilters((p) => ({ ...p, from: e.target.value }))}
+            className="
+              px-3 py-2.5 rounded-2xl
+              border border-slate-200 dark:border-slate-700
+              bg-slate-50 dark:bg-slate-800
+              text-sm text-slate-800 dark:text-slate-100
+              shadow-sm transition-all duration-300
+              hover:shadow-md
+              focus:outline-none focus:ring-2 focus:ring-indigo-500/30
+            "
+          />
+
+          <input
+            type="date"
+            value={filters.to}
+            onChange={(e) => setFilters((p) => ({ ...p, to: e.target.value }))}
+            className="
+              px-3 py-2.5 rounded-2xl
+              border border-slate-200 dark:border-slate-700
+              bg-slate-50 dark:bg-slate-800
+              text-sm text-slate-800 dark:text-slate-100
+              shadow-sm transition-all duration-300
+              hover:shadow-md
+              focus:outline-none focus:ring-2 focus:ring-indigo-500/30
+            "
+          />
+
           {/* Sort */}
           <select
             value={filters.sortBy}
@@ -297,6 +347,8 @@ const TutorReport = () => {
                 setFilters({
                   search: "",
                   status: "",
+                  from: "",
+                  to: "",
                   sortBy: "name",
                   sortOrder: "asc",
                 })
@@ -312,6 +364,19 @@ const TutorReport = () => {
               "
             >
               Reset
+            </button>
+            <button
+              onClick={fetchTutors}
+              className="
+                px-4 py-2.5 rounded-2xl
+                bg-indigo-600 text-white
+                text-sm font-semibold
+                shadow-sm transition-all duration-300
+                hover:shadow-xl hover:-translate-y-[1px] hover:bg-indigo-500
+                active:translate-y-0
+              "
+            >
+              Apply
             </button>
           </div>
         </div>

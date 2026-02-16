@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import axiosInstance from "../../../../api/axios";
 import { timetableService } from "../../../../services/timetableService";
+import { roomService } from "../../../../services/roomService";
 import { X, Loader2, AlertCircle } from "lucide-react";
 
 const timeToMinutes = (t) => {
@@ -25,23 +26,38 @@ const DAYS = [
   { key: "sun", label: "Sun" },
 ];
 
+const getTutorName = (t) => t?.employee?.name || t?.name || "Tutor";
+
+const parseRoomLabel = (label = "") => {
+  const chunks = String(label).split(" | ");
+  if (chunks.length < 4) return {};
+  return {
+    location: chunks[0] || "",
+    buildingName: chunks[1] || "",
+    floorNumber: chunks[2]?.replace("Floor ", "") || "",
+  };
+};
+
 const EditTimetableSlotModal = ({
   open,
   onClose,
   slot,
   batchId,
+  selectedCourseId,
   onSuccess,
 }) => {
   const [tutors, setTutors] = useState([]);
-  const [courses, setCourses] = useState([]);
+  const [roomOptions, setRoomOptions] = useState([]);
 
   const [form, setForm] = useState({
     tutor: "",
-    course: "",
     subject: "",
     day: "mon",
     startTime: "10:00",
     endTime: "11:00",
+    location: "",
+    buildingName: "",
+    floorNumber: "",
     room: "",
   });
 
@@ -49,57 +65,49 @@ const EditTimetableSlotModal = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Load slot into form
   useEffect(() => {
     if (!open || !slot) return;
-
+    const parsedRoom = parseRoomLabel(slot?.room || "");
     setError("");
-
     setForm({
       tutor: slot?.tutor?._id || slot?.tutor || "",
-      course: slot?.course?._id || slot?.course || "",
       subject: slot?.subject || "",
       day: slot?.day || "mon",
       startTime: minutesToTimeInput(slot?.startMinutes || 0),
       endTime: minutesToTimeInput(slot?.endMinutes || 0),
+      location: parsedRoom.location || "",
+      buildingName: parsedRoom.buildingName || "",
+      floorNumber: parsedRoom.floorNumber || "",
       room: slot?.room || "",
     });
   }, [open, slot]);
 
-  // Fetch dropdowns
   useEffect(() => {
     if (!open) return;
-
     const fetchDropdowns = async () => {
       try {
         setDropdownLoading(true);
-
-        const [tRes, cRes] = await Promise.all([
+        const [tRes, rRes] = await Promise.all([
           axiosInstance.get("/tutors/all"),
-          axiosInstance.get("/courses/all"),
+          roomService.getOptions(),
         ]);
-
-        setTutors(tRes.data.tutors || []);
-        setCourses(cRes.data.courses || []);
+        setTutors(Array.isArray(tRes.data?.tutors) ? tRes.data.tutors : []);
+        setRoomOptions(Array.isArray(rRes.data?.options) ? rRes.data.options : []);
       } catch (err) {
         console.error(err);
-        setError("Failed to load tutors/courses. Check backend connection.");
+        setError("Failed to load tutors/rooms.");
       } finally {
         setDropdownLoading(false);
       }
     };
-
     fetchDropdowns();
   }, [open]);
 
-  // Close on ESC
   useEffect(() => {
     if (!open) return;
-
     const onKeyDown = (e) => {
       if (e.key === "Escape") onClose?.();
     };
-
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [open, onClose]);
@@ -110,18 +118,50 @@ const EditTimetableSlotModal = ({
     return end > start;
   }, [form.startTime, form.endTime]);
 
-  if (!open) return null;
+  const locations = useMemo(() => {
+    return Array.from(new Set(roomOptions.map((r) => r.location).filter(Boolean)));
+  }, [roomOptions]);
 
-  const handleChange = (e) => {
-    setError("");
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-  };
+  const buildings = useMemo(() => {
+    if (!form.location) return [];
+    return Array.from(
+      new Set(
+        roomOptions
+          .filter((r) => r.location === form.location)
+          .map((r) => r.buildingName)
+          .filter(Boolean),
+      ),
+    );
+  }, [roomOptions, form.location]);
+
+  const floors = useMemo(() => {
+    if (!form.location || !form.buildingName) return [];
+    return Array.from(
+      new Set(
+        roomOptions
+          .filter(
+            (r) => r.location === form.location && r.buildingName === form.buildingName,
+          )
+          .map((r) => String(r.floorNumber)),
+      ),
+    );
+  }, [roomOptions, form.location, form.buildingName]);
+
+  const rooms = useMemo(() => {
+    if (!form.location || !form.buildingName || !form.floorNumber) return [];
+    return roomOptions.filter(
+      (r) =>
+        r.location === form.location &&
+        r.buildingName === form.buildingName &&
+        String(r.floorNumber) === String(form.floorNumber),
+    );
+  }, [roomOptions, form.location, form.buildingName, form.floorNumber]);
+
+  if (!open) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (!slot?._id) return;
-    if (!batchId) return;
+    if (!slot?._id || !batchId || !selectedCourseId) return;
 
     if (!isValidTime) {
       setError("End time must be greater than start time.");
@@ -130,19 +170,17 @@ const EditTimetableSlotModal = ({
 
     setLoading(true);
     setError("");
-
     try {
       const payload = {
         batch: batchId,
+        course: selectedCourseId,
         tutor: form.tutor,
-        course: form.course,
         subject: form.subject,
         day: form.day,
         startMinutes: timeToMinutes(form.startTime),
         endMinutes: timeToMinutes(form.endTime),
-        room: form.room,
+        room: form.room || "",
       };
-
       await timetableService.updateSlot(slot._id, payload);
       onSuccess?.();
     } catch (err) {
@@ -153,45 +191,35 @@ const EditTimetableSlotModal = ({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      aria-modal="true"
-      role="dialog"
-    >
-      {/* Backdrop */}
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
       <button
         type="button"
         onClick={onClose}
-        className="absolute inset-0 bg-black/50"
+        className="absolute inset-0 bg-slate-900/45 backdrop-blur-md"
         aria-label="Close modal backdrop"
       />
 
-      {/* Modal */}
-      <div className="relative w-full max-w-2xl rounded-2xl border border-[#DBE2EF] dark:border-[#3F72AF] bg-white dark:bg-[#112D4E] shadow-2xl">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-4 px-6 py-5 border-b border-[#DBE2EF] dark:border-[#3F72AF]">
+      <div className="relative w-full max-w-3xl rounded-3xl border border-white/50 dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl shadow-2xl">
+        <div className="flex items-start justify-between gap-4 px-6 py-5 border-b border-[#DBE2EF] dark:border-slate-700">
           <div>
             <h2 className="text-xl font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
               Edit Timetable Slot
             </h2>
-            <p className="mt-1 text-sm text-[#3F72AF] dark:text-[#DBE2EF]">
-              Update slot details for this batch.
+            <p className="mt-1 text-sm text-[#3F72AF] dark:text-slate-300">
+              Update slot details. Course remains mapped from selected batch.
             </p>
           </div>
-
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] hover:bg-[#DBE2EF] dark:hover:bg-[#0a1f3a] transition"
+            className="p-2 rounded-xl border border-[#DBE2EF] dark:border-slate-700 hover:bg-[#DBE2EF]/60 dark:hover:bg-slate-800 transition"
             title="Close"
           >
             <X size={18} className="text-[#112D4E] dark:text-[#DBE2EF]" />
           </button>
         </div>
 
-        {/* Body */}
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-5">
-          {/* Error */}
           {error && (
             <div className="flex gap-3 items-start rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               <AlertCircle size={18} className="mt-0.5" />
@@ -199,33 +227,30 @@ const EditTimetableSlotModal = ({
             </div>
           )}
 
-          {/* Dropdown loading */}
           {dropdownLoading && (
-            <div className="text-sm text-[#3F72AF] dark:text-[#DBE2EF] flex items-center gap-2">
+            <div className="text-sm text-[#3F72AF] dark:text-slate-300 flex items-center gap-2">
               <Loader2 className="animate-spin" size={16} />
-              Loading tutors & courses...
+              Loading tutors & rooms...
             </div>
           )}
 
-          {/* Row 1 */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF]">
                 Tutor <span className="text-red-500">*</span>
               </label>
-
               <select
                 name="tutor"
                 value={form.tutor}
-                onChange={handleChange}
+                onChange={(e) => setForm((p) => ({ ...p, tutor: e.target.value }))}
                 disabled={dropdownLoading || loading}
-                className="mt-2 w-full px-3 py-2.5 rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] bg-[#F9F7F7] dark:bg-[#0a1f3a] text-sm dark:text-[#DBE2EF] outline-none focus:ring-2 focus:ring-[#3F72AF]/40 disabled:opacity-60"
+                className="mt-2 w-full px-3 py-2.5 rounded-xl border border-[#DBE2EF] dark:border-slate-700 bg-white/70 dark:bg-slate-800/70 text-sm outline-none focus:ring-2 focus:ring-[#3F72AF]/40 disabled:opacity-60"
                 required
               >
                 <option value="">Select Tutor</option>
                 {tutors.map((t) => (
                   <option key={t._id} value={t._id}>
-                    {t.name}
+                    {getTutorName(t)}
                   </option>
                 ))}
               </select>
@@ -233,56 +258,30 @@ const EditTimetableSlotModal = ({
 
             <div>
               <label className="text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF]">
-                Course <span className="text-red-500">*</span>
+                Subject
               </label>
-
-              <select
-                name="course"
-                value={form.course}
-                onChange={handleChange}
-                disabled={dropdownLoading || loading}
-                className="mt-2 w-full px-3 py-2.5 rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] bg-[#F9F7F7] dark:bg-[#0a1f3a] text-sm dark:text-[#DBE2EF] outline-none focus:ring-2 focus:ring-[#3F72AF]/40 disabled:opacity-60"
-                required
-              >
-                <option value="">Select Course</option>
-                {courses.map((c) => (
-                  <option key={c._id} value={c._id}>
-                    {c.title}
-                  </option>
-                ))}
-              </select>
+              <input
+                name="subject"
+                value={form.subject}
+                onChange={(e) => setForm((p) => ({ ...p, subject: e.target.value }))}
+                disabled={loading}
+                className="mt-2 w-full px-3 py-2.5 rounded-xl border border-[#DBE2EF] dark:border-slate-700 bg-white/70 dark:bg-slate-800/70 text-sm outline-none focus:ring-2 focus:ring-[#3F72AF]/40 disabled:opacity-60"
+                placeholder="Eg: React Basics"
+              />
             </div>
           </div>
 
-          {/* Subject */}
-          <div>
-            <label className="text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF]">
-              Subject <span className="text-xs opacity-70">(optional)</span>
-            </label>
-
-            <input
-              name="subject"
-              value={form.subject}
-              onChange={handleChange}
-              disabled={loading}
-              className="mt-2 w-full px-3 py-2.5 rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] bg-[#F9F7F7] dark:bg-[#0a1f3a] text-sm dark:text-[#DBE2EF] outline-none focus:ring-2 focus:ring-[#3F72AF]/40 disabled:opacity-60"
-              placeholder="Eg: React Basics"
-            />
-          </div>
-
-          {/* Row 2 */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF]">
                 Day
               </label>
-
               <select
                 name="day"
                 value={form.day}
-                onChange={handleChange}
+                onChange={(e) => setForm((p) => ({ ...p, day: e.target.value }))}
                 disabled={loading}
-                className="mt-2 w-full px-3 py-2.5 rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] bg-[#F9F7F7] dark:bg-[#0a1f3a] text-sm dark:text-[#DBE2EF] outline-none focus:ring-2 focus:ring-[#3F72AF]/40 disabled:opacity-60"
+                className="mt-2 w-full px-3 py-2.5 rounded-xl border border-[#DBE2EF] dark:border-slate-700 bg-white/70 dark:bg-slate-800/70 text-sm outline-none focus:ring-2 focus:ring-[#3F72AF]/40 disabled:opacity-60"
               >
                 {DAYS.map((d) => (
                   <option key={d.key} value={d.key}>
@@ -296,14 +295,13 @@ const EditTimetableSlotModal = ({
               <label className="text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF]">
                 Start
               </label>
-
               <input
                 type="time"
                 name="startTime"
                 value={form.startTime}
-                onChange={handleChange}
+                onChange={(e) => setForm((p) => ({ ...p, startTime: e.target.value }))}
                 disabled={loading}
-                className="mt-2 w-full px-3 py-2.5 rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] bg-[#F9F7F7] dark:bg-[#0a1f3a] text-sm dark:text-[#DBE2EF] outline-none focus:ring-2 focus:ring-[#3F72AF]/40 disabled:opacity-60"
+                className="mt-2 w-full px-3 py-2.5 rounded-xl border border-[#DBE2EF] dark:border-slate-700 bg-white/70 dark:bg-slate-800/70 text-sm outline-none focus:ring-2 focus:ring-[#3F72AF]/40 disabled:opacity-60"
               />
             </div>
 
@@ -311,50 +309,121 @@ const EditTimetableSlotModal = ({
               <label className="text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF]">
                 End
               </label>
-
               <input
                 type="time"
                 name="endTime"
                 value={form.endTime}
-                onChange={handleChange}
+                onChange={(e) => setForm((p) => ({ ...p, endTime: e.target.value }))}
                 disabled={loading}
                 className={`mt-2 w-full px-3 py-2.5 rounded-xl border text-sm outline-none focus:ring-2 disabled:opacity-60 ${
                   isValidTime
-                    ? "border-[#DBE2EF] dark:border-[#3F72AF] bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF] focus:ring-[#3F72AF]/40"
+                    ? "border-[#DBE2EF] dark:border-slate-700 bg-white/70 dark:bg-slate-800/70 focus:ring-[#3F72AF]/40"
                     : "border-red-300 bg-red-50 focus:ring-red-200"
                 }`}
               />
-              {!isValidTime && (
-                <p className="mt-1 text-xs text-red-600">
-                  End time must be greater than start time.
-                </p>
-              )}
             </div>
           </div>
 
-          {/* Room */}
-          <div>
-            <label className="text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF]">
-              Room <span className="text-xs opacity-70">(optional)</span>
-            </label>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <label className="text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF]">
+                Location
+              </label>
+              <select
+                value={form.location}
+                onChange={(e) =>
+                  setForm((p) => ({
+                    ...p,
+                    location: e.target.value,
+                    buildingName: "",
+                    floorNumber: "",
+                    room: "",
+                  }))
+                }
+                className="mt-2 w-full px-3 py-2.5 rounded-xl border border-[#DBE2EF] dark:border-slate-700 bg-white/70 dark:bg-slate-800/70 text-sm"
+              >
+                <option value="">Select Location</option>
+                {locations.map((location) => (
+                  <option key={location} value={location}>
+                    {location}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-            <input
-              name="room"
-              value={form.room}
-              onChange={handleChange}
-              disabled={loading}
-              className="mt-2 w-full px-3 py-2.5 rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] bg-[#F9F7F7] dark:bg-[#0a1f3a] text-sm dark:text-[#DBE2EF] outline-none focus:ring-2 focus:ring-[#3F72AF]/40 disabled:opacity-60"
-              placeholder="Room 101"
-            />
+            <div>
+              <label className="text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF]">
+                Building
+              </label>
+              <select
+                value={form.buildingName}
+                onChange={(e) =>
+                  setForm((p) => ({
+                    ...p,
+                    buildingName: e.target.value,
+                    floorNumber: "",
+                    room: "",
+                  }))
+                }
+                disabled={!form.location}
+                className="mt-2 w-full px-3 py-2.5 rounded-xl border border-[#DBE2EF] dark:border-slate-700 bg-white/70 dark:bg-slate-800/70 text-sm disabled:opacity-60"
+              >
+                <option value="">Select Building</option>
+                {buildings.map((building) => (
+                  <option key={building} value={building}>
+                    {building}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF]">
+                Floor
+              </label>
+              <select
+                value={form.floorNumber}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, floorNumber: e.target.value, room: "" }))
+                }
+                disabled={!form.buildingName}
+                className="mt-2 w-full px-3 py-2.5 rounded-xl border border-[#DBE2EF] dark:border-slate-700 bg-white/70 dark:bg-slate-800/70 text-sm disabled:opacity-60"
+              >
+                <option value="">Select Floor</option>
+                {floors.map((f) => (
+                  <option key={f} value={f}>
+                    Floor {f}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF]">
+                Room
+              </label>
+              <select
+                value={form.room}
+                onChange={(e) => setForm((p) => ({ ...p, room: e.target.value }))}
+                disabled={!form.floorNumber}
+                className="mt-2 w-full px-3 py-2.5 rounded-xl border border-[#DBE2EF] dark:border-slate-700 bg-white/70 dark:bg-slate-800/70 text-sm disabled:opacity-60"
+              >
+                <option value="">Select Room</option>
+                {rooms.map((r) => (
+                  <option key={r.value} value={r.value}>
+                    Room {r.roomNumber}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          {/* Footer */}
           <div className="pt-2 flex flex-col-reverse md:flex-row md:items-center md:justify-between gap-3">
             <button
               type="button"
               onClick={onClose}
               disabled={loading}
-              className="w-full md:w-auto px-4 py-2.5 rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] text-sm text-[#112D4E] dark:text-[#DBE2EF] hover:bg-[#DBE2EF] dark:hover:bg-[#0a1f3a] transition disabled:opacity-60"
+              className="w-full md:w-auto px-4 py-2.5 rounded-xl border border-[#DBE2EF] dark:border-slate-700 text-sm text-[#112D4E] dark:text-[#DBE2EF] hover:bg-[#DBE2EF]/60 dark:hover:bg-slate-800 transition disabled:opacity-60"
             >
               Cancel
             </button>
@@ -362,7 +431,7 @@ const EditTimetableSlotModal = ({
             <button
               type="submit"
               disabled={loading || dropdownLoading || !isValidTime}
-              className="w-full md:w-auto px-5 py-2.5 rounded-xl bg-[#3F72AF] hover:bg-[#112D4E] text-white text-sm font-medium transition disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full md:w-auto px-5 py-2.5 rounded-xl bg-[#3F72AF] hover:bg-[#2f5d95] text-white text-sm font-medium transition disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>

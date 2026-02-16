@@ -17,6 +17,8 @@ const StudentReport = () => {
     batch: "",
     status: "",
     search: "",
+    from: "",
+    to: "",
   });
 
   useEffect(() => {
@@ -26,7 +28,7 @@ const StudentReport = () => {
 
         const [cRes, bRes] = await Promise.all([
           axiosInstance.get("/courses/all"),
-          axiosInstance.get("/batches/all"),
+          axiosInstance.get("/batch/all"),
         ]);
 
         console.log("COURSES API:", cRes.data);
@@ -54,14 +56,21 @@ const StudentReport = () => {
       setLoading(true);
       setError("");
 
-      const res = await axiosInstance.get("/reports/students", {
-        params: filters,
-      });
+      const res = await axiosInstance.get("/reports/students", { params: filters });
 
       console.log("STUDENT REPORT API:", res.data);
 
-      const arr = res.data?.students || [];
-      setStudents(Array.isArray(arr) ? arr : []);
+      const arr = Array.isArray(res.data?.students) ? res.data.students : [];
+      const normalized = arr.map((s) => ({
+        _id: s?._id,
+        name: s?.visitor?.name || "",
+        email: s?.visitor?.email || "",
+        phone: s?.visitor?.phone || "",
+        status: s?.status || "",
+        course: s?.visitor?.course || null,
+        batch: s?.batch || null,
+      }));
+      setStudents(normalized);
     } catch (err) {
       console.error("Student report fetch error:", err);
       setError("Failed to load student report.");
@@ -286,10 +295,47 @@ const StudentReport = () => {
             <option value="completed">Completed</option>
           </select>
 
+          <input
+            type="date"
+            value={filters.from}
+            onChange={(e) => setFilters((p) => ({ ...p, from: e.target.value }))}
+            className="
+              px-3 py-2.5 rounded-2xl
+              border border-slate-200 dark:border-slate-700
+              bg-slate-50 dark:bg-slate-800
+              text-sm text-slate-800 dark:text-slate-100
+              shadow-sm transition-all duration-300
+              hover:shadow-md
+              focus:outline-none focus:ring-2 focus:ring-indigo-500/30
+            "
+          />
+
+          <input
+            type="date"
+            value={filters.to}
+            onChange={(e) => setFilters((p) => ({ ...p, to: e.target.value }))}
+            className="
+              px-3 py-2.5 rounded-2xl
+              border border-slate-200 dark:border-slate-700
+              bg-slate-50 dark:bg-slate-800
+              text-sm text-slate-800 dark:text-slate-100
+              shadow-sm transition-all duration-300
+              hover:shadow-md
+              focus:outline-none focus:ring-2 focus:ring-indigo-500/30
+            "
+          />
+
           <div className="md:col-span-2 flex justify-end gap-3">
             <button
               onClick={() =>
-                setFilters({ course: "", batch: "", status: "", search: "" })
+                setFilters({
+                  course: "",
+                  batch: "",
+                  status: "",
+                  search: "",
+                  from: "",
+                  to: "",
+                })
               }
               className="
                 px-4 py-2.5 rounded-2xl

@@ -1,15 +1,14 @@
-import React, { useEffect, useState } from "react";
-import { Search, Plus, Eye, Edit, Trash2, RotateCcw } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import { Search, Eye, Edit, Trash2, RotateCcw } from "lucide-react";
 
 import { tutorService } from "../../services/tutorService";
+import { employeeService } from "../../services/employeeService"; // ✅ NEW
 
-import AddTutorModal from "./modal/AddTutorModal";
 import EditTutorModal from "./modal/EditTutorModal";
 import ViewTutorModal from "./modal/ViewTutorModal";
 import ConfirmDeleteModal from "./modal/ConfirmDeleteModal";
 
 import Pagination from "../../components/Pagination";
-import SortHeader from "../../components/SortHeader";
 
 const AdminTutors = () => {
   const [search, setSearch] = useState("");
@@ -24,8 +23,11 @@ const AdminTutors = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [trashTotalPages, setTrashTotalPages] = useState(1);
 
-  const [sortBy, setSortBy] = useState("createdAt");
-  const [sortOrder, setSortOrder] = useState("desc");
+  const [totalActive, setTotalActive] = useState(0);
+  const [totalTrash, setTotalTrash] = useState(0);
+
+  const [sortBy] = useState("createdAt");
+  const [sortOrder] = useState("desc");
 
   const [filters, setFilters] = useState({});
   const [filterField, setFilterField] = useState("expertise");
@@ -33,27 +35,26 @@ const AdminTutors = () => {
 
   const [activeTab, setActiveTab] = useState("active");
 
-  const [openAdd, setOpenAdd] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [openView, setOpenView] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
 
   const [selectedTutor, setSelectedTutor] = useState(null);
 
-  const handleSort = (field) => {
-    if (sortBy === field) {
-      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
-    } else {
-      setSortBy(field);
-      setSortOrder("asc");
-    }
-    setPage(1);
-    setTrashPage(1);
-  };
-
+  // =========================
+  // FILTERS
+  // =========================
   const addFilter = () => {
     if (!filterField || !filterValue) return;
-    setFilters((prev) => ({ ...prev, [filterField]: filterValue }));
+
+    const value =
+      filterField === "isActive" ? String(filterValue) : filterValue.trim();
+
+    setFilters((prev) => ({
+      ...prev,
+      [filterField]: value,
+    }));
+
     setFilterValue("");
     setPage(1);
     setTrashPage(1);
@@ -65,6 +66,7 @@ const AdminTutors = () => {
       delete next[field];
       return next;
     });
+
     setPage(1);
     setTrashPage(1);
   };
@@ -75,6 +77,9 @@ const AdminTutors = () => {
     setTrashPage(1);
   };
 
+  // =========================
+  // API CALLS
+  // =========================
   const fetchTutors = async () => {
     setLoading(true);
     try {
@@ -88,8 +93,8 @@ const AdminTutors = () => {
       });
 
       setTutors(res.data.tutors || []);
-      console.log("res.data.tutors", res.data.tutors);
       setTotalPages(res.data.totalPages || 1);
+      setTotalActive(res.data.totalTutors || 0);
     } catch (error) {
       console.error("Error fetching tutors", error);
     } finally {
@@ -98,6 +103,7 @@ const AdminTutors = () => {
   };
 
   const fetchDeletedTutors = async () => {
+    setLoading(true);
     try {
       const res = await tutorService.getDeleted({
         page: trashPage,
@@ -110,19 +116,24 @@ const AdminTutors = () => {
 
       setDeletedTutors(res.data.tutors || []);
       setTrashTotalPages(res.data.totalPages || 1);
+      setTotalTrash(res.data.totalTutors || 0);
     } catch (error) {
       console.error("Error fetching deleted tutors", error);
+    } finally {
+      setLoading(false);
     }
   };
 
+  // =========================
+  // FETCH ON CHANGE
+  // =========================
   useEffect(() => {
     if (activeTab === "active") fetchTutors();
-  }, [activeTab, page, search, sortBy, sortOrder, JSON.stringify(filters)]);
-
-  useEffect(() => {
-    if (activeTab === "trash") fetchDeletedTutors();
+    else fetchDeletedTutors();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     activeTab,
+    page,
     trashPage,
     search,
     sortBy,
@@ -135,26 +146,37 @@ const AdminTutors = () => {
     setTrashPage(1);
   }, [activeTab]);
 
-  const handleAddTutor = async (data) => {
-    try {
-      await tutorService.create(data);
-      await fetchTutors();
-      setOpenAdd(false);
-    } catch (error) {
-      console.error("Add tutor failed", error);
-      alert(error.response?.data?.message || "Failed to add tutor");
-    }
-  };
-
+  // =========================
+  // CRUD
+  // =========================
   const handleEdit = (tutor) => {
     setSelectedTutor(tutor);
     setOpenEdit(true);
   };
 
+  // ✅ FIXED: Update both tutor + employee
   const handleUpdateTutor = async (data) => {
     try {
-      await tutorService.update(selectedTutor._id, data);
-      await fetchTutors();
+      if (!selectedTutor?._id) return;
+
+      const tutorId = selectedTutor._id;
+      const employeeId = selectedTutor?.employee?._id;
+
+      // data = { employee: {...}, tutor: {...} }
+      const tutorPayload = data?.tutor || {};
+      const employeePayload = data?.employee || {};
+
+      // 1) Update tutor model
+      await tutorService.update(tutorId, tutorPayload);
+
+      // 2) Update employee model (only if employee exists)
+      if (employeeId) {
+        await employeeService.update(employeeId, employeePayload);
+      }
+
+      // refresh list
+      if (activeTab === "active") await fetchTutors();
+      else await fetchDeletedTutors();
 
       setOpenEdit(false);
       setSelectedTutor(null);
@@ -213,6 +235,9 @@ const AdminTutors = () => {
 
   const filteredTutors = activeTab === "active" ? tutors : deletedTutors;
 
+  const activeCount = useMemo(() => totalActive, [totalActive]);
+  const trashCount = useMemo(() => totalTrash, [totalTrash]);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -222,19 +247,9 @@ const AdminTutors = () => {
             Tutors
           </h1>
           <p className="text-sm text-[#3F72AF] dark:text-[#DBE2EF]">
-            Manage instructors & tutors
+            Manage instructors & tutors (created via Employees)
           </p>
         </div>
-
-        {activeTab === "active" && (
-          <button
-            onClick={() => setOpenAdd(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#3F72AF] text-white hover:bg-[#112D4E] dark:bg-[#3F72AF] dark:hover:bg-[#DBE2EF] dark:hover:text-[#112D4E] transition-colors shadow-md"
-          >
-            <Plus size={18} />
-            Add Tutor
-          </button>
-        )}
       </div>
 
       {/* Tabs */}
@@ -247,7 +262,7 @@ const AdminTutors = () => {
               : "text-[#3F72AF] dark:text-[#DBE2EF]"
           }`}
         >
-          Active ({tutors.length})
+          Active ({activeCount})
         </button>
 
         <button
@@ -258,7 +273,7 @@ const AdminTutors = () => {
               : "text-[#3F72AF] dark:text-[#DBE2EF]"
           }`}
         >
-          Trash ({deletedTutors.length})
+          Trash ({trashCount})
         </button>
       </div>
 
@@ -267,7 +282,7 @@ const AdminTutors = () => {
         <Search size={18} className="text-[#3F72AF] dark:text-[#DBE2EF]" />
         <input
           type="text"
-          placeholder="Search tutors..."
+          placeholder="Search tutors by name, email, expertise..."
           value={search}
           onChange={(e) => {
             setSearch(e.target.value);
@@ -286,17 +301,30 @@ const AdminTutors = () => {
           className="text-sm border rounded-lg px-2 py-2 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
         >
           <option value="expertise">Expertise</option>
+          <option value="qualification">Qualification</option>
           <option value="isActive">Is Active</option>
           <option value="email">Email</option>
           <option value="phone">Phone</option>
         </select>
 
-        <input
-          value={filterValue}
-          onChange={(e) => setFilterValue(e.target.value)}
-          placeholder="Filter value"
-          className="text-sm border rounded-lg px-2 py-2 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
-        />
+        {filterField === "isActive" ? (
+          <select
+            value={filterValue}
+            onChange={(e) => setFilterValue(e.target.value)}
+            className="text-sm border rounded-lg px-2 py-2 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
+          >
+            <option value="">Select</option>
+            <option value="true">Active</option>
+            <option value="false">Inactive</option>
+          </select>
+        ) : (
+          <input
+            value={filterValue}
+            onChange={(e) => setFilterValue(e.target.value)}
+            placeholder="Filter value"
+            className="text-sm border rounded-lg px-2 py-2 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
+          />
+        )}
 
         <button
           onClick={addFilter}
@@ -332,26 +360,14 @@ const AdminTutors = () => {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-[#DBE2EF] dark:bg-[#3F72AF] border-b border-[#DBE2EF] dark:border-[#3F72AF]">
+              <thead className="bg-[#DBE2EF] dark:bg-[#3F72AF] border-b">
                 <tr>
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
-                    <SortHeader
-                      label="Name"
-                      field="name"
-                      sortBy={sortBy}
-                      sortOrder={sortOrder}
-                      onSort={handleSort}
-                    />
+                    Name
                   </th>
 
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
-                    <SortHeader
-                      label="Email"
-                      field="email"
-                      sortBy={sortBy}
-                      sortOrder={sortOrder}
-                      onSort={handleSort}
-                    />
+                    Email
                   </th>
 
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
@@ -359,13 +375,7 @@ const AdminTutors = () => {
                   </th>
 
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
-                    <SortHeader
-                      label="Expertise"
-                      field="expertise"
-                      sortBy={sortBy}
-                      sortOrder={sortOrder}
-                      onSort={handleSort}
-                    />
+                    Expertise
                   </th>
 
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
@@ -394,18 +404,18 @@ const AdminTutors = () => {
                 {filteredTutors.map((t) => (
                   <tr
                     key={t._id}
-                    className="border-b border-[#DBE2EF] dark:border-[#3F72AF] last:border-none hover:bg-[#DBE2EF] dark:hover:bg-[#0a1f3a] transition-colors"
+                    className="border-b last:border-none hover:bg-[#DBE2EF] dark:hover:bg-[#0a1f3a] transition-colors"
                   >
                     <td className="px-6 py-4 font-medium text-[#112D4E] dark:text-[#DBE2EF]">
-                      {t?.name || "—"}
+                      {t.employee?.name || "—"}
                     </td>
 
                     <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
-                      {t?.email || "—"}
+                      {t.employee?.email || "—"}
                     </td>
 
                     <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
-                      {t?.phone || "—"}
+                      {t.employee?.phone || "—"}
                     </td>
 
                     <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
@@ -441,7 +451,7 @@ const AdminTutors = () => {
                         <>
                           <button
                             onClick={() => handleView(t)}
-                            className="text-[#3F72AF] hover:text-[#112D4E] dark:text-[#DBE2EF] dark:hover:text-white text-sm transition-colors"
+                            className="text-[#3F72AF] hover:text-[#112D4E] dark:text-[#DBE2EF]"
                             title="View"
                           >
                             <Eye size={16} className="inline" />
@@ -449,7 +459,7 @@ const AdminTutors = () => {
 
                           <button
                             onClick={() => handleEdit(t)}
-                            className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-sm transition-colors"
+                            className="text-blue-600 hover:text-blue-700 dark:text-blue-400"
                             title="Edit"
                           >
                             <Edit size={16} className="inline" />
@@ -457,7 +467,7 @@ const AdminTutors = () => {
 
                           <button
                             onClick={() => handleToggleStatus(t._id)}
-                            className="text-yellow-600 hover:text-yellow-700 dark:text-yellow-400 dark:hover:text-yellow-300 text-sm transition-colors"
+                            className="text-yellow-600 hover:text-yellow-700 dark:text-yellow-400 text-sm transition-colors"
                             title="Toggle Status"
                           >
                             {t.isActive ? "Disable" : "Enable"}
@@ -465,7 +475,7 @@ const AdminTutors = () => {
 
                           <button
                             onClick={() => handleDeleteClick(t)}
-                            className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-sm transition-colors"
+                            className="text-red-600 hover:text-red-700 dark:text-red-400"
                             title="Delete"
                           >
                             <Trash2 size={16} className="inline" />
@@ -474,7 +484,7 @@ const AdminTutors = () => {
                       ) : (
                         <button
                           onClick={() => handleRestore(t._id)}
-                          className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 text-sm flex items-center gap-1 transition-colors"
+                          className="text-green-600 hover:text-green-700 dark:text-green-400 text-sm flex items-center gap-1"
                           title="Restore"
                         >
                           <RotateCcw size={16} />
@@ -506,12 +516,6 @@ const AdminTutors = () => {
       />
 
       {/* Modals */}
-      <AddTutorModal
-        open={openAdd}
-        onClose={() => setOpenAdd(false)}
-        onSubmit={handleAddTutor}
-      />
-
       <EditTutorModal
         open={openEdit}
         tutor={selectedTutor}

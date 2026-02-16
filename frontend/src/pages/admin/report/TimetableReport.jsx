@@ -10,6 +10,7 @@ const TimetableReport = () => {
 
   const [selectedCourse, setSelectedCourse] = useState("");
   const [selectedBatch, setSelectedBatch] = useState("");
+  const [dateRange, setDateRange] = useState({ from: "", to: "" });
 
   const [slots, setSlots] = useState([]);
 
@@ -101,9 +102,7 @@ const TimetableReport = () => {
         setLoadingBatches(true);
         setError("");
 
-        const res = await axiosInstance.get(
-          `/batches/by-course/${selectedCourse}`,
-        );
+        const res = await axiosInstance.get(`/batch/by-course/${selectedCourse}`);
 
         console.log("BATCHES BY COURSE API:", res.data);
 
@@ -134,7 +133,14 @@ const TimetableReport = () => {
       setLoadingSlots(true);
       setError("");
 
-      const res = await axiosInstance.get(`/timetable/batch/${selectedBatch}`);
+      const res = await axiosInstance.get("/reports/timetable", {
+        params: {
+          batch: selectedBatch,
+          course: selectedCourse || "",
+          from: dateRange.from || "",
+          to: dateRange.to || "",
+        },
+      });
 
       console.log("TIMETABLE API:", res.data);
 
@@ -165,7 +171,10 @@ const TimetableReport = () => {
       if (!id) continue;
 
       if (!map.has(id)) {
-        map.set(id, { _id: id, name: t?.name || "Tutor" });
+        map.set(id, {
+          _id: id,
+          name: t?.employee?.name || t?.name || "Tutor",
+        });
       }
     }
 
@@ -193,7 +202,7 @@ const TimetableReport = () => {
       list = list.filter((s) => {
         const day = (s?.day || "").toLowerCase();
         const room = (s?.room || "").toLowerCase();
-        const tutor = (s?.tutor?.name || "").toLowerCase();
+        const tutor = (s?.tutor?.employee?.name || s?.tutor?.name || "").toLowerCase();
         const course = (s?.course?.title || "").toLowerCase();
         return (
           day.includes(q) ||
@@ -249,7 +258,9 @@ const TimetableReport = () => {
 
       if (filters.sortBy === "tutor") {
         return (
-          (a?.tutor?.name || "").localeCompare(b?.tutor?.name || "") * order
+          (a?.tutor?.employee?.name || a?.tutor?.name || "").localeCompare(
+            b?.tutor?.employee?.name || b?.tutor?.name || "",
+          ) * order
         );
       }
 
@@ -274,7 +285,7 @@ const TimetableReport = () => {
       StartMinutes: s?.startMinutes ?? "",
       EndMinutes: s?.endMinutes ?? "",
       Room: s?.room || "",
-      Tutor: s?.tutor?.name || "",
+      Tutor: s?.tutor?.employee?.name || s?.tutor?.name || "",
       Course: s?.course?.title || "",
     }));
   }, [filteredSlots]);
@@ -357,6 +368,33 @@ const TimetableReport = () => {
           setSelectedBatch={setSelectedBatch}
           loadingBatches={loadingBatches}
         />
+        <div className="mt-4 flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
+          <div className="flex items-center gap-3">
+            <input
+              type="date"
+              value={dateRange.from}
+              onChange={(e) =>
+                setDateRange((p) => ({ ...p, from: e.target.value }))
+              }
+              className="px-3 py-2 rounded-lg border border-[#DBE2EF] dark:border-[#3F72AF] bg-white dark:bg-[#0a1f3a] text-sm"
+            />
+            <input
+              type="date"
+              value={dateRange.to}
+              onChange={(e) =>
+                setDateRange((p) => ({ ...p, to: e.target.value }))
+              }
+              className="px-3 py-2 rounded-lg border border-[#DBE2EF] dark:border-[#3F72AF] bg-white dark:bg-[#0a1f3a] text-sm"
+            />
+          </div>
+          <button
+            onClick={fetchSlots}
+            disabled={!selectedBatch}
+            className="px-4 py-2 rounded-lg bg-[#3F72AF] text-white text-sm font-medium hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            Apply Date Filter
+          </button>
+        </div>
       </div>
 
       {/* FILTERS */}
@@ -696,7 +734,7 @@ const TimetableReport = () => {
                     </td>
 
                     <td className="p-4 text-slate-700 dark:text-slate-200 font-medium">
-                      {s?.tutor?.name || "-"}
+                      {s?.tutor?.employee?.name || s?.tutor?.name || "-"}
                     </td>
 
                     <td className="p-4 text-slate-600 dark:text-slate-300">

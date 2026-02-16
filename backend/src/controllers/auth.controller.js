@@ -93,7 +93,7 @@ exports.login = async (req, res) => {
         const redirectMap = {
             admin: "/admin",
             hr: "/hr",
-            tutor: "/tutor",
+            tutor: "/instructor",
             student: "/student",
         };
 
@@ -133,12 +133,16 @@ exports.getCurrentUser = async (req, res) => {
 
 exports.updateProfile = async (req, res) => {
     try {
-        const { password, currentPassword, theme } = req.body;
+        const { name, password, currentPassword, theme } = req.body;
 
         const user = await User.findById(req.user._id).select("+password");
 
         if (!user) {
             return res.status(404).json({ message: "User not found" });
+        }
+
+        if (name !== undefined) {
+            user.name = String(name || "").trim();
         }
 
         if (theme !== undefined) {

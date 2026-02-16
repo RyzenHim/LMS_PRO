@@ -17,7 +17,6 @@ const links = [
     label: "Profile",
     to: "/student/profile",
     icon: User,
-    disabled: true,
   },
 ];
 
@@ -60,24 +59,6 @@ const StudentSidebar = ({ open, onClose }) => {
         <nav className="p-4 space-y-2">
           {links.map((item) => {
             const Icon = item.icon;
-
-            if (item.disabled) {
-              return (
-                <div
-                  key={item.to}
-                  className="flex items-center gap-3 px-4 py-3 rounded-xl border border-dashed border-[#DBE2EF] dark:border-[#3F72AF] opacity-60 cursor-not-allowed"
-                >
-                  <Icon
-                    size={18}
-                    className="text-[#3F72AF] dark:text-[#DBE2EF]"
-                  />
-                  <span className="text-sm text-[#112D4E] dark:text-[#DBE2EF]">
-                    {item.label}
-                  </span>
-                  <span className="ml-auto text-[10px] px-2 py-1 rounded-full bg-[#DBE2EF] dark:bg-[#0a1f3a] text-[#112D4E] dark:text-[#DBE2EF]"></span>
-                </div>
-              );
-            }
 
             return (
               <NavLink

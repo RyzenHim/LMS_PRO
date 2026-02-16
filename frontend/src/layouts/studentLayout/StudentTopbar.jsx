@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { Menu, LogOut, Sun, Moon } from "lucide-react";
+import { Menu, LogOut, Sun, Moon, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "../../api/axios";
+import { Link } from "react-router-dom";
 
 const StudentTopbar = ({ sidebarOpen, setSidebarOpen }) => {
   const navigate = useNavigate();
@@ -10,16 +11,22 @@ const StudentTopbar = ({ sidebarOpen, setSidebarOpen }) => {
   const [loading, setLoading] = useState(true);
 
   // Theme
-  const [dark, setDark] = useState(() => {
-    return document.documentElement.classList.contains("dark");
-  });
+  const [dark, setDark] = useState(false);
 
-  const toggleTheme = () => {
+  const toggleTheme = async () => {
     const next = !dark;
     setDark(next);
 
     if (next) document.documentElement.classList.add("dark");
     else document.documentElement.classList.remove("dark");
+
+    try {
+      await axiosInstance.patch("/user/profile", {
+        theme: next ? "dark" : "light",
+      });
+    } catch (error) {
+      console.error("Student theme update error:", error);
+    }
   };
 
   // Fetch student info
@@ -27,7 +34,12 @@ const StudentTopbar = ({ sidebarOpen, setSidebarOpen }) => {
     const fetchMe = async () => {
       try {
         const res = await axiosInstance.get("/user/me");
-        setMe(res.data?.user || res.data);
+        const meData = res.data?.user || res.data;
+        setMe(meData);
+
+        const nextTheme = meData?.theme === "dark";
+        setDark(nextTheme);
+        document.documentElement.classList.toggle("dark", nextTheme);
       } catch (err) {
         console.error("Student topbar me error:", err);
       } finally {
@@ -81,6 +93,14 @@ const StudentTopbar = ({ sidebarOpen, setSidebarOpen }) => {
               <Moon size={18} className="text-[#112D4E]" />
             )}
           </button>
+
+          <Link
+            to="/student/profile"
+            className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] hover:bg-[#DBE2EF] dark:hover:bg-[#0a1f3a] transition text-[#112D4E] dark:text-[#DBE2EF] text-sm font-medium"
+          >
+            <User size={16} />
+            <span className="hidden sm:block">Profile</span>
+          </Link>
 
           {/* Student Info */}
           <div className="hidden sm:flex items-center gap-3 px-3 py-2 rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] bg-[#F9F7F7] dark:bg-[#0a1f3a]">

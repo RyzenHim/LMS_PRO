@@ -8,6 +8,18 @@ const employeeSchema = new mongoose.Schema(
             trim: true,
         },
 
+        email: {
+            type: String,
+            trim: true,
+            lowercase: true,
+            sparse: true,
+        },
+
+        phone: {
+            type: String,
+            trim: true,
+        },
+
         department: {
             type: String,
             required: true,

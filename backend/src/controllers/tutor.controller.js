@@ -1,21 +1,42 @@
+const mongoose = require("mongoose");
+
 const Tutor = require("../models/tutor.model");
 const Employee = require("../models/employee.model");
 const User = require("../models/authUsers.model");
+const Batch = require("../models/batch.model");
+const BatchStudentMap = require("../models/batchStudentMap.model");
+const Timetable = require("../models/timetable.model");
 
 const nodemailer = require("nodemailer");
 
+// ===============================
+// Utils
+// ===============================
 const parseListParams = (req) => {
     const page = Math.max(parseInt(req.query.page || "1", 10), 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit || "10", 10), 1), 100);
     const skip = (page - 1) * limit;
 
-    const sortBy = req.query.sortBy || "createdAt";
+    const sortBy = (req.query.sortBy || "createdAt").trim();
     const sortOrder = req.query.sortOrder === "asc" ? 1 : -1;
 
     const search = (req.query.search || "").trim();
 
     return { page, limit, skip, sortBy, sortOrder, search };
 };
+
+// ===============================
+// Sorting (SAFE)
+// ===============================
+const allowedTutorSortFields = [
+    "createdAt",
+    "expertise",
+    "experience",
+    "qualification",
+    "isActive",
+];
+
+const allowedEmployeeSortFields = ["name", "email", "phone", "salary"];
 
 const getSafeSortField = (sortBy) => {
     const sortMap = {
@@ -25,8 +46,12 @@ const getSafeSortField = (sortBy) => {
         salary: "employee.salary",
     };
 
-    return sortMap[sortBy] || sortBy;
+    if (allowedTutorSortFields.includes(sortBy)) return sortBy;
+    if (sortMap[sortBy]) return sortMap[sortBy];
+
+    return "createdAt";
 };
+
 
 const buildTutorListPipeline = ({
     isDeleted,
@@ -59,16 +84,29 @@ const buildTutorListPipeline = ({
                         $or: [
                             { expertise: { $regex: search, $options: "i" } },
                             { qualification: { $regex: search, $options: "i" } },
+                            { bio: { $regex: search, $options: "i" } },
 
                             { "employee.name": { $regex: search, $options: "i" } },
                             { "employee.email": { $regex: search, $options: "i" } },
                             { "employee.phone": { $regex: search, $options: "i" } },
+                            { "employee.department": { $regex: search, $options: "i" } },
                         ],
                     },
                 },
             ]
             : []),
 
+        // ✅ Ensure employee fields exist (so UI doesn't break)
+        {
+            $addFields: {
+                "employee.name": { $ifNull: ["$employee.name", "—"] },
+                "employee.email": { $ifNull: ["$employee.email", "—"] },
+                "employee.phone": { $ifNull: ["$employee.phone", "—"] },
+                "employee.salary": { $ifNull: ["$employee.salary", 0] },
+            },
+        },
+
+        // ✅ Sorting
         { $sort: { [safeSortBy]: sortOrder } },
 
         {
@@ -82,10 +120,11 @@ const buildTutorListPipeline = ({
     return pipeline;
 };
 
-// random password
+// ===============================
+// Password Generator
+// ===============================
 const generatePassword = (length = 10) => {
-    const chars =
-        "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789@#";
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789@#";
     let pass = "";
     for (let i = 0; i < length; i++) {
         pass += chars.charAt(Math.floor(Math.random() * chars.length));
@@ -93,7 +132,9 @@ const generatePassword = (length = 10) => {
     return pass;
 };
 
-// nodemailer transporter
+// ===============================
+// Nodemailer
+// ===============================
 const transporter = nodemailer.createTransport({
     service: "gmail",
     auth: {
@@ -135,7 +176,11 @@ const sendTutorLoginMail = async ({ toEmail, name, password }) => {
     await transporter.sendMail(mailOptions);
 };
 
+// ===============================
+// Controllers
+// ===============================
 
+// ✅ GET ALL ACTIVE
 exports.allTutors = async (req, res) => {
     try {
         const { page, limit, skip, sortBy, sortOrder, search } = parseListParams(req);
@@ -167,6 +212,7 @@ exports.allTutors = async (req, res) => {
     }
 };
 
+// ✅ GET ALL DELETED
 exports.getDeletedTutors = async (req, res) => {
     try {
         const { page, limit, skip, sortBy, sortOrder, search } = parseListParams(req);
@@ -198,10 +244,17 @@ exports.getDeletedTutors = async (req, res) => {
     }
 };
 
+// ✅ GET BY ID
 exports.getTutorById = async (req, res) => {
     try {
+        const { id } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ message: "Invalid tutor id" });
+        }
+
         const tutor = await Tutor.findOne({
-            _id: req.params.id,
+            _id: id,
             isDeleted: false,
         }).populate(
             "employee",
@@ -217,13 +270,20 @@ exports.getTutorById = async (req, res) => {
     }
 };
 
+// ✅ ADD TUTOR
 exports.addTutor = async (req, res) => {
     try {
         const { employee, expertise, experience, qualification, bio } = req.body;
 
-        if (!employee || !expertise) {
+        if (!employee || !mongoose.Types.ObjectId.isValid(employee)) {
             return res.status(400).json({
-                message: "Employee and expertise are required",
+                message: "Valid employee id is required",
+            });
+        }
+
+        if (!expertise) {
+            return res.status(400).json({
+                message: "Expertise is required",
             });
         }
 
@@ -237,41 +297,54 @@ exports.addTutor = async (req, res) => {
         }
 
         // Tutor already exists?
-        const existsTutor = await Tutor.findOne({ employee, isDeleted: false });
+        const existsTutor = await Tutor.findOne({
+            employee,
+            isDeleted: false,
+        });
+
         if (existsTutor) {
             return res.status(400).json({
                 message: "Tutor profile already exists for this employee",
             });
         }
 
-        // Create tutor
+        // ✅ Create tutor
         const tutor = await Tutor.create({
             employee,
             expertise,
             experience: Number(experience || 0),
-            qualification,
-            bio,
+            qualification: qualification || "",
+            bio: bio || "",
             isActive: true,
             isDeleted: false,
             deletedAt: null,
         });
 
-        // Create user for tutor (if email exists)
-        let createdUser = null;
+        // ✅ Ensure employee designation is teacher
+        await Employee.updateOne(
+            { _id: employeeDoc._id },
+            { $set: { designation: "teacher" } }
+        );
+
+        // ==========================================
+        // ✅ Create OR Update user login for tutor
+        // ==========================================
+        let loginCreated = false;
         let generatedPassword = null;
 
         if (employeeDoc.email) {
             const normalizedEmail = employeeDoc.email.toLowerCase().trim();
 
-            const alreadyUser = await User.findOne({
+            const existingUser = await User.findOne({
                 email: normalizedEmail,
                 isDeleted: false,
-            });
+            }).select("+password");
 
-            if (!alreadyUser) {
+            // If no user -> create
+            if (!existingUser) {
                 generatedPassword = generatePassword(10);
 
-                createdUser = await User.create({
+                await User.create({
                     email: normalizedEmail,
                     password: generatedPassword,
                     role: "tutor",
@@ -279,7 +352,9 @@ exports.addTutor = async (req, res) => {
                     employee: employeeDoc._id,
                 });
 
-                // Send email
+                loginCreated = true;
+
+                // send mail
                 try {
                     await sendTutorLoginMail({
                         toEmail: normalizedEmail,
@@ -289,6 +364,21 @@ exports.addTutor = async (req, res) => {
                 } catch (mailErr) {
                     console.error("Tutor mail sending failed:", mailErr);
                 }
+            } else {
+                // If user exists -> update role + tutor link
+                await User.updateOne(
+                    { _id: existingUser._id },
+                    {
+                        $set: {
+                            role: "tutor",
+                            tutor: tutor._id,
+                            employee: employeeDoc._id,
+                            isActive: true,
+                            isDeleted: false,
+                            deletedAt: null,
+                        },
+                    }
+                );
             }
         }
 
@@ -300,9 +390,9 @@ exports.addTutor = async (req, res) => {
         return res.status(201).json({
             message:
                 "Tutor added successfully" +
-                (createdUser ? " + login created + mail sent" : ""),
+                (loginCreated ? " + login created + mail sent" : " + login updated"),
             tutor: populated,
-            loginCreated: Boolean(createdUser),
+            loginCreated,
         });
     } catch (error) {
         console.error("Add tutor error:", error);
@@ -310,22 +400,35 @@ exports.addTutor = async (req, res) => {
     }
 };
 
+// ✅ UPDATE TUTOR
 exports.updateTutor = async (req, res) => {
     try {
         const { id } = req.params;
         const { employee, expertise, experience, qualification, bio } = req.body;
 
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ message: "Invalid tutor id" });
+        }
+
         const tutor = await Tutor.findOne({ _id: id, isDeleted: false });
         if (!tutor) return res.status(404).json({ message: "Tutor not found" });
 
+        // If employee change
         if (employee) {
+            if (!mongoose.Types.ObjectId.isValid(employee)) {
+                return res.status(400).json({ message: "Invalid employee id" });
+            }
+
             const employeeDoc = await Employee.findOne({
                 _id: employee,
                 isDeleted: false,
             });
 
-            if (!employeeDoc) return res.status(404).json({ message: "Employee not found" });
+            if (!employeeDoc) {
+                return res.status(404).json({ message: "Employee not found" });
+            }
 
+            // Another tutor already uses this employee?
             const already = await Tutor.findOne({
                 employee,
                 _id: { $ne: id },
@@ -338,7 +441,19 @@ exports.updateTutor = async (req, res) => {
                 });
             }
 
-            tutor.employee = employee;
+            tutor.employee = employeeDoc._id;
+
+            // ensure designation is teacher
+            await Employee.updateOne(
+                { _id: employeeDoc._id },
+                { $set: { designation: "teacher" } }
+            );
+
+            // sync user employee
+            await User.updateOne(
+                { tutor: tutor._id, role: "tutor", isDeleted: false },
+                { $set: { employee: employeeDoc._id } }
+            );
         }
 
         if (expertise !== undefined) tutor.expertise = expertise;
@@ -363,6 +478,7 @@ exports.updateTutor = async (req, res) => {
     }
 };
 
+// ✅ TOGGLE TUTOR STATUS
 exports.toggleTutorStatus = async (req, res) => {
     try {
         const tutor = await Tutor.findOne({
@@ -375,6 +491,12 @@ exports.toggleTutorStatus = async (req, res) => {
         tutor.isActive = !tutor.isActive;
         await tutor.save();
 
+        // also toggle user
+        await User.updateOne(
+            { tutor: tutor._id, role: "tutor", isDeleted: false },
+            { $set: { isActive: tutor.isActive } }
+        );
+
         return res.status(200).json({
             message: "Tutor status updated",
             isActive: tutor.isActive,
@@ -385,6 +507,7 @@ exports.toggleTutorStatus = async (req, res) => {
     }
 };
 
+// ✅ SOFT DELETE TUTOR
 exports.softDeleteTutor = async (req, res) => {
     try {
         const tutor = await Tutor.findByIdAndUpdate(
@@ -408,6 +531,7 @@ exports.softDeleteTutor = async (req, res) => {
     }
 };
 
+// ✅ RESTORE TUTOR
 exports.restoreTutor = async (req, res) => {
     try {
         const tutor = await Tutor.findByIdAndUpdate(
@@ -423,9 +547,179 @@ exports.restoreTutor = async (req, res) => {
             { $set: { isDeleted: false, deletedAt: null } }
         );
 
-        return res.status(200).json({ message: "Tutor restored successfully", tutor });
+        return res.status(200).json({
+            message: "Tutor restored successfully",
+            tutor,
+        });
     } catch (error) {
         console.error("Restore tutor error:", error);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+exports.getMeTutorDashboard = async (req, res) => {
+    try {
+        const user = await User.findOne({
+            _id: req.user?._id,
+            role: "tutor",
+            isDeleted: false,
+        }).lean();
+
+        if (!user?.tutor) {
+            return res.status(404).json({ message: "Tutor profile not found" });
+        }
+
+        const tutor = await Tutor.findOne({
+            _id: user.tutor,
+            isDeleted: false,
+        })
+            .populate("employee", "name email phone department designation")
+            .lean();
+
+        if (!tutor) {
+            return res.status(404).json({ message: "Tutor profile not found" });
+        }
+
+        const batches = await Batch.find({
+            tutor: tutor._id,
+            isDeleted: false,
+        })
+            .populate("course", "title category level")
+            .sort({ startDate: 1 })
+            .lean();
+
+        const batchIds = batches.map((b) => b._id);
+
+        const mappings = await BatchStudentMap.find({
+            batch: { $in: batchIds },
+            status: "active",
+            isDeleted: false,
+        })
+            .populate("batch", "name status startDate endDate")
+            .populate({
+                path: "student",
+                select: "status",
+                populate: {
+                    path: "visitor",
+                    select: "name email phone",
+                },
+            })
+            .lean();
+
+        const timetable = await Timetable.find({
+            batch: { $in: batchIds },
+            isDeleted: false,
+        })
+            .populate("batch", "name")
+            .populate("course", "title")
+            .sort({ day: 1, startMinutes: 1 })
+            .lean();
+
+        return res.status(200).json({
+            tutor,
+            batches,
+            mappings,
+            timetable,
+            summary: {
+                totalBatches: batches.length,
+                totalStudents: mappings.length,
+                totalSlots: timetable.length,
+            },
+        });
+    } catch (error) {
+        console.error("getMeTutorDashboard error:", error);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+exports.getMeStudents = async (req, res) => {
+    try {
+        const { page, limit, skip, sortBy, sortOrder, search } = parseListParams(req);
+        const { batch, status } = req.query;
+
+        const user = await User.findOne({
+            _id: req.user?._id,
+            role: "tutor",
+            isDeleted: false,
+        }).lean();
+
+        if (!user?.tutor) {
+            return res.status(404).json({ message: "Tutor profile not found" });
+        }
+
+        const mapFilter = {
+            tutor: user.tutor,
+            status: "active",
+            isDeleted: false,
+            ...(batch ? { batch } : {}),
+        };
+
+        const mappings = await BatchStudentMap.find(mapFilter)
+            .populate("batch", "name status startDate endDate")
+            .populate("course", "title category level")
+            .populate({
+                path: "student",
+                match: {
+                    isDeleted: false,
+                    ...(status ? { status } : {}),
+                },
+                select: "status enrollmentDate",
+                populate: {
+                    path: "visitor",
+                    select: "name email phone",
+                },
+            })
+            .lean();
+
+        let students = mappings
+            .filter((m) => m.student && m.student.visitor)
+            .map((m) => ({
+                _id: m.student._id,
+                name: m.student.visitor.name,
+                email: m.student.visitor.email,
+                phone: m.student.visitor.phone,
+                status: m.student.status,
+                batch: m.batch,
+                course: m.course,
+                enrollmentDate: m.student.enrollmentDate,
+            }));
+
+        if (search) {
+            const q = search.toLowerCase();
+            students = students.filter((s) => {
+                return (
+                    String(s.name || "").toLowerCase().includes(q) ||
+                    String(s.email || "").toLowerCase().includes(q) ||
+                    String(s.phone || "").toLowerCase().includes(q)
+                );
+            });
+        }
+
+        const sortField = ["name", "email", "status", "enrollmentDate", "createdAt"].includes(sortBy)
+            ? sortBy
+            : "createdAt";
+
+        students.sort((a, b) => {
+            const av = a[sortField] || "";
+            const bv = b[sortField] || "";
+            if (sortField === "enrollmentDate" || sortField === "createdAt") {
+                return (new Date(av) - new Date(bv)) * sortOrder;
+            }
+            return String(av).localeCompare(String(bv)) * sortOrder;
+        });
+
+        const totalStudents = students.length;
+        const paginated = students.slice(skip, skip + limit);
+
+        return res.status(200).json({
+            students: paginated,
+            totalStudents,
+            page,
+            limit,
+            totalPages: Math.ceil(totalStudents / limit),
+        });
+    } catch (error) {
+        console.error("getMeStudents error:", error);
         return res.status(500).json({ message: "Internal server error" });
     }
 };

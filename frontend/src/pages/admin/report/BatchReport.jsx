@@ -9,6 +9,7 @@ const BatchReport = () => {
 
   const [selectedCourse, setSelectedCourse] = useState("");
   const [selectedBatch, setSelectedBatch] = useState("");
+  const [dateRange, setDateRange] = useState({ from: "", to: "" });
 
   const [students, setStudents] = useState([]);
   const [loadingCourses, setLoadingCourses] = useState(true);
@@ -53,9 +54,7 @@ const BatchReport = () => {
         setError("");
 
         // YOU MUST ADD THIS BACKEND ENDPOINT
-        const res = await axiosInstance.get(
-          `/batches/by-course/${selectedCourse}`,
-        );
+        const res = await axiosInstance.get(`/batch/by-course/${selectedCourse}`);
 
         console.log("BATCHES BY COURSE API:", res.data);
 
@@ -73,35 +72,47 @@ const BatchReport = () => {
     loadBatches();
   }, [selectedCourse]);
 
+  const loadStudents = async () => {
+    if (!selectedBatch) {
+      setStudents([]);
+      return;
+    }
+
+    try {
+      setLoadingStudents(true);
+      setError("");
+
+      const res = await axiosInstance.get("/reports/batch", {
+        params: {
+          course: selectedCourse || "",
+          batch: selectedBatch || "",
+          from: dateRange.from || "",
+          to: dateRange.to || "",
+        },
+      });
+
+      console.log("BATCH REPORT API:", res.data);
+
+      const arr = Array.isArray(res.data?.mappings) ? res.data.mappings : [];
+      const normalized = arr.map((m) => ({
+        _id: m?._id || m?.student?._id,
+        name: m?.student?.visitor?.name || "",
+        email: m?.student?.visitor?.email || "",
+        phone: m?.student?.visitor?.phone || "",
+        status: m?.student?.status || "",
+      }));
+      setStudents(normalized);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to load students of this batch.");
+      setStudents([]);
+    } finally {
+      setLoadingStudents(false);
+    }
+  };
+
   // 3) Load students when batch changes
   useEffect(() => {
-    const loadStudents = async () => {
-      if (!selectedBatch) {
-        setStudents([]);
-        return;
-      }
-
-      try {
-        setLoadingStudents(true);
-        setError("");
-
-        const res = await axiosInstance.get(
-          `/batchStudentMap/batch/${selectedBatch}/students`,
-        );
-
-        console.log("BATCH STUDENTS API:", res.data);
-
-        const arr = res.data?.students || res.data || [];
-        setStudents(Array.isArray(arr) ? arr : []);
-      } catch (err) {
-        console.error(err);
-        setError("Failed to load students of this batch.");
-        setStudents([]);
-      } finally {
-        setLoadingStudents(false);
-      }
-    };
-
     loadStudents();
   }, [selectedBatch]);
 
@@ -144,6 +155,29 @@ const BatchReport = () => {
         setSelectedBatch={setSelectedBatch}
         loadingBatches={loadingBatches}
       />
+
+      <div className="p-4 rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] bg-white dark:bg-[#112D4E] flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
+        <div className="flex items-center gap-3">
+          <input
+            type="date"
+            value={dateRange.from}
+            onChange={(e) => setDateRange((p) => ({ ...p, from: e.target.value }))}
+            className="px-3 py-2 rounded-lg border border-[#DBE2EF] dark:border-[#3F72AF] bg-white dark:bg-[#0a1f3a] text-sm"
+          />
+          <input
+            type="date"
+            value={dateRange.to}
+            onChange={(e) => setDateRange((p) => ({ ...p, to: e.target.value }))}
+            className="px-3 py-2 rounded-lg border border-[#DBE2EF] dark:border-[#3F72AF] bg-white dark:bg-[#0a1f3a] text-sm"
+          />
+        </div>
+        <button
+          onClick={loadStudents}
+          className="px-4 py-2 rounded-lg bg-[#3F72AF] text-white text-sm font-medium hover:opacity-90"
+        >
+          Apply Date Filter
+        </button>
+      </div>
 
       <div className="border border-[#DBE2EF] dark:border-[#3F72AF] rounded-xl bg-white dark:bg-[#112D4E] overflow-hidden">
         <div className="p-4 border-b border-[#DBE2EF] dark:border-[#3F72AF]">

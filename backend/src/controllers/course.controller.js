@@ -1,5 +1,13 @@
 const Course = require("../models/course.model");
 
+const tutorPopulate = {
+    path: "tutor",
+    populate: {
+        path: "employee",
+        select: "name email phone",
+    },
+};
+
 const parseListParams = (req) => {
     const page = Math.max(parseInt(req.query.page || "1", 10), 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit || "10", 10), 1), 100);
@@ -30,7 +38,7 @@ exports.allCourses = async (req, res) => {
         const totalCourses = await Course.countDocuments(filter);
 
         const courses = await Course.find(filter)
-            .populate("tutor", "name email")
+            .populate(tutorPopulate)
             .populate("skills", "name description category")
             .sort({ [sortBy]: sortOrder })
             .skip(skip)
@@ -55,7 +63,7 @@ exports.getCourseById = async (req, res) => {
             _id: req.params.id,
             isDeleted: false,
         })
-            .populate("tutor", "name email")
+            .populate(tutorPopulate)
             .populate("skills", "name description category");
 
         if (!course) {
@@ -124,7 +132,7 @@ exports.addCourse = async (req, res) => {
         });
 
         const populatedCourse = await Course.findById(course._id)
-            .populate("tutor", "name email")
+            .populate(tutorPopulate)
             .populate("skills", "name description category");
 
         return res.status(201).json({
@@ -195,7 +203,7 @@ exports.updateCourse = async (req, res) => {
         await course.save();
 
         const populatedCourse = await Course.findById(course._id)
-            .populate("tutor", "name email")
+            .populate(tutorPopulate)
             .populate("skills", "name description category");
 
         return res.status(200).json({
@@ -296,7 +304,7 @@ exports.getDeletedCourses = async (req, res) => {
         const totalCourses = await Course.countDocuments(filter);
 
         const courses = await Course.find(filter)
-            .populate("tutor", "name email")
+            .populate(tutorPopulate)
             .populate("skills", "name description category")
             .sort({ [sortBy]: sortOrder })
             .skip(skip)

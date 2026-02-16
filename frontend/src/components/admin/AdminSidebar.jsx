@@ -4,7 +4,6 @@ import {
   Users,
   GraduationCap,
   UserCog,
-  icons,
   BookOpen,
   UserPlus,
 } from "lucide-react";

@@ -142,7 +142,7 @@ const AdminSkills = () => {
   // ✅ CRUD
   const handleAddSkill = async () => {
     try {
-      const res = await skillService.create(form);
+      await skillService.create(form);
 
       // Refresh list (best)
       await fetchSkills();
