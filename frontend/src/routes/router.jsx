@@ -45,6 +45,7 @@ import VisitorReport from "../pages/admin/report/VisitorReport";
 import CourseReport from "../pages/admin/report/CourseReport";
 import EmployeeReport from "../pages/admin/report/EmployeeReport";
 import SkillReport from "../pages/admin/report/SkillReport";
+import AdminRooms from "../pages/admin/AdminRooms";
 
 const router = createBrowserRouter([
   {
@@ -96,6 +97,7 @@ const router = createBrowserRouter([
           { path: "reports/skills", element: <SkillReport /> },
           { path: "reports/timetable", element: <TimetableReport /> },
           { path: "reports/visitors", element: <VisitorReport /> },
+          { path: "rooms", element: <AdminRooms /> },
         ],
       },
 

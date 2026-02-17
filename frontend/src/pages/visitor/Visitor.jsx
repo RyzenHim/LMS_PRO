@@ -10,6 +10,7 @@ import {
   XCircle,
   Clock,
   CheckCircle,
+  SlidersHorizontal,
 } from "lucide-react";
 
 import AddVisitorModal from "./modal/AddVisitorModal";
@@ -56,7 +57,7 @@ const Visitors = () => {
   // filters
   const [filterStatus, setFilterStatus] = useState("");
   const [filterSource, setFilterSource] = useState("");
-  const [filterCourse, setFilterCourse] = useState(""); // MUST be courseId
+  const [filterCourse, setFilterCourse] = useState("");
 
   // created filter
   const [createdFilter, setCreatedFilter] = useState("");
@@ -128,16 +129,16 @@ const Visitors = () => {
         type="button"
         onClick={() => handleSort(field)}
         disabled={tableLoading}
-        className={`flex items-center gap-2 select-none transition-opacity ${
+        className={`inline-flex items-center gap-2 select-none transition ${
           tableLoading ? "opacity-60 cursor-not-allowed" : "cursor-pointer"
         } ${
           active
             ? "font-semibold text-[#112D4E] dark:text-white"
-            : "text-[#112D4E] dark:text-[#DBE2EF]"
+            : "text-[#112D4E]/90 dark:text-[#DBE2EF]"
         }`}
       >
         <span>{label}</span>
-        <span className="text-xs opacity-80">{arrow}</span>
+        <span className="text-[11px] opacity-70">{arrow}</span>
       </button>
     );
   };
@@ -204,13 +205,11 @@ const Visitors = () => {
     }
   };
 
-  // initial load
   useEffect(() => {
     fetchVisitors({ initial: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // refetch
   useEffect(() => {
     if (loading) return;
     fetchVisitors({ initial: false });
@@ -351,8 +350,22 @@ const Visitors = () => {
   };
 
   // =========================
-  // UI
+  // HELPERS
   // =========================
+  const statusPill = (status) => {
+    const s = String(status || "new").toLowerCase();
+
+    const map = {
+      new: "bg-slate-100 text-slate-700 border-slate-200",
+      contacted: "bg-blue-50 text-blue-700 border-blue-200",
+      "follow-up": "bg-amber-50 text-amber-700 border-amber-200",
+      "not-interested": "bg-orange-50 text-orange-700 border-orange-200",
+      converted: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    };
+
+    return map[s] || "bg-slate-100 text-slate-700 border-slate-200";
+  };
+
   if (loading) {
     return (
       <div className="p-6 text-center text-[#3F72AF] dark:text-[#DBE2EF]">
@@ -363,288 +376,329 @@ const Visitors = () => {
 
   return (
     <div className="p-6 space-y-6">
-      {/* HEADER */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
-            Visitors
-          </h1>
-          <p className="text-[#3F72AF] dark:text-[#DBE2EF] text-sm">
-            Manage visitor leads and conversions
-          </p>
+      {/* HEADER CARD */}
+      <div className="rounded-3xl border border-white/50 dark:border-slate-700 bg-white/70 dark:bg-slate-900/55 backdrop-blur-xl shadow-xl p-6">
+        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-[#112D4E] dark:text-[#DBE2EF]">
+              Visitors
+            </h1>
+            <p className="text-sm text-[#3F72AF] dark:text-slate-300 mt-1">
+              Manage visitor leads, follow-ups, conversions, and trash.
+            </p>
+          </div>
+
+          {activeTab === "active" && (
+            <button
+              onClick={() => setOpenModal(true)}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#3F72AF] hover:bg-[#2f5d95] text-white text-sm font-semibold shadow-lg shadow-[#3F72AF]/20 transition"
+            >
+              <Plus size={18} />
+              Add Visitor
+            </button>
+          )}
         </div>
 
-        {activeTab === "active" && (
-          <button
-            onClick={() => setOpenModal(true)}
-            className="flex items-center gap-2 bg-[#3F72AF] text-white px-4 py-2 rounded-lg hover:bg-[#112D4E] transition-colors shadow-md"
-          >
-            <Plus size={18} />
-            Add Visitor
-          </button>
-        )}
-      </div>
+        {/* TABS */}
+        <div className="mt-6 flex gap-2 overflow-x-auto pb-1">
+          {[
+            { key: "active", label: "Active" },
+            {
+              key: "not-interested",
+              label: "Not Interested",
+              icon: XCircle,
+            },
+            {
+              key: "follow-up",
+              label: "Follow-up",
+              icon: Clock,
+            },
+            {
+              key: "converted",
+              label: "Converted",
+              icon: CheckCircle,
+            },
+            { key: "trash", label: "Trash" },
+          ].map((t) => {
+            const Icon = t.icon;
+            const active = activeTab === t.key;
 
-      {/* TABS */}
-      <div className="flex gap-4 border-b border-[#DBE2EF] dark:border-[#3F72AF] overflow-x-auto">
-        {[
-          { key: "active", label: "Active" },
-          {
-            key: "not-interested",
-            label: "Not Interested",
-            icon: <XCircle size={16} className="inline mr-1" />,
-          },
-          {
-            key: "follow-up",
-            label: "Follow-up",
-            icon: <Clock size={16} className="inline mr-1" />,
-          },
-          {
-            key: "converted",
-            label: "Converted",
-            icon: <CheckCircle size={16} className="inline mr-1" />,
-          },
-          { key: "trash", label: "Trash" },
-        ].map((t) => (
-          <button
-            key={t.key}
-            disabled={tableLoading}
-            onClick={() => {
-              setActiveTab(t.key);
-              setPage(1);
-            }}
-            className={`pb-2 px-2 whitespace-nowrap transition-colors ${
-              tableLoading ? "opacity-60 cursor-not-allowed" : ""
-            } ${
-              activeTab === t.key
-                ? "border-b-2 border-[#3F72AF] font-medium text-[#3F72AF]"
-                : "text-[#3F72AF]"
-            }`}
-          >
-            {t.icon}
-            {t.label}
-          </button>
-        ))}
+            return (
+              <button
+                key={t.key}
+                disabled={tableLoading}
+                onClick={() => {
+                  setActiveTab(t.key);
+                  setPage(1);
+                }}
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-sm font-medium border transition whitespace-nowrap ${
+                  tableLoading ? "opacity-60 cursor-not-allowed" : ""
+                } ${
+                  active
+                    ? "bg-[#3F72AF] text-white border-[#3F72AF] shadow-sm"
+                    : "bg-white/50 dark:bg-slate-800/40 text-[#112D4E] dark:text-[#DBE2EF] border-[#DBE2EF] dark:border-slate-700 hover:bg-white/70 dark:hover:bg-slate-800/70"
+                }`}
+              >
+                {Icon ? <Icon size={16} /> : null}
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* SEARCH */}
-      <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-4 shadow-sm">
+      <div className="rounded-3xl border border-white/50 dark:border-slate-700 bg-white/70 dark:bg-slate-900/55 backdrop-blur-xl shadow-sm p-4">
         <div className="flex items-center gap-3">
-          <Search className="text-[#3F72AF] dark:text-[#DBE2EF]" size={18} />
+          <div className="p-2 rounded-xl bg-[#DBE2EF]/70 dark:bg-slate-800/70 border border-white/40 dark:border-slate-700">
+            <Search className="text-[#3F72AF] dark:text-[#DBE2EF]" size={18} />
+          </div>
+
           <input
             type="text"
-            placeholder="Search visitors..."
+            placeholder="Search by name, email, phone..."
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
               setPage(1);
             }}
-            className="w-full outline-none text-sm bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
+            className="w-full bg-transparent outline-none text-sm text-[#112D4E] dark:text-[#DBE2EF] placeholder:text-[#3F72AF]/80 dark:placeholder:text-slate-400"
           />
         </div>
       </div>
 
       {/* FILTERS */}
-      <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-4 flex flex-wrap items-center gap-3 shadow-sm">
-        {/* STATUS */}
-        <select
-          value={filterStatus}
-          onChange={(e) => {
-            setFilterStatus(e.target.value);
-            setPage(1);
-          }}
-          className="text-sm border rounded-lg px-3 py-2 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
-        >
-          <option value="">Status (All)</option>
-          <option value="new">New</option>
-          <option value="contacted">Contacted</option>
-          <option value="follow-up">Follow-up</option>
-          <option value="not-interested">Not Interested</option>
-          <option value="converted">Converted</option>
-        </select>
+      <div className="rounded-3xl border border-white/50 dark:border-slate-700 bg-white/70 dark:bg-slate-900/55 backdrop-blur-xl shadow-sm p-5">
+        <div className="flex items-center gap-2 mb-4 text-sm font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
+          <SlidersHorizontal size={16} className="text-[#3F72AF]" />
+          Filters
+        </div>
 
-        {/* SOURCE (KEEP SAME AS BACKEND ENUM) */}
-        <select
-          value={filterSource}
-          onChange={(e) => {
-            setFilterSource(e.target.value);
-            setPage(1);
-          }}
-          className="text-sm border rounded-lg px-3 py-2 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
-        >
-          <option value="">Source (All)</option>
-          <option value="call">Call</option>
-          <option value="walk-in">Walk-in</option>
-          <option value="email">Email</option>
-          <option value="referral">Referral</option>
-          <option value="other">Other</option>
-        </select>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3">
+          <select
+            value={filterStatus}
+            onChange={(e) => {
+              setFilterStatus(e.target.value);
+              setPage(1);
+            }}
+            className="w-full text-sm border border-[#DBE2EF] dark:border-slate-700 rounded-xl px-3 py-2.5 bg-white/70 dark:bg-slate-800/70 dark:text-[#DBE2EF]"
+          >
+            <option value="">Status (All)</option>
+            <option value="new">New</option>
+            <option value="contacted">Contacted</option>
+            <option value="follow-up">Follow-up</option>
+            <option value="not-interested">Not Interested</option>
+            <option value="converted">Converted</option>
+          </select>
 
-        {/* COURSE */}
-        <select
-          value={filterCourse}
-          onChange={(e) => {
-            setFilterCourse(e.target.value);
-            setPage(1);
-          }}
-          className="text-sm border rounded-lg px-3 py-2 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
-        >
-          <option value="">Course (All)</option>
-          {courses.map((c) => (
-            <option key={c._id} value={c._id}>
-              {c.title}
-            </option>
-          ))}
-        </select>
+          <select
+            value={filterSource}
+            onChange={(e) => {
+              setFilterSource(e.target.value);
+              setPage(1);
+            }}
+            className="w-full text-sm border border-[#DBE2EF] dark:border-slate-700 rounded-xl px-3 py-2.5 bg-white/70 dark:bg-slate-800/70 dark:text-[#DBE2EF]"
+          >
+            <option value="">Source (All)</option>
+            <option value="call">Call</option>
+            <option value="walk-in">Walk-in</option>
+            <option value="email">Email</option>
+            <option value="referral">Referral</option>
+            <option value="other">Other</option>
+          </select>
 
-        {/* CREATED */}
-        <select
-          value={createdFilter}
-          onChange={(e) => {
-            setCreatedFilter(e.target.value);
-            setCustomFrom("");
-            setCustomTo("");
-            setPage(1);
-          }}
-          className="text-sm border rounded-lg px-3 py-2 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
-        >
-          <option value="">Created (All)</option>
-          <option value="today">Today</option>
-          <option value="yesterday">Yesterday</option>
-          <option value="last7days">Last 7 Days</option>
-          <option value="last30days">Last 30 Days</option>
-          <option value="thisMonth">This Month</option>
-          <option value="custom">Custom Range</option>
-        </select>
+          <select
+            value={filterCourse}
+            onChange={(e) => {
+              setFilterCourse(e.target.value);
+              setPage(1);
+            }}
+            className="w-full text-sm border border-[#DBE2EF] dark:border-slate-700 rounded-xl px-3 py-2.5 bg-white/70 dark:bg-slate-800/70 dark:text-[#DBE2EF]"
+          >
+            <option value="">Course (All)</option>
+            {courses.map((c) => (
+              <option key={c._id} value={c._id}>
+                {c.title}
+              </option>
+            ))}
+          </select>
 
-        {createdFilter === "custom" && (
-          <>
-            <input
-              type="date"
-              value={customFrom}
-              onChange={(e) => {
-                setCustomFrom(e.target.value);
-                setPage(1);
-              }}
-              className="text-sm border rounded-lg px-3 py-2 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
-            />
-            <input
-              type="date"
-              value={customTo}
-              onChange={(e) => {
-                setCustomTo(e.target.value);
-                setPage(1);
-              }}
-              className="text-sm border rounded-lg px-3 py-2 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
-            />
-          </>
-        )}
+          <select
+            value={createdFilter}
+            onChange={(e) => {
+              setCreatedFilter(e.target.value);
+              setCustomFrom("");
+              setCustomTo("");
+              setPage(1);
+            }}
+            className="w-full text-sm border border-[#DBE2EF] dark:border-slate-700 rounded-xl px-3 py-2.5 bg-white/70 dark:bg-slate-800/70 dark:text-[#DBE2EF]"
+          >
+            <option value="">Created (All)</option>
+            <option value="today">Today</option>
+            <option value="yesterday">Yesterday</option>
+            <option value="last7days">Last 7 Days</option>
+            <option value="last30days">Last 30 Days</option>
+            <option value="thisMonth">This Month</option>
+            <option value="custom">Custom Range</option>
+          </select>
 
-        <button
-          disabled={tableLoading}
-          onClick={clearAllFilters}
-          className="px-3 py-2 rounded-lg border text-sm dark:border-[#3F72AF]"
-        >
-          Clear All
-        </button>
+          {createdFilter === "custom" ? (
+            <>
+              <input
+                type="date"
+                value={customFrom}
+                onChange={(e) => {
+                  setCustomFrom(e.target.value);
+                  setPage(1);
+                }}
+                className="w-full text-sm border border-[#DBE2EF] dark:border-slate-700 rounded-xl px-3 py-2.5 bg-white/70 dark:bg-slate-800/70 dark:text-[#DBE2EF]"
+              />
+              <input
+                type="date"
+                value={customTo}
+                onChange={(e) => {
+                  setCustomTo(e.target.value);
+                  setPage(1);
+                }}
+                className="w-full text-sm border border-[#DBE2EF] dark:border-slate-700 rounded-xl px-3 py-2.5 bg-white/70 dark:bg-slate-800/70 dark:text-[#DBE2EF]"
+              />
+            </>
+          ) : (
+            <div className="xl:col-span-2" />
+          )}
+        </div>
+
+        <div className="mt-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          {/* CHIPS */}
+          <div className="flex flex-wrap gap-2">
+            {activeFilterChips.map((chip) => (
+              <button
+                key={chip.key}
+                onClick={() => clearSingleFilter(chip.key)}
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#DBE2EF] dark:border-slate-700 bg-white/70 dark:bg-slate-800/60 text-xs text-[#112D4E] dark:text-[#DBE2EF] hover:bg-[#DBE2EF]/60 dark:hover:bg-slate-800 transition"
+              >
+                <span>{chip.label}</span>
+                <span className="opacity-70">✕</span>
+              </button>
+            ))}
+          </div>
+
+          <button
+            disabled={tableLoading}
+            onClick={clearAllFilters}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-[#DBE2EF] dark:border-slate-700 text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] hover:bg-[#DBE2EF]/60 dark:hover:bg-slate-800 transition disabled:opacity-60"
+          >
+            Clear All
+          </button>
+        </div>
       </div>
 
-      {/* FILTER CHIPS */}
-      {activeFilterChips.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {activeFilterChips.map((chip) => (
-            <button
-              key={chip.key}
-              onClick={() => clearSingleFilter(chip.key)}
-              className="px-3 py-1 text-xs rounded-lg bg-[#DBE2EF] dark:bg-[#0a1f3a] text-[#112D4E] dark:text-[#DBE2EF]"
-            >
-              {chip.label} ✕
-            </button>
-          ))}
+      {error && (
+        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
         </div>
       )}
-
-      {error && <p className="text-red-600 dark:text-red-400">{error}</p>}
 
       {/* TABLE */}
       <div className="relative">
         {tableLoading && (
-          <div className="absolute inset-0 bg-white/60 dark:bg-black/40 flex items-center justify-center z-10 rounded-lg">
-            <div className="px-4 py-2 rounded-lg bg-white dark:bg-[#112D4E] border border-[#DBE2EF] dark:border-[#3F72AF] text-sm shadow-lg">
+          <div className="absolute inset-0 bg-white/40 dark:bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-10 rounded-3xl">
+            <div className="px-4 py-2 rounded-xl bg-white/90 dark:bg-slate-900/80 border border-[#DBE2EF] dark:border-slate-700 text-sm shadow-lg">
               Loading...
             </div>
           </div>
         )}
 
         {visitors.length === 0 ? (
-          <div className="border border-[#DBE2EF] dark:border-[#3F72AF] rounded-lg p-10 text-center text-[#3F72AF] dark:text-[#DBE2EF]">
+          <div className="rounded-3xl border border-[#DBE2EF] dark:border-slate-700 bg-white/70 dark:bg-slate-900/55 backdrop-blur-xl p-12 text-center text-[#3F72AF] dark:text-[#DBE2EF] shadow-sm">
             No visitors found.
           </div>
         ) : (
-          <div className="overflow-x-auto border border-[#DBE2EF] dark:border-[#3F72AF] rounded-lg shadow-lg">
+          <div className="overflow-x-auto rounded-3xl border border-white/50 dark:border-slate-700 bg-white/70 dark:bg-slate-900/55 backdrop-blur-xl shadow-sm">
             <table className="w-full text-sm">
-              <thead className="bg-[#DBE2EF] dark:bg-[#3F72AF]">
+              <thead className="sticky top-0 z-10 bg-[#DBE2EF]/80 dark:bg-slate-800/80 backdrop-blur border-b border-white/40 dark:border-slate-700">
                 <tr>
-                  <th className="border p-3 text-left">
+                  <th className="p-4 text-left whitespace-nowrap">
                     <SortableHeader label="Name" field="name" />
                   </th>
-                  <th className="border p-3 text-left">
+                  <th className="p-4 text-left whitespace-nowrap">
                     <SortableHeader label="Email" field="email" />
                   </th>
-                  <th className="border p-3 text-left">Phone</th>
-                  <th className="border p-3 text-left">Course</th>
-                  <th className="border p-3 text-left">Source</th>
-                  <th className="border p-3 text-left">Status</th>
+                  <th className="p-4 text-left whitespace-nowrap">Phone</th>
+                  <th className="p-4 text-left whitespace-nowrap">Course</th>
+                  <th className="p-4 text-left whitespace-nowrap">Source</th>
+                  <th className="p-4 text-left whitespace-nowrap">Status</th>
 
                   {activeTab === "not-interested" && (
-                    <th className="border p-3 text-left">Reason</th>
+                    <th className="p-4 text-left whitespace-nowrap">Reason</th>
                   )}
 
                   {activeTab === "follow-up" && (
-                    <th className="border p-3 text-left">Follow-up Date</th>
+                    <th className="p-4 text-left whitespace-nowrap">
+                      Follow-up Date
+                    </th>
                   )}
 
                   {activeTab === "converted" && (
-                    <th className="border p-3 text-left">Converted To</th>
+                    <th className="p-4 text-left whitespace-nowrap">
+                      Converted To
+                    </th>
                   )}
 
-                  <th className="border p-3 text-left">
+                  <th className="p-4 text-left whitespace-nowrap">
                     <SortableHeader label="Created" field="createdAt" />
                   </th>
 
-                  <th className="border p-3 text-left">Actions</th>
+                  <th className="p-4 text-left whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
 
-              <tbody>
+              <tbody className="divide-y divide-[#DBE2EF]/60 dark:divide-slate-700">
                 {visitors.map((v) => (
                   <tr
                     key={v._id}
-                    className="hover:bg-[#DBE2EF] dark:hover:bg-[#0a1f3a]"
+                    className="hover:bg-[#DBE2EF]/40 dark:hover:bg-slate-800/40 transition"
                   >
-                    <td className="border p-3 font-medium">{v.name}</td>
-                    <td className="border p-3">{v.email || "—"}</td>
-                    <td className="border p-3">{v.phone || "—"}</td>
+                    <td className="p-4 font-semibold text-[#112D4E] dark:text-[#DBE2EF] whitespace-nowrap">
+                      {v.name}
+                    </td>
 
-                    {/* IMPORTANT: course is populated */}
-                    <td className="border p-3">{v.course?.title || "—"}</td>
+                    <td className="p-4 text-[#3F72AF] dark:text-slate-300">
+                      {v.email || "—"}
+                    </td>
 
-                    <td className="border p-3 capitalize">{v.source || "—"}</td>
+                    <td className="p-4 text-[#3F72AF] dark:text-slate-300 whitespace-nowrap">
+                      {v.phone || "—"}
+                    </td>
 
-                    <td className="border p-3">
-                      <span className="px-2 py-1 text-xs rounded-md bg-gray-100 text-gray-700 capitalize">
+                    <td className="p-4 text-[#112D4E] dark:text-[#DBE2EF]">
+                      {v.course?.title || "—"}
+                    </td>
+
+                    <td className="p-4 text-[#3F72AF] dark:text-slate-300 capitalize whitespace-nowrap">
+                      {v.source || "—"}
+                    </td>
+
+                    <td className="p-4 whitespace-nowrap">
+                      <span
+                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-[12px] font-semibold border ${statusPill(
+                          v.status,
+                        )}`}
+                      >
                         {v.status || "new"}
                       </span>
                     </td>
 
                     {activeTab === "not-interested" && (
-                      <td className="border p-3 text-xs">
-                        {v.notInterestedReason || "—"}
+                      <td className="p-4 text-xs text-[#3F72AF] dark:text-slate-300 max-w-[260px]">
+                        <div className="line-clamp-2">
+                          {v.notInterestedReason || "—"}
+                        </div>
                       </td>
                     )}
 
                     {activeTab === "follow-up" && (
-                      <td className="border p-3">
+                      <td className="p-4 text-[#112D4E] dark:text-[#DBE2EF] whitespace-nowrap">
                         {v.followUpDate
                           ? new Date(v.followUpDate).toLocaleDateString()
                           : "—"}
@@ -652,30 +706,32 @@ const Visitors = () => {
                     )}
 
                     {activeTab === "converted" && (
-                      <td className="border p-3">{v.conversionType || "—"}</td>
+                      <td className="p-4 text-[#112D4E] dark:text-[#DBE2EF] whitespace-nowrap">
+                        {v.conversionType || "—"}
+                      </td>
                     )}
 
-                    <td className="border p-3">
+                    <td className="p-4 text-[#112D4E] dark:text-[#DBE2EF] whitespace-nowrap">
                       {new Date(v.createdAt).toLocaleDateString()}
                     </td>
 
-                    <td className="border p-3 space-x-2">
+                    <td className="p-4">
                       {activeTab === "trash" ? (
                         <button
                           onClick={() => handleRestore(v._id)}
-                          className="text-green-600 hover:text-green-700 text-sm flex items-center gap-1"
+                          className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition text-xs font-semibold"
                         >
-                          <RotateCcw size={16} />
+                          <RotateCcw size={14} />
                           Restore
                         </button>
                       ) : (
-                        <>
+                        <div className="flex items-center gap-1.5">
                           <button
                             onClick={() => handleView(v)}
-                            className="text-[#3F72AF] hover:text-[#112D4E]"
+                            className="p-2 rounded-xl border border-[#DBE2EF] dark:border-slate-700 hover:bg-[#DBE2EF]/60 dark:hover:bg-slate-800 transition"
                             title="View"
                           >
-                            <Eye size={16} className="inline" />
+                            <Eye size={16} className="text-[#3F72AF]" />
                           </button>
 
                           <button
@@ -683,40 +739,46 @@ const Visitors = () => {
                               setEditVisitor(v);
                               setOpenEditModal(true);
                             }}
-                            className="text-blue-600 hover:text-blue-700"
+                            className="p-2 rounded-xl border border-[#DBE2EF] dark:border-slate-700 hover:bg-[#DBE2EF]/60 dark:hover:bg-slate-800 transition"
                             title="Edit"
                           >
-                            <Edit size={16} className="inline" />
+                            <Edit size={16} className="text-blue-600" />
                           </button>
 
                           {activeTab === "active" && (
                             <>
                               <button
                                 onClick={() => handleConvertClick(v)}
-                                className="text-green-600 hover:text-green-700"
+                                className="p-2 rounded-xl border border-[#DBE2EF] dark:border-slate-700 hover:bg-[#DBE2EF]/60 dark:hover:bg-slate-800 transition"
                                 title="Convert"
                               >
-                                <UserPlus size={16} className="inline" />
+                                <UserPlus
+                                  size={16}
+                                  className="text-emerald-600"
+                                />
                               </button>
 
                               <button
                                 onClick={() => handleNotInterestedClick(v)}
-                                className="text-orange-600 hover:text-orange-700"
+                                className="p-2 rounded-xl border border-[#DBE2EF] dark:border-slate-700 hover:bg-[#DBE2EF]/60 dark:hover:bg-slate-800 transition"
                                 title="Not Interested"
                               >
-                                <XCircle size={16} className="inline" />
+                                <XCircle
+                                  size={16}
+                                  className="text-orange-600"
+                                />
                               </button>
 
                               <button
                                 onClick={() => handleDeleteClick(v)}
-                                className="text-red-600 hover:text-red-700"
+                                className="p-2 rounded-xl border border-[#DBE2EF] dark:border-slate-700 hover:bg-[#DBE2EF]/60 dark:hover:bg-slate-800 transition"
                                 title="Delete"
                               >
-                                <Trash2 size={16} className="inline" />
+                                <Trash2 size={16} className="text-red-600" />
                               </button>
                             </>
                           )}
-                        </>
+                        </div>
                       )}
                     </td>
                   </tr>

@@ -19,11 +19,21 @@ const timetableSchema = new mongoose.Schema(
             ref: "Course",
             required: true,
         },
+        // room: {
+        //     type: mongoose.Schema.Types.ObjectId,
+        //     ref: "Room",
+        // }
+        // ,
 
         subject: {
             type: String,
             trim: true,
             default: "",
+        },
+        room: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "RoomUnit",
+            default: null,
         },
 
         day: {
@@ -46,11 +56,11 @@ const timetableSchema = new mongoose.Schema(
             max: 1440,
         },
 
-        room: {
-            type: String,
-            trim: true,
-            default: "",
-        },
+        // room: {
+        //     type: String,
+        //     trim: true,
+        //     default: "",
+        // },
 
         note: {
             type: String,

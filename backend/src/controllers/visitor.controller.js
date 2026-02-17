@@ -8,9 +8,7 @@ const Batch = require("../models/batch.model");
 const mongoose = require("mongoose");
 const nodemailer = require("nodemailer");
 
-// =======================================================
-// HELPERS
-// =======================================================
+
 const parseListParams = (req) => {
     const page = Math.max(parseInt(req.query.page || "1", 10), 1);
     const limit = Math.min(
@@ -99,11 +97,9 @@ const buildVisitorFilter = (req, tabType) => {
 
     const filter = {};
 
-    // tab based deletion
     if (tabType === "trash") filter.isDeleted = true;
     else filter.isDeleted = false;
 
-    // tab based status
     if (tabType === "active") {
         filter.status = { $ne: "converted" };
     }
@@ -121,18 +117,14 @@ const buildVisitorFilter = (req, tabType) => {
         filter.status = "converted";
     }
 
-    // extra filters (dropdown)
     if (status) filter.status = status;
     if (source) filter.source = source;
 
-    // course filter MUST be ObjectId
     if (course) filter.course = course;
 
-    // created filter
     const createdRange = getDateRangeFilter({ created, from, to });
     if (createdRange) filter.createdAt = createdRange;
 
-    // search filter
     if (search) {
         filter.$or = [
             { name: { $regex: search, $options: "i" } },
@@ -329,7 +321,6 @@ exports.updateVisitor = async (req, res) => {
 
         if (!visitor) return res.status(404).json({ message: "Visitor not found" });
 
-        // if updating course validate it
         if (req.body.course) {
             const courseDoc = await Course.findOne({
                 _id: req.body.course,
@@ -353,9 +344,6 @@ exports.updateVisitor = async (req, res) => {
     }
 };
 
-// =======================================================
-// SOFT DELETE VISITOR
-// =======================================================
 exports.softDeleteVisitor = async (req, res) => {
     try {
         const visitor = await Visitor.findOneAndUpdate(
@@ -373,9 +361,7 @@ exports.softDeleteVisitor = async (req, res) => {
     }
 };
 
-// =======================================================
-// RESTORE VISITOR
-// =======================================================
+
 exports.restoreVisitor = async (req, res) => {
     try {
         const visitor = await Visitor.findOneAndUpdate(
@@ -393,9 +379,7 @@ exports.restoreVisitor = async (req, res) => {
     }
 };
 
-// =======================================================
-// MARK NOT INTERESTED
-// =======================================================
+
 exports.markNotInterested = async (req, res) => {
     try {
         const { notInterestedReason, followUpDate } = req.body;
@@ -420,7 +404,6 @@ exports.convertToStudent = async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
 
-    // store for email after commit
     let studentPassword = "";
     let studentEmail = "";
     let courseTitle = "";
@@ -522,7 +505,6 @@ exports.convertToStudent = async (req, res) => {
             return res.status(400).json({ message: "Invalid dateOfBirth" });
         }
 
-        // 1) CREATE STUDENT
         const student = await Student.create(
             [
                 {
@@ -582,7 +564,6 @@ exports.convertToStudent = async (req, res) => {
 
         const studentDoc = student[0];
 
-        // 2) CREATE USER WITH RANDOM PASSWORD
         studentPassword = generateRandomPassword(10);
 
         const user = await User.create(

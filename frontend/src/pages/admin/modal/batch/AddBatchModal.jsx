@@ -1,12 +1,15 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
 import { courseService } from "../../../../services/courseService";
 import { tutorService } from "../../../../services/tutorService";
+import axiosInstance from "../../../../api/axios";
 
 const AddBatchModal = ({ open, onClose, onSubmit }) => {
   const [loading, setLoading] = useState(false);
+
   const [courses, setCourses] = useState([]);
   const [tutors, setTutors] = useState([]);
+  const [rooms, setRooms] = useState([]);
 
   const [form, setForm] = useState({
     name: "",
@@ -15,12 +18,16 @@ const AddBatchModal = ({ open, onClose, onSubmit }) => {
     startDate: "",
     endDate: "",
     status: "upcoming",
+
+    // ✅ NEW (optional)
+    room: "",
   });
 
   useEffect(() => {
     if (open) {
       fetchCourses();
       fetchTutors();
+      fetchRooms();
     }
   }, [open]);
 
@@ -35,13 +42,39 @@ const AddBatchModal = ({ open, onClose, onSubmit }) => {
 
   const fetchTutors = async () => {
     try {
-      // ⚠️ You must have this in your tutorService
       const res = await tutorService.getAll({ limit: 100 });
       setTutors(res.data.tutors || []);
     } catch (error) {
       console.error("Failed to fetch tutors", error);
     }
   };
+
+  const fetchRooms = async () => {
+    try {
+      const res = await axiosInstance.get("/rooms/all");
+      setRooms(res.data?.rooms || []);
+    } catch (error) {
+      console.error("Failed to fetch rooms", error);
+    }
+  };
+
+  // flatten rooms list
+  const roomOptions = useMemo(() => {
+    const out = [];
+
+    for (const setup of rooms || []) {
+      for (const floor of setup.floors || []) {
+        for (const room of floor.rooms || []) {
+          out.push({
+            id: room._id,
+            label: `${setup.location} • ${setup.buildingName} • Floor ${floor.floorNumber} • ${room.name}`,
+          });
+        }
+      }
+    }
+
+    return out;
+  }, [rooms]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -57,7 +90,11 @@ const AddBatchModal = ({ open, onClose, onSubmit }) => {
 
     setLoading(true);
     try {
-      await onSubmit(form);
+      await onSubmit({
+        ...form,
+        room: form.room || undefined, // optional
+      });
+
       setForm({
         name: "",
         course: "",
@@ -65,6 +102,7 @@ const AddBatchModal = ({ open, onClose, onSubmit }) => {
         startDate: "",
         endDate: "",
         status: "upcoming",
+        room: "",
       });
     } finally {
       setLoading(false);
@@ -74,26 +112,25 @@ const AddBatchModal = ({ open, onClose, onSubmit }) => {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-xl bg-white dark:bg-[#112D4E] rounded-2xl shadow-xl border border-[#DBE2EF] dark:border-[#3F72AF]">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4">
+      <div className="w-full max-w-xl rounded-2xl border border-white/10 bg-[#101010] shadow-2xl">
         {/* Header */}
-        <div className="flex justify-between items-center px-6 py-4 border-b border-[#DBE2EF] dark:border-[#3F72AF]">
-          <h2 className="text-lg font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
-            Add Batch
-          </h2>
+        <div className="flex justify-between items-center px-6 py-4 border-b border-white/10">
+          <h2 className="text-lg font-semibold text-white">Add Batch</h2>
+
           <button
             onClick={onClose}
-            className="text-[#3F72AF] hover:text-[#112D4E] dark:text-[#DBE2EF] dark:hover:text-white"
+            className="rounded-xl p-2 hover:bg-white/10 transition"
           >
-            <X size={18} />
+            <X size={18} className="text-white/70" />
           </button>
         </div>
 
         {/* Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {/* Batch Name */}
+          {/* Name */}
           <div>
-            <label className="text-sm text-[#3F72AF] dark:text-[#DBE2EF]">
+            <label className="text-sm font-medium text-white/70">
               Batch Name *
             </label>
             <input
@@ -102,20 +139,20 @@ const AddBatchModal = ({ open, onClose, onSubmit }) => {
               value={form.name}
               onChange={handleChange}
               placeholder="e.g. MERN Batch Jan 2026"
-              className="w-full mt-1 px-3 py-2 rounded-lg border border-[#DBE2EF] dark:border-[#3F72AF] bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF] outline-none"
+              className="mt-2 w-full rounded-2xl border border-white/10 bg-[#141414] px-4 py-2 text-sm text-white outline-none"
             />
           </div>
 
           {/* Course */}
           <div>
-            <label className="text-sm text-[#3F72AF] dark:text-[#DBE2EF]">
+            <label className="text-sm font-medium text-white/70">
               Course *
             </label>
             <select
               name="course"
               value={form.course}
               onChange={handleChange}
-              className="w-full mt-1 px-3 py-2 rounded-lg border border-[#DBE2EF] dark:border-[#3F72AF] bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF] outline-none"
+              className="mt-2 w-full rounded-2xl border border-white/10 bg-[#141414] px-4 py-2 text-sm text-white outline-none"
             >
               <option value="">Select course</option>
               {courses.map((c) => (
@@ -128,14 +165,12 @@ const AddBatchModal = ({ open, onClose, onSubmit }) => {
 
           {/* Tutor */}
           <div>
-            <label className="text-sm text-[#3F72AF] dark:text-[#DBE2EF]">
-              Tutor *
-            </label>
+            <label className="text-sm font-medium text-white/70">Tutor *</label>
             <select
               name="tutor"
               value={form.tutor}
               onChange={handleChange}
-              className="w-full mt-1 px-3 py-2 rounded-lg border border-[#DBE2EF] dark:border-[#3F72AF] bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF] outline-none"
+              className="mt-2 w-full rounded-2xl border border-white/10 bg-[#141414] px-4 py-2 text-sm text-white outline-none"
             >
               <option value="">Select tutor</option>
               {tutors.map((t) => (
@@ -147,9 +182,9 @@ const AddBatchModal = ({ open, onClose, onSubmit }) => {
           </div>
 
           {/* Dates */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="text-sm text-[#3F72AF] dark:text-[#DBE2EF]">
+              <label className="text-sm font-medium text-white/70">
                 Start Date *
               </label>
               <input
@@ -157,12 +192,12 @@ const AddBatchModal = ({ open, onClose, onSubmit }) => {
                 name="startDate"
                 value={form.startDate}
                 onChange={handleChange}
-                className="w-full mt-1 px-3 py-2 rounded-lg border border-[#DBE2EF] dark:border-[#3F72AF] bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF] outline-none"
+                className="mt-2 w-full rounded-2xl border border-white/10 bg-[#141414] px-4 py-2 text-sm text-white outline-none"
               />
             </div>
 
             <div>
-              <label className="text-sm text-[#3F72AF] dark:text-[#DBE2EF]">
+              <label className="text-sm font-medium text-white/70">
                 End Date
               </label>
               <input
@@ -170,21 +205,19 @@ const AddBatchModal = ({ open, onClose, onSubmit }) => {
                 name="endDate"
                 value={form.endDate}
                 onChange={handleChange}
-                className="w-full mt-1 px-3 py-2 rounded-lg border border-[#DBE2EF] dark:border-[#3F72AF] bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF] outline-none"
+                className="mt-2 w-full rounded-2xl border border-white/10 bg-[#141414] px-4 py-2 text-sm text-white outline-none"
               />
             </div>
           </div>
 
           {/* Status */}
           <div>
-            <label className="text-sm text-[#3F72AF] dark:text-[#DBE2EF]">
-              Status
-            </label>
+            <label className="text-sm font-medium text-white/70">Status</label>
             <select
               name="status"
               value={form.status}
               onChange={handleChange}
-              className="w-full mt-1 px-3 py-2 rounded-lg border border-[#DBE2EF] dark:border-[#3F72AF] bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF] outline-none"
+              className="mt-2 w-full rounded-2xl border border-white/10 bg-[#141414] px-4 py-2 text-sm text-white outline-none"
             >
               <option value="upcoming">Upcoming</option>
               <option value="running">Running</option>
@@ -192,12 +225,32 @@ const AddBatchModal = ({ open, onClose, onSubmit }) => {
             </select>
           </div>
 
+          {/* ✅ Room (Optional) */}
+          <div>
+            <label className="text-sm font-medium text-white/70">
+              Room (Optional)
+            </label>
+            <select
+              name="room"
+              value={form.room}
+              onChange={handleChange}
+              className="mt-2 w-full rounded-2xl border border-white/10 bg-[#141414] px-4 py-2 text-sm text-white outline-none"
+            >
+              <option value="">Not assigned</option>
+              {roomOptions.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* Footer */}
-          <div className="flex justify-end gap-3 pt-4">
+          <div className="flex justify-end gap-2 pt-4">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-lg border border-[#DBE2EF] dark:border-[#3F72AF] text-[#3F72AF] dark:text-[#DBE2EF]"
+              className="rounded-2xl border border-white/10 bg-white/5 px-5 py-2 text-sm font-semibold text-white/70 hover:bg-white/10 transition"
             >
               Cancel
             </button>
@@ -205,7 +258,7 @@ const AddBatchModal = ({ open, onClose, onSubmit }) => {
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-2 rounded-lg bg-[#3F72AF] text-white hover:bg-[#112D4E] transition-colors disabled:opacity-60"
+              className="rounded-2xl bg-white px-5 py-2 text-sm font-semibold text-black hover:bg-white/80 transition disabled:opacity-60"
             >
               {loading ? "Adding..." : "Add Batch"}
             </button>

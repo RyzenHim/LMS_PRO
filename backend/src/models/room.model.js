@@ -2,8 +2,8 @@ const mongoose = require("mongoose");
 
 const roomSchemaInsideFloor = new mongoose.Schema(
     {
-        name: { type: String, required: true }, // Room 1, Room 2...
-        isAvailable: { type: Boolean, default: true }, // optional
+        name: { type: String, required: true },
+        isAvailable: { type: Boolean, default: true },
     },
     { _id: false }
 );

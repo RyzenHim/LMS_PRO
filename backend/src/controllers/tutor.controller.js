@@ -9,9 +9,7 @@ const Timetable = require("../models/timetable.model");
 
 const nodemailer = require("nodemailer");
 
-// ===============================
-// Utils
-// ===============================
+
 const parseListParams = (req) => {
     const page = Math.max(parseInt(req.query.page || "1", 10), 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit || "10", 10), 1), 100);
@@ -25,9 +23,6 @@ const parseListParams = (req) => {
     return { page, limit, skip, sortBy, sortOrder, search };
 };
 
-// ===============================
-// Sorting (SAFE)
-// ===============================
 const allowedTutorSortFields = [
     "createdAt",
     "expertise",
@@ -96,7 +91,6 @@ const buildTutorListPipeline = ({
             ]
             : []),
 
-        // ✅ Ensure employee fields exist (so UI doesn't break)
         {
             $addFields: {
                 "employee.name": { $ifNull: ["$employee.name", "—"] },
@@ -106,7 +100,6 @@ const buildTutorListPipeline = ({
             },
         },
 
-        // ✅ Sorting
         { $sort: { [safeSortBy]: sortOrder } },
 
         {
@@ -120,9 +113,6 @@ const buildTutorListPipeline = ({
     return pipeline;
 };
 
-// ===============================
-// Password Generator
-// ===============================
 const generatePassword = (length = 10) => {
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789@#";
     let pass = "";
@@ -132,9 +122,6 @@ const generatePassword = (length = 10) => {
     return pass;
 };
 
-// ===============================
-// Nodemailer
-// ===============================
 const transporter = nodemailer.createTransport({
     service: "gmail",
     auth: {
@@ -176,11 +163,8 @@ const sendTutorLoginMail = async ({ toEmail, name, password }) => {
     await transporter.sendMail(mailOptions);
 };
 
-// ===============================
-// Controllers
-// ===============================
 
-// ✅ GET ALL ACTIVE
+
 exports.allTutors = async (req, res) => {
     try {
         const { page, limit, skip, sortBy, sortOrder, search } = parseListParams(req);
@@ -212,7 +196,6 @@ exports.allTutors = async (req, res) => {
     }
 };
 
-// ✅ GET ALL DELETED
 exports.getDeletedTutors = async (req, res) => {
     try {
         const { page, limit, skip, sortBy, sortOrder, search } = parseListParams(req);
@@ -244,7 +227,6 @@ exports.getDeletedTutors = async (req, res) => {
     }
 };
 
-// ✅ GET BY ID
 exports.getTutorById = async (req, res) => {
     try {
         const { id } = req.params;
@@ -270,7 +252,6 @@ exports.getTutorById = async (req, res) => {
     }
 };
 
-// ✅ ADD TUTOR
 exports.addTutor = async (req, res) => {
     try {
         const { employee, expertise, experience, qualification, bio } = req.body;
@@ -296,7 +277,6 @@ exports.addTutor = async (req, res) => {
             return res.status(404).json({ message: "Employee not found" });
         }
 
-        // Tutor already exists?
         const existsTutor = await Tutor.findOne({
             employee,
             isDeleted: false,
@@ -308,7 +288,6 @@ exports.addTutor = async (req, res) => {
             });
         }
 
-        // ✅ Create tutor
         const tutor = await Tutor.create({
             employee,
             expertise,
@@ -320,15 +299,12 @@ exports.addTutor = async (req, res) => {
             deletedAt: null,
         });
 
-        // ✅ Ensure employee designation is teacher
         await Employee.updateOne(
             { _id: employeeDoc._id },
             { $set: { designation: "teacher" } }
         );
 
-        // ==========================================
-        // ✅ Create OR Update user login for tutor
-        // ==========================================
+
         let loginCreated = false;
         let generatedPassword = null;
 
@@ -340,7 +316,6 @@ exports.addTutor = async (req, res) => {
                 isDeleted: false,
             }).select("+password");
 
-            // If no user -> create
             if (!existingUser) {
                 generatedPassword = generatePassword(10);
 
@@ -354,7 +329,6 @@ exports.addTutor = async (req, res) => {
 
                 loginCreated = true;
 
-                // send mail
                 try {
                     await sendTutorLoginMail({
                         toEmail: normalizedEmail,
@@ -365,7 +339,6 @@ exports.addTutor = async (req, res) => {
                     console.error("Tutor mail sending failed:", mailErr);
                 }
             } else {
-                // If user exists -> update role + tutor link
                 await User.updateOne(
                     { _id: existingUser._id },
                     {
@@ -400,7 +373,6 @@ exports.addTutor = async (req, res) => {
     }
 };
 
-// ✅ UPDATE TUTOR
 exports.updateTutor = async (req, res) => {
     try {
         const { id } = req.params;
@@ -413,7 +385,6 @@ exports.updateTutor = async (req, res) => {
         const tutor = await Tutor.findOne({ _id: id, isDeleted: false });
         if (!tutor) return res.status(404).json({ message: "Tutor not found" });
 
-        // If employee change
         if (employee) {
             if (!mongoose.Types.ObjectId.isValid(employee)) {
                 return res.status(400).json({ message: "Invalid employee id" });
@@ -428,7 +399,6 @@ exports.updateTutor = async (req, res) => {
                 return res.status(404).json({ message: "Employee not found" });
             }
 
-            // Another tutor already uses this employee?
             const already = await Tutor.findOne({
                 employee,
                 _id: { $ne: id },
@@ -443,13 +413,11 @@ exports.updateTutor = async (req, res) => {
 
             tutor.employee = employeeDoc._id;
 
-            // ensure designation is teacher
             await Employee.updateOne(
                 { _id: employeeDoc._id },
                 { $set: { designation: "teacher" } }
             );
 
-            // sync user employee
             await User.updateOne(
                 { tutor: tutor._id, role: "tutor", isDeleted: false },
                 { $set: { employee: employeeDoc._id } }
@@ -478,7 +446,6 @@ exports.updateTutor = async (req, res) => {
     }
 };
 
-// ✅ TOGGLE TUTOR STATUS
 exports.toggleTutorStatus = async (req, res) => {
     try {
         const tutor = await Tutor.findOne({
@@ -491,7 +458,6 @@ exports.toggleTutorStatus = async (req, res) => {
         tutor.isActive = !tutor.isActive;
         await tutor.save();
 
-        // also toggle user
         await User.updateOne(
             { tutor: tutor._id, role: "tutor", isDeleted: false },
             { $set: { isActive: tutor.isActive } }
@@ -507,7 +473,6 @@ exports.toggleTutorStatus = async (req, res) => {
     }
 };
 
-// ✅ SOFT DELETE TUTOR
 exports.softDeleteTutor = async (req, res) => {
     try {
         const tutor = await Tutor.findByIdAndUpdate(
@@ -518,7 +483,6 @@ exports.softDeleteTutor = async (req, res) => {
 
         if (!tutor) return res.status(404).json({ message: "Tutor not found" });
 
-        // also soft delete user account
         await User.updateOne(
             { tutor: tutor._id, role: "tutor" },
             { $set: { isDeleted: true, deletedAt: new Date() } }
@@ -531,7 +495,6 @@ exports.softDeleteTutor = async (req, res) => {
     }
 };
 
-// ✅ RESTORE TUTOR
 exports.restoreTutor = async (req, res) => {
     try {
         const tutor = await Tutor.findByIdAndUpdate(

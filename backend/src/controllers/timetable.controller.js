@@ -1,7 +1,10 @@
+const mongoose = require("mongoose");
+
 const Timetable = require("../models/timetable.model");
 const Batch = require("../models/batch.model");
 const Tutor = require("../models/tutor.model");
 const Course = require("../models/course.model");
+const RoomUnit = require("../models/roomUnit.model");
 
 const isOverlap = (existingStart, existingEnd, newStart, newEnd) => {
     return existingStart < newEnd && existingEnd > newStart;
@@ -24,6 +27,18 @@ exports.createSlot = async (req, res) => {
             return res.status(400).json({ message: "startMinutes must be < endMinutes" });
         }
 
+        if (!mongoose.Types.ObjectId.isValid(batch))
+            return res.status(400).json({ message: "Invalid batch id" });
+
+        if (!mongoose.Types.ObjectId.isValid(tutor))
+            return res.status(400).json({ message: "Invalid tutor id" });
+
+        if (course && !mongoose.Types.ObjectId.isValid(course))
+            return res.status(400).json({ message: "Invalid course id" });
+
+        if (room && !mongoose.Types.ObjectId.isValid(room))
+            return res.status(400).json({ message: "Invalid room id" });
+
         const batchDoc = await Batch.findOne({ _id: batch, isDeleted: false });
         if (!batchDoc) return res.status(404).json({ message: "Batch not found" });
 
@@ -31,12 +46,25 @@ exports.createSlot = async (req, res) => {
         if (!tutorDoc) return res.status(404).json({ message: "Tutor not found" });
 
         const finalCourseId = course || batchDoc.course;
-        const courseDoc = await Course.findOne({ _id: finalCourseId, isDeleted: false });
+
+        const courseDoc = await Course.findOne({
+            _id: finalCourseId,
+            isDeleted: false,
+        });
         if (!courseDoc) return res.status(404).json({ message: "Course not found" });
 
         if (String(batchDoc.course) !== String(finalCourseId)) {
-            return res.status(400).json({ message: "Selected course does not belong to this batch" });
+            return res.status(400).json({
+                message: "Selected course does not belong to this batch",
+            });
         }
+
+        // validate room unit exists (if given)
+        if (room) {
+            const roomDoc = await RoomUnit.findOne({ _id: room, isDeleted: false });
+            if (!roomDoc) return res.status(404).json({ message: "Room not found" });
+        }
+
 
         const batchSlots = await Timetable.find({
             batch,
@@ -72,9 +100,9 @@ exports.createSlot = async (req, res) => {
             });
         }
 
-        if (room && room.trim()) {
+        if (room) {
             const roomSlots = await Timetable.find({
-                room: room.trim(),
+                room,
                 day,
                 isDeleted: false,
             });
@@ -91,6 +119,7 @@ exports.createSlot = async (req, res) => {
             }
         }
 
+
         const slot = await Timetable.create({
             batch,
             tutor,
@@ -99,7 +128,7 @@ exports.createSlot = async (req, res) => {
             day,
             startMinutes,
             endMinutes,
-            room: String(room || "").trim(),
+            room: room || null,
         });
 
         const populated = await Timetable.findById(slot._id)
@@ -108,10 +137,11 @@ exports.createSlot = async (req, res) => {
                 path: "tutor",
                 populate: {
                     path: "employee",
-                    select: "name email",
+                    select: "name email phone",
                 },
             })
-            .populate("course", "title category level");
+            .populate("course", "title category level")
+            .populate("room", "location buildingName floorNumber name");
 
         return res.status(201).json({
             message: "Slot created successfully",
@@ -127,6 +157,10 @@ exports.getBatchTimetable = async (req, res) => {
     try {
         const { batchId } = req.params;
 
+        if (!mongoose.Types.ObjectId.isValid(batchId)) {
+            return res.status(400).json({ message: "Invalid batch id" });
+        }
+
         const slots = await Timetable.find({
             batch: batchId,
             isDeleted: false,
@@ -137,10 +171,11 @@ exports.getBatchTimetable = async (req, res) => {
                 path: "tutor",
                 populate: {
                     path: "employee",
-                    select: "name email",
+                    select: "name email phone",
                 },
             })
-            .populate("course", "title category level");
+            .populate("course", "title category level")
+            .populate("room", "location buildingName floorNumber name");
 
         return res.status(200).json({ slots });
     } catch (error) {
@@ -153,6 +188,10 @@ exports.updateSlot = async (req, res) => {
     try {
         const { id } = req.params;
 
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ message: "Invalid slot id" });
+        }
+
         const existing = await Timetable.findOne({ _id: id, isDeleted: false });
         if (!existing) return res.status(404).json({ message: "Slot not found" });
 
@@ -163,12 +202,26 @@ exports.updateSlot = async (req, res) => {
             day: req.body.day ?? existing.day,
             startMinutes: req.body.startMinutes ?? existing.startMinutes,
             endMinutes: req.body.endMinutes ?? existing.endMinutes,
-            room: String(req.body.room ?? existing.room ?? "").trim(),
             note: req.body.note ?? existing.note,
+
+            room:
+                req.body.room === "" || req.body.room === null || req.body.room === undefined
+                    ? existing.room
+                    : req.body.room,
         };
+
+        if (!mongoose.Types.ObjectId.isValid(next.batch))
+            return res.status(400).json({ message: "Invalid batch id" });
+
+        if (!mongoose.Types.ObjectId.isValid(next.tutor))
+            return res.status(400).json({ message: "Invalid tutor id" });
+
+        if (next.room && !mongoose.Types.ObjectId.isValid(next.room))
+            return res.status(400).json({ message: "Invalid room id" });
 
         const batchDoc = await Batch.findOne({ _id: next.batch, isDeleted: false });
         if (!batchDoc) return res.status(404).json({ message: "Batch not found" });
+
         next.course = batchDoc.course;
 
         if (next.startMinutes >= next.endMinutes) {
@@ -180,6 +233,12 @@ exports.updateSlot = async (req, res) => {
 
         const courseDoc = await Course.findOne({ _id: next.course, isDeleted: false });
         if (!courseDoc) return res.status(404).json({ message: "Course not found" });
+
+        if (next.room) {
+            const roomDoc = await RoomUnit.findOne({ _id: next.room, isDeleted: false });
+            if (!roomDoc) return res.status(404).json({ message: "Room not found" });
+        }
+
 
         const batchSlots = await Timetable.find({
             _id: { $ne: id },
@@ -217,10 +276,10 @@ exports.updateSlot = async (req, res) => {
             });
         }
 
-        if (next.room && next.room.trim()) {
+        if (next.room) {
             const roomSlots = await Timetable.find({
                 _id: { $ne: id },
-                room: next.room.trim(),
+                room: next.room,
                 day: next.day,
                 isDeleted: false,
             });
@@ -243,10 +302,11 @@ exports.updateSlot = async (req, res) => {
                 path: "tutor",
                 populate: {
                     path: "employee",
-                    select: "name email",
+                    select: "name email phone",
                 },
             })
-            .populate("course", "title category level");
+            .populate("course", "title category level")
+            .populate("room", "location buildingName floorNumber name");
 
         return res.status(200).json({
             message: "Slot updated successfully",
@@ -258,9 +318,14 @@ exports.updateSlot = async (req, res) => {
     }
 };
 
+
 exports.deleteSlot = async (req, res) => {
     try {
         const { id } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ message: "Invalid slot id" });
+        }
 
         const slot = await Timetable.findOne({ _id: id, isDeleted: false });
         if (!slot) return res.status(404).json({ message: "Slot not found" });

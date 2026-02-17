@@ -38,14 +38,33 @@ const minutesToTime = (m) => {
   return `${hour12}:${String(min).padStart(2, "0")} ${ampm}`;
 };
 
-const getTutorName = (slot) => slot?.tutor?.employee?.name || slot?.tutor?.name || "Tutor";
+const getTutorName = (slot) =>
+  slot?.tutor?.employee?.name || slot?.tutor?.name || "Tutor";
+
+const getCourseTitle = (slot) =>
+  slot?.course?.title || slot?.courseTitle || "Course";
+
+const getRoomLabel = (slot) => {
+  if (!slot?.room) return null;
+  if (typeof slot.room === "string") return slot.room;
+  return (
+    slot.room?.name ||
+    slot.room?.roomNumber ||
+    slot.room?.location ||
+    slot.room?._id ||
+    null
+  );
+};
 
 const AdminTimetable = () => {
   const navigate = useNavigate();
+
   const [courses, setCourses] = useState([]);
   const [batches, setBatches] = useState([]);
+
   const [selectedCourse, setSelectedCourse] = useState("");
   const [selectedBatch, setSelectedBatch] = useState("");
+
   const [slots, setSlots] = useState([]);
 
   const [loading, setLoading] = useState(true);
@@ -54,13 +73,18 @@ const AdminTimetable = () => {
 
   const [openAddModal, setOpenAddModal] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
+
   const [prefillDay, setPrefillDay] = useState("");
   const [prefillStart, setPrefillStart] = useState(null);
 
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [slotPopup, setSlotPopup] = useState({ open: false, x: 0, y: 0 });
+
   const popupRef = useRef(null);
 
+  // ============================
+  // INIT: Fetch Courses
+  // ============================
   useEffect(() => {
     const fetchCourses = async () => {
       try {
@@ -75,6 +99,9 @@ const AdminTimetable = () => {
     fetchCourses();
   }, []);
 
+  // ============================
+  // Fetch batches when course changes
+  // ============================
   useEffect(() => {
     const fetchBatchesByCourse = async () => {
       if (!selectedCourse) {
@@ -82,11 +109,17 @@ const AdminTimetable = () => {
         setSelectedBatch("");
         return;
       }
+
       try {
         setBatchLoading(true);
-        const res = await axiosInstance.get(`/batch/by-course/${selectedCourse}`);
+        const res = await axiosInstance.get(
+          `/batch/by-course/${selectedCourse}`,
+        );
+
         const rows = Array.isArray(res.data?.batches) ? res.data.batches : [];
         setBatches(rows);
+
+        // reset invalid selection
         if (!rows.find((b) => b._id === selectedBatch)) {
           setSelectedBatch("");
         }
@@ -98,11 +131,17 @@ const AdminTimetable = () => {
         setBatchLoading(false);
       }
     };
+
     fetchBatchesByCourse();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCourse]);
 
+  // ============================
+  // Fetch timetable
+  // ============================
   const fetchTimetable = async () => {
     if (!selectedBatch) return;
+
     setTableLoading(true);
     try {
       const res = await timetableService.getBatchTimetable(selectedBatch);
@@ -121,16 +160,41 @@ const AdminTimetable = () => {
       return;
     }
     fetchTimetable();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedBatch]);
 
+  // ============================
+  // ✅ FIX: Auto set course when batch changes
+  // (If backend returns populated course in batch)
+  // ============================
+  useEffect(() => {
+    if (!selectedBatch) return;
+
+    const b = batches.find((x) => x._id === selectedBatch);
+    const courseId = b?.course?._id || b?.course;
+
+    if (courseId && courseId !== selectedCourse) {
+      setSelectedCourse(courseId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedBatch]);
+
+  // ============================
+  // Day slots map
+  // ============================
   const daySlots = useMemo(() => {
     const map = {};
     for (const d of DAYS) map[d.key] = [];
+
     for (const s of slots) {
       if (!map[s.day]) map[s.day] = [];
       map[s.day].push(s);
     }
-    for (const d of DAYS) map[d.key].sort((a, b) => a.startMinutes - b.startMinutes);
+
+    for (const d of DAYS) {
+      map[d.key].sort((a, b) => a.startMinutes - b.startMinutes);
+    }
+
     return map;
   }, [slots]);
 
@@ -144,14 +208,19 @@ const AdminTimetable = () => {
     const dayStart = START_HOUR * 60;
     const start = clamp(slot.startMinutes, dayStart, END_HOUR * 60);
     const end = clamp(slot.endMinutes, dayStart, END_HOUR * 60);
+
     return {
       top: ((start - dayStart) / 60) * SLOT_HEIGHT,
       height: Math.max(((end - start) / 60) * SLOT_HEIGHT, 28),
     };
   };
 
+  // ============================
+  // Close popup on outside click
+  // ============================
   useEffect(() => {
     if (!slotPopup.open) return;
+
     const onMouseDown = (e) => {
       if (!popupRef.current) return;
       if (!popupRef.current.contains(e.target)) {
@@ -159,18 +228,27 @@ const AdminTimetable = () => {
         setSelectedSlot(null);
       }
     };
+
     window.addEventListener("mousedown", onMouseDown);
     return () => window.removeEventListener("mousedown", onMouseDown);
   }, [slotPopup.open]);
 
+  // ============================
+  // Handlers
+  // ============================
   const handleDayClick = (dayKey, e) => {
     if (!selectedBatch) return;
+
     setSlotPopup({ open: false, x: 0, y: 0 });
     setSelectedSlot(null);
+
     const rect = e.currentTarget.getBoundingClientRect();
     const y = e.clientY - rect.top;
+
     const minutesFromStart = (y / SLOT_HEIGHT) * 60;
-    const startMinutes = START_HOUR * 60 + Math.round(minutesFromStart / 30) * 30;
+    const startMinutes =
+      START_HOUR * 60 + Math.round(minutesFromStart / 30) * 30;
+
     setPrefillDay(dayKey);
     setPrefillStart(startMinutes);
     setOpenAddModal(true);
@@ -184,12 +262,16 @@ const AdminTimetable = () => {
 
   const handleDeleteSlot = async () => {
     if (!selectedSlot?._id) return;
+
     if (!window.confirm("Delete this timetable slot?")) return;
+
     try {
       setTableLoading(true);
       await timetableService.deleteSlot(selectedSlot._id);
+
       setSlotPopup({ open: false, x: 0, y: 0 });
       setSelectedSlot(null);
+
       await fetchTimetable();
     } catch (err) {
       alert(err?.response?.data?.message || "Failed to delete slot");
@@ -198,9 +280,12 @@ const AdminTimetable = () => {
     }
   };
 
+  // ============================
+  // UI
+  // ============================
   if (loading) {
     return (
-      <div className="p-6 text-center text-[#3F72AF] dark:text-[#DBE2EF]">
+      <div className="p-8 text-center text-white/70">
         Loading timetable setup...
       </div>
     );
@@ -208,23 +293,26 @@ const AdminTimetable = () => {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="rounded-3xl border border-white/40 dark:border-slate-700/70 bg-white/70 dark:bg-slate-900/60 backdrop-blur-xl shadow-xl p-6">
+      {/* Header */}
+      <div className="rounded-3xl border border-white/10 bg-[#101010] shadow-2xl p-6">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-[#112D4E] dark:text-[#DBE2EF]">Timetable</h1>
-            <p className="text-sm text-[#3F72AF] dark:text-slate-300 mt-1">
-              Select course, then batch, then add slots. Course is auto-picked from batch.
+            <h1 className="text-2xl font-bold text-white">Timetable</h1>
+            <p className="text-sm text-white/50 mt-1">
+              Select course → select batch → add slots. Click inside any day to
+              quick-add in 30-minute steps.
             </p>
           </div>
 
           <button
             onClick={() => setOpenAddModal(true)}
             disabled={!selectedBatch}
-            className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition ${
-              selectedBatch
-                ? "bg-[#3F72AF] text-white hover:bg-[#2f5d95]"
-                : "bg-slate-300 text-slate-600 cursor-not-allowed"
-            }`}
+            className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-semibold transition
+              ${
+                selectedBatch
+                  ? "bg-white text-black hover:bg-white/80"
+                  : "bg-white/10 text-white/40 cursor-not-allowed"
+              }`}
           >
             <Plus size={16} />
             Add Slot
@@ -232,15 +320,14 @@ const AdminTimetable = () => {
         </div>
       </div>
 
-      <div className="rounded-3xl border border-white/40 dark:border-slate-700/70 bg-white/70 dark:bg-slate-900/60 backdrop-blur-xl shadow-md p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Filters */}
+      <div className="rounded-3xl border border-white/10 bg-[#101010] shadow-xl p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF]">
-            Course
-          </label>
+          <label className="text-sm font-medium text-white/70">Course</label>
           <select
             value={selectedCourse}
             onChange={(e) => setSelectedCourse(e.target.value)}
-            className="mt-2 w-full px-3 py-2.5 rounded-xl border border-[#DBE2EF] dark:border-slate-700 bg-white/70 dark:bg-slate-800/70 text-sm"
+            className="mt-2 w-full px-4 py-2.5 rounded-2xl border border-white/10 bg-[#141414] text-sm text-white outline-none"
           >
             <option value="">-- Select Course --</option>
             {courses.map((c) => (
@@ -252,12 +339,12 @@ const AdminTimetable = () => {
         </div>
 
         <div>
-          <label className="text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF]">Batch</label>
+          <label className="text-sm font-medium text-white/70">Batch</label>
           <select
             value={selectedBatch}
             onChange={(e) => setSelectedBatch(e.target.value)}
             disabled={!selectedCourse || batchLoading}
-            className="mt-2 w-full px-3 py-2.5 rounded-xl border border-[#DBE2EF] dark:border-slate-700 bg-white/70 dark:bg-slate-800/70 text-sm disabled:opacity-60"
+            className="mt-2 w-full px-4 py-2.5 rounded-2xl border border-white/10 bg-[#141414] text-sm text-white outline-none disabled:opacity-60"
           >
             <option value="">
               {!selectedCourse
@@ -266,6 +353,7 @@ const AdminTimetable = () => {
                   ? "Loading batches..."
                   : "-- Select Batch --"}
             </option>
+
             {batches.map((b) => (
               <option key={b._id} value={b._id}>
                 {b.name || "Batch"}
@@ -275,14 +363,17 @@ const AdminTimetable = () => {
         </div>
       </div>
 
+      {/* No batches warning */}
       {selectedCourse && !batchLoading && batches.length === 0 ? (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-          <p className="text-sm text-amber-800">
-            No batches found for this course. Create a batch first before adding timetable slots.
+        <div className="rounded-3xl border border-amber-500/20 bg-amber-500/10 p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <p className="text-sm text-amber-200">
+            No batches found for this course. Create a batch first before adding
+            timetable slots.
           </p>
+
           <button
             onClick={() => navigate("/admin/batches")}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-600 text-white text-sm font-medium hover:bg-amber-700"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-2xl bg-amber-500 text-black text-sm font-semibold hover:bg-amber-400 transition"
           >
             Go To Batches
             <ArrowRight size={15} />
@@ -290,31 +381,36 @@ const AdminTimetable = () => {
         </div>
       ) : null}
 
+      {/* Empty state */}
       {!selectedBatch ? (
-        <div className="rounded-2xl border border-[#DBE2EF] dark:border-slate-700 p-10 text-center text-[#3F72AF] dark:text-slate-300 bg-white/65 dark:bg-slate-900/55 backdrop-blur-md">
+        <div className="rounded-3xl border border-white/10 p-12 text-center text-white/60 bg-[#101010] shadow-xl">
           Select a course and batch to view timetable.
         </div>
       ) : (
         <div className="relative">
+          {/* Loading overlay */}
           {tableLoading && (
-            <div className="absolute inset-0 bg-white/40 dark:bg-slate-900/45 backdrop-blur-sm flex items-center justify-center z-30 rounded-xl">
-              <div className="px-4 py-2 rounded-lg bg-white/85 dark:bg-slate-800/80 border border-[#DBE2EF] dark:border-slate-700 text-sm shadow-lg flex items-center gap-2">
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-30 rounded-2xl">
+              <div className="px-4 py-2 rounded-2xl bg-[#141414] border border-white/10 text-sm shadow-2xl flex items-center gap-2 text-white">
                 <Loader2 size={16} className="animate-spin" />
                 Loading...
               </div>
             </div>
           )}
 
-          <div className="overflow-x-auto border border-[#DBE2EF] dark:border-slate-700 rounded-xl bg-white/80 dark:bg-slate-900/65 backdrop-blur-xl shadow-sm">
+          {/* Table */}
+          <div className="overflow-x-auto border border-white/10 rounded-3xl bg-[#101010] shadow-2xl">
             <div className="min-w-[1100px]">
-              <div className="grid grid-cols-8 sticky top-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur border-b border-[#DBE2EF] dark:border-slate-700 z-20">
-                <div className="p-3 text-xs font-semibold text-[#3F72AF] dark:text-slate-300">
+              {/* Header row */}
+              <div className="grid grid-cols-8 sticky top-0 bg-[#101010] border-b border-white/10 z-20">
+                <div className="p-3 text-xs font-semibold text-white/60">
                   Time
                 </div>
+
                 {DAYS.map((d) => (
                   <div
                     key={d.key}
-                    className="p-3 text-sm font-semibold text-[#112D4E] dark:text-[#DBE2EF] border-l border-[#DBE2EF] dark:border-slate-700"
+                    className="p-3 text-sm font-semibold text-white border-l border-white/10"
                   >
                     {d.label}
                   </div>
@@ -322,53 +418,64 @@ const AdminTimetable = () => {
               </div>
 
               <div className="grid grid-cols-8">
-                <div className="border-r border-[#DBE2EF] dark:border-slate-700 bg-[#F9F7F7]/80 dark:bg-slate-800/60">
+                {/* Time column */}
+                <div className="border-r border-white/10 bg-[#0c0c0c]">
                   {hours.map((h) => (
                     <div
                       key={h}
-                      className="h-[56px] border-b border-[#DBE2EF] dark:border-slate-700 px-3 py-2 text-[11px] text-[#3F72AF] dark:text-slate-300"
+                      className="h-[56px] border-b border-white/10 px-3 py-2 text-[11px] text-white/50"
                     >
                       {h === 12 ? "12 PM" : h > 12 ? `${h - 12} PM` : `${h} AM`}
                     </div>
                   ))}
                 </div>
 
+                {/* Days columns */}
                 {DAYS.map((d) => (
                   <div
                     key={d.key}
                     onClick={(e) => handleDayClick(d.key, e)}
-                    className="relative border-r border-[#DBE2EF] dark:border-slate-700 cursor-pointer"
-                    style={{ height: `${(END_HOUR - START_HOUR + 1) * SLOT_HEIGHT}px` }}
+                    className="relative border-r border-white/10 cursor-pointer"
+                    style={{
+                      height: `${(END_HOUR - START_HOUR + 1) * SLOT_HEIGHT}px`,
+                    }}
                   >
                     {hours.map((h) => (
                       <div
                         key={h}
-                        className="h-[56px] border-b border-[#DBE2EF] dark:border-slate-700"
+                        className="h-[56px] border-b border-white/10"
                       />
                     ))}
 
+                    {/* Slots */}
                     {daySlots[d.key]?.map((s) => {
                       const style = getSlotStyle(s);
+                      const roomLabel = getRoomLabel(s);
+
                       return (
                         <button
                           key={s._id}
                           type="button"
                           onClick={(e) => handleSlotClick(s, e)}
-                          className="absolute left-2 right-2 rounded-xl p-2 text-[11px] shadow-md border border-[#3F72AF]/40 bg-[#DBE2EF]/90 dark:bg-slate-800/90 backdrop-blur-md hover:shadow-lg transition"
+                          className="absolute left-2 right-2 rounded-2xl p-2 text-[11px] shadow-lg border border-white/10 bg-[#141414] hover:bg-[#1b1b1b] transition"
                           style={style}
                         >
-                          <p className="font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
-                            {minutesToTime(s.startMinutes)} - {minutesToTime(s.endMinutes)}
+                          <p className="font-semibold text-white">
+                            {minutesToTime(s.startMinutes)} -{" "}
+                            {minutesToTime(s.endMinutes)}
                           </p>
-                          <p className="text-[#3F72AF] dark:text-slate-300 mt-1 truncate">
+
+                          <p className="text-white/60 mt-1 truncate">
                             {getTutorName(s)}
                           </p>
-                          <p className="text-[#3F72AF] dark:text-slate-300 truncate">
-                            {s.course?.title || "Course"}
+
+                          <p className="text-white/50 truncate">
+                            {getCourseTitle(s)}
                           </p>
-                          {s.room ? (
-                            <p className="text-[#3F72AF] dark:text-slate-300 truncate">
-                              Room: {s.room}
+
+                          {roomLabel ? (
+                            <p className="text-white/50 truncate">
+                              Room: {roomLabel}
                             </p>
                           ) : null}
                         </button>
@@ -380,77 +487,97 @@ const AdminTimetable = () => {
             </div>
           </div>
 
-          <p className="text-xs text-[#3F72AF] dark:text-slate-300 mt-2">
-            Tip: click inside any day column to quick-add a slot in 30-minute steps.
+          <p className="text-xs text-white/40 mt-2">
+            Tip: Click inside any day column to quick-add a slot in 30-minute
+            steps.
           </p>
 
+          {/* Slot popup */}
           {slotPopup.open && selectedSlot && (
             <div
               ref={popupRef}
-              className="fixed z-[9999] w-[320px] rounded-2xl border border-[#DBE2EF] dark:border-slate-700 bg-white/90 dark:bg-slate-900/90 backdrop-blur-2xl shadow-2xl"
+              className="fixed z-[9999] w-[340px] rounded-3xl border border-white/10 bg-[#101010] shadow-2xl"
               style={{
-                left: Math.min(slotPopup.x, window.innerWidth - 340),
-                top: Math.min(slotPopup.y, window.innerHeight - 220),
+                left: Math.min(slotPopup.x, window.innerWidth - 360),
+                top: Math.min(slotPopup.y, window.innerHeight - 240),
               }}
             >
-              <div className="p-4 border-b border-[#DBE2EF] dark:border-slate-700 flex items-start justify-between gap-3">
+              <div className="p-4 border-b border-white/10 flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3">
-                  <CalendarClock size={18} className="text-[#3F72AF] dark:text-[#DBE2EF] mt-1" />
+                  <CalendarClock size={18} className="text-white/60 mt-1" />
                   <div>
-                    <p className="text-sm font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
+                    <p className="text-sm font-semibold text-white">
                       {minutesToTime(selectedSlot.startMinutes)} -{" "}
                       {minutesToTime(selectedSlot.endMinutes)}
                     </p>
-                    <p className="text-xs text-[#3F72AF] dark:text-slate-300 mt-1">
+                    <p className="text-xs text-white/50 mt-1">
                       {selectedSlot.day?.toUpperCase()}
                     </p>
                   </div>
                 </div>
+
                 <button
                   type="button"
                   onClick={() => {
                     setSlotPopup({ open: false, x: 0, y: 0 });
                     setSelectedSlot(null);
                   }}
-                  className="p-2 rounded-xl border border-[#DBE2EF] dark:border-slate-700 hover:bg-[#DBE2EF]/60 dark:hover:bg-slate-800"
+                  className="p-2 rounded-2xl border border-white/10 hover:bg-white/5 transition"
                 >
-                  <X size={16} className="text-[#112D4E] dark:text-[#DBE2EF]" />
+                  <X size={16} className="text-white/70" />
                 </button>
               </div>
 
               <div className="p-4 space-y-3 text-sm">
-                <p className="text-[#112D4E] dark:text-[#DBE2EF]">
-                  Tutor: <span className="font-medium">{getTutorName(selectedSlot)}</span>
+                <p className="text-white/70">
+                  Tutor:{" "}
+                  <span className="font-semibold text-white">
+                    {getTutorName(selectedSlot)}
+                  </span>
                 </p>
-                <p className="text-[#112D4E] dark:text-[#DBE2EF]">
-                  Course: <span className="font-medium">{selectedSlot.course?.title || "-"}</span>
+
+                <p className="text-white/70">
+                  Course:{" "}
+                  <span className="font-semibold text-white">
+                    {getCourseTitle(selectedSlot)}
+                  </span>
                 </p>
+
                 {selectedSlot.subject ? (
-                  <p className="text-[#112D4E] dark:text-[#DBE2EF]">
-                    Subject: <span className="font-medium">{selectedSlot.subject}</span>
+                  <p className="text-white/70">
+                    Subject:{" "}
+                    <span className="font-semibold text-white">
+                      {selectedSlot.subject}
+                    </span>
                   </p>
                 ) : null}
-                {selectedSlot.room ? (
-                  <p className="text-[#112D4E] dark:text-[#DBE2EF]">
-                    Room: <span className="font-medium">{selectedSlot.room}</span>
+
+                {getRoomLabel(selectedSlot) ? (
+                  <p className="text-white/70">
+                    Room:{" "}
+                    <span className="font-semibold text-white">
+                      {getRoomLabel(selectedSlot)}
+                    </span>
                   </p>
                 ) : null}
-                <div className="flex gap-2">
+
+                <div className="flex gap-2 pt-2">
                   <button
                     type="button"
                     onClick={() => {
                       setOpenEditModal(true);
                       setSlotPopup({ open: false, x: 0, y: 0 });
                     }}
-                    className="flex-1 px-3 py-2 rounded-xl bg-[#3F72AF] hover:bg-[#2f5d95] text-white text-sm flex items-center justify-center gap-2"
+                    className="flex-1 px-3 py-2 rounded-2xl bg-white text-black hover:bg-white/80 text-sm font-semibold flex items-center justify-center gap-2 transition"
                   >
                     <Pencil size={15} />
                     Edit
                   </button>
+
                   <button
                     type="button"
                     onClick={handleDeleteSlot}
-                    className="flex-1 px-3 py-2 rounded-xl border border-red-300 text-red-600 hover:bg-red-50 text-sm flex items-center justify-center gap-2"
+                    className="flex-1 px-3 py-2 rounded-2xl border border-red-500/30 text-red-300 hover:bg-red-500/10 text-sm font-semibold flex items-center justify-center gap-2 transition"
                   >
                     <Trash2 size={15} />
                     Delete
@@ -462,6 +589,7 @@ const AdminTimetable = () => {
         </div>
       )}
 
+      {/* Add Slot Modal */}
       <AddTimetableSlotModal
         open={openAddModal}
         onClose={() => {
@@ -481,6 +609,7 @@ const AdminTimetable = () => {
         }}
       />
 
+      {/* Edit Slot Modal */}
       <EditTimetableSlotModal
         open={openEditModal}
         onClose={() => {

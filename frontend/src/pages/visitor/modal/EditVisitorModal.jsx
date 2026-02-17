@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import axiosInstance from "../../../api/axios";
 import { courseService } from "../../../services/courseService";
+import ModalShell from "../../../components/ui/ModalShell";
+import { AlertCircle, Loader2 } from "lucide-react";
 
 const EditVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
   const [form, setForm] = useState({
@@ -14,6 +16,7 @@ const EditVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
   });
 
   const [loading, setLoading] = useState(false);
+  const [dropdownLoading, setDropdownLoading] = useState(false);
   const [error, setError] = useState("");
   const [courses, setCourses] = useState([]);
 
@@ -46,6 +49,8 @@ const EditVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
 
   const fetchCourses = async () => {
     try {
+      setDropdownLoading(true);
+
       const res = await courseService.getAll({ limit: 100 });
 
       // service returns res.data directly
@@ -53,6 +58,8 @@ const EditVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
       setCourses(Array.isArray(list) ? list : []);
     } catch (error) {
       console.error("Error fetching courses", error);
+    } finally {
+      setDropdownLoading(false);
     }
   };
 
@@ -96,103 +103,123 @@ const EditVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 overflow-y-auto">
-      <div className="bg-white dark:bg-[#112D4E] w-full max-w-lg rounded-xl shadow-2xl p-6 my-8 border border-[#DBE2EF] dark:border-[#3F72AF]">
-        <h2 className="text-xl font-semibold mb-4 text-[#112D4E] dark:text-[#DBE2EF]">
-          Edit Visitor
-        </h2>
-
+    <ModalShell
+      open={open}
+      onClose={onClose}
+      title="Edit Visitor"
+      subtitle="Update visitor details, status and course."
+      maxWidth="max-w-xl"
+    >
+      <form onSubmit={handleSubmit} className="space-y-5">
         {error && (
-          <p className="text-red-600 dark:text-red-400 mb-3 text-sm">{error}</p>
+          <div className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <AlertCircle size={18} className="mt-0.5" />
+            <div className="flex-1">{error}</div>
+          </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {dropdownLoading && (
+          <div className="text-sm text-[#3F72AF] dark:text-slate-300 flex items-center gap-2">
+            <Loader2 size={16} className="animate-spin" />
+            Loading courses...
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 gap-4">
+          {/* Name */}
           <div>
-            <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
-              Full Name *
+            <label className="text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF]">
+              Full Name <span className="text-red-500">*</span>
             </label>
             <input
               name="name"
               value={form.name}
               onChange={handleChange}
               required
-              className="w-full border border-[#DBE2EF] dark:border-[#3F72AF] p-2 rounded-lg bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
+              className="mt-2 w-full px-3 py-2.5 rounded-xl border border-[#DBE2EF] dark:border-slate-700 bg-white/70 dark:bg-slate-800/70 dark:text-[#DBE2EF] outline-none focus:ring-2 focus:ring-[#3F72AF]/40"
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
-              Email
-            </label>
-            <input
-              name="email"
-              type="email"
-              value={form.email}
-              onChange={handleChange}
-              className="w-full border border-[#DBE2EF] dark:border-[#3F72AF] p-2 rounded-lg bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
-            />
+          {/* Email + Phone */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF]">
+                Email
+              </label>
+              <input
+                name="email"
+                type="email"
+                value={form.email}
+                onChange={handleChange}
+                className="mt-2 w-full px-3 py-2.5 rounded-xl border border-[#DBE2EF] dark:border-slate-700 bg-white/70 dark:bg-slate-800/70 dark:text-[#DBE2EF] outline-none focus:ring-2 focus:ring-[#3F72AF]/40"
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF]">
+                Phone
+              </label>
+              <input
+                name="phone"
+                type="tel"
+                value={form.phone}
+                onChange={handleChange}
+                className="mt-2 w-full px-3 py-2.5 rounded-xl border border-[#DBE2EF] dark:border-slate-700 bg-white/70 dark:bg-slate-800/70 dark:text-[#DBE2EF] outline-none focus:ring-2 focus:ring-[#3F72AF]/40"
+              />
+            </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
-              Phone
-            </label>
-            <input
-              name="phone"
-              type="tel"
-              value={form.phone}
-              onChange={handleChange}
-              className="w-full border border-[#DBE2EF] dark:border-[#3F72AF] p-2 rounded-lg bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
-            />
+          {/* Source + Course */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF]">
+                Source
+              </label>
+              <select
+                name="source"
+                value={form.source}
+                onChange={handleChange}
+                className="mt-2 w-full px-3 py-2.5 rounded-xl border border-[#DBE2EF] dark:border-slate-700 bg-white/70 dark:bg-slate-800/70 dark:text-[#DBE2EF]"
+              >
+                <option value="call">Call</option>
+                <option value="walk-in">Walk-in</option>
+                <option value="email">Email</option>
+                <option value="referral">Referral</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF]">
+                Course <span className="text-red-500">*</span>
+              </label>
+              <select
+                name="course"
+                value={form.course}
+                onChange={handleChange}
+                required
+                className="mt-2 w-full px-3 py-2.5 rounded-xl border border-[#DBE2EF] dark:border-slate-700 bg-white/70 dark:bg-slate-800/70 dark:text-[#DBE2EF]"
+              >
+                <option value="">Select Course</option>
+                {courses.map((course) => (
+                  <option key={course._id} value={course._id}>
+                    {course.title}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
+          {/* Status */}
           <div>
-            <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
-              Source
-            </label>
-            <select
-              name="source"
-              value={form.source}
-              onChange={handleChange}
-              className="w-full border border-[#DBE2EF] dark:border-[#3F72AF] p-2 rounded-lg bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
-            >
-              <option value="call">Call</option>
-              <option value="walk-in">Walk-in</option>
-              <option value="email">Email</option>
-              <option value="referral">Referral</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
-              Course *
-            </label>
-            <select
-              name="course"
-              value={form.course}
-              onChange={handleChange}
-              required
-              className="w-full border border-[#DBE2EF] dark:border-[#3F72AF] p-2 rounded-lg bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
-            >
-              <option value="">Select Course</option>
-              {courses.map((course) => (
-                <option key={course._id} value={course._id}>
-                  {course.title}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
+            <label className="text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF]">
               Status
             </label>
             <select
               name="status"
               value={form.status}
               onChange={handleChange}
-              className="w-full border border-[#DBE2EF] dark:border-[#3F72AF] p-2 rounded-lg bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
+              className="mt-2 w-full px-3 py-2.5 rounded-xl border border-[#DBE2EF] dark:border-slate-700 bg-white/70 dark:bg-slate-800/70 dark:text-[#DBE2EF]"
             >
               <option value="new">New</option>
               <option value="contacted">Contacted</option>
@@ -202,39 +229,48 @@ const EditVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
             </select>
           </div>
 
+          {/* Notes */}
           <div>
-            <label className="block text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] mb-2">
+            <label className="text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF]">
               Notes
             </label>
             <textarea
               name="note"
               value={form.note}
               onChange={handleChange}
-              className="w-full border border-[#DBE2EF] dark:border-[#3F72AF] p-2 rounded-lg bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
               rows={3}
+              className="mt-2 w-full px-3 py-2.5 rounded-xl border border-[#DBE2EF] dark:border-slate-700 bg-white/70 dark:bg-slate-800/70 dark:text-[#DBE2EF] outline-none focus:ring-2 focus:ring-[#3F72AF]/40"
             />
           </div>
+        </div>
 
-          <div className="flex justify-end gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 border border-[#DBE2EF] dark:border-[#3F72AF] rounded-lg text-[#3F72AF] dark:text-[#DBE2EF] hover:bg-[#DBE2EF] dark:hover:bg-[#3F72AF] transition-colors"
-            >
-              Cancel
-            </button>
+        <div className="pt-2 flex flex-col-reverse md:flex-row md:items-center md:justify-between gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={loading}
+            className="w-full md:w-auto px-4 py-2.5 rounded-xl border border-[#DBE2EF] dark:border-slate-700 text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF] hover:bg-[#DBE2EF]/60 dark:hover:bg-slate-800 transition disabled:opacity-60"
+          >
+            Cancel
+          </button>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-4 py-2 bg-[#3F72AF] text-white rounded-lg hover:bg-[#112D4E] dark:bg-[#3F72AF] dark:hover:bg-[#DBE2EF] dark:hover:text-[#112D4E] disabled:opacity-50 transition-colors"
-            >
-              {loading ? "Updating..." : "Update Visitor"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full md:w-auto px-5 py-2.5 rounded-xl bg-[#3F72AF] hover:bg-[#2f5d95] text-white text-sm font-semibold transition disabled:opacity-60 flex items-center justify-center gap-2"
+          >
+            {loading ? (
+              <>
+                <Loader2 size={16} className="animate-spin" />
+                Updating...
+              </>
+            ) : (
+              "Update Visitor"
+            )}
+          </button>
+        </div>
+      </form>
+    </ModalShell>
   );
 };
 

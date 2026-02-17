@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Search,
   Plus,
@@ -8,6 +8,7 @@ import {
   RotateCcw,
   Users,
   UserCog,
+  Building2,
 } from "lucide-react";
 
 import { batchService } from "../../services/batchService";
@@ -17,13 +18,16 @@ import EditBatchModal from "./modal/batch/EditBatchModal";
 import ViewBatchModal from "./modal/batch/ViewBatchModal";
 import ConfirmDeleteModal from "./modal/batch/ConfirmDeleteModal";
 import ManageBatchStudentsModal from "./modal/ManageBatchStudentsModal";
+import AssignBatchRoomModal from "./modal/batch/AssignBatchRoomModal";
 
 import Pagination from "../../components/Pagination";
 import SortHeader from "../../components/SortHeader";
 
 const AdminBatches = () => {
   const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(false);
+
+  const [loadingActive, setLoadingActive] = useState(false);
+  const [loadingTrash, setLoadingTrash] = useState(false);
 
   const [batches, setBatches] = useState([]);
   const [deletedBatches, setDeletedBatches] = useState([]);
@@ -38,9 +42,6 @@ const AdminBatches = () => {
   const [sortOrder, setSortOrder] = useState("desc");
 
   const [filters, setFilters] = useState({});
-  const [filterField, setFilterField] = useState("status");
-  const [filterValue, setFilterValue] = useState("");
-
   const [activeTab, setActiveTab] = useState("active");
 
   const [openAdd, setOpenAdd] = useState(false);
@@ -48,12 +49,16 @@ const AdminBatches = () => {
   const [openView, setOpenView] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [openManageStudents, setOpenManageStudents] = useState(false);
+  const [openAssignRoom, setOpenAssignRoom] = useState(false);
 
   const [selectedBatch, setSelectedBatch] = useState(null);
 
-  // =========================
-  // SORT + FILTER FUNCTIONS
-  // =========================
+  // ✅ stable dependency key for filters
+  const filtersKey = useMemo(() => JSON.stringify(filters), [filters]);
+
+  // ==========================
+  // Sort
+  // ==========================
   const handleSort = (field) => {
     if (sortBy === field) {
       setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
@@ -62,47 +67,17 @@ const AdminBatches = () => {
       setSortOrder("asc");
     }
 
-    // reset pages
     setPage(1);
     setTrashPage(1);
   };
 
-  const addFilter = () => {
-    if (!filterField || !filterValue) return;
-
-    setFilters((prev) => ({
-      ...prev,
-      [filterField]: filterValue,
-    }));
-
-    setFilterValue("");
-    setPage(1);
-    setTrashPage(1);
-  };
-
-  const removeFilter = (field) => {
-    setFilters((prev) => {
-      const next = { ...prev };
-      delete next[field];
-      return next;
-    });
-
-    setPage(1);
-    setTrashPage(1);
-  };
-
-  const clearFilters = () => {
-    setFilters({});
-    setPage(1);
-    setTrashPage(1);
-  };
-
-  // =========================
-  // API CALLS
-  // =========================
-  const fetchBatches = async () => {
-    setLoading(true);
+  // ==========================
+  // Fetch Active
+  // ==========================
+  const fetchBatches = useCallback(async () => {
     try {
+      setLoadingActive(true);
+
       const res = await batchService.getAll({
         page,
         limit: 10,
@@ -112,18 +87,22 @@ const AdminBatches = () => {
         ...filters,
       });
 
-      setBatches(res.data.batches || []);
-      setTotalPages(res.data.totalPages || 1);
+      setBatches(res.data?.batches || []);
+      setTotalPages(res.data?.totalPages || 1);
     } catch (error) {
       console.error("Error fetching batches", error);
     } finally {
-      setLoading(false);
+      setLoadingActive(false);
     }
-  };
+  }, [page, search, sortBy, sortOrder, filtersKey]);
 
-  const fetchDeletedBatches = async () => {
-    setLoading(true);
+  // ==========================
+  // Fetch Trash
+  // ==========================
+  const fetchDeletedBatches = useCallback(async () => {
     try {
+      setLoadingTrash(true);
+
       const res = await batchService.getDeleted({
         page: trashPage,
         limit: 10,
@@ -133,56 +112,38 @@ const AdminBatches = () => {
         ...filters,
       });
 
-      setDeletedBatches(res.data.batches || []);
-      setTrashTotalPages(res.data.totalPages || 1);
+      setDeletedBatches(res.data?.batches || []);
+      setTrashTotalPages(res.data?.totalPages || 1);
     } catch (error) {
       console.error("Error fetching deleted batches", error);
     } finally {
-      setLoading(false);
+      setLoadingTrash(false);
     }
-  };
+  }, [trashPage, search, sortBy, sortOrder, filtersKey]);
 
-  // =========================
-  // FETCH BASED ON ACTIVE TAB
-  // =========================
+  // ==========================
+  // Effects
+  // ==========================
   useEffect(() => {
-    if (activeTab === "active") {
-      fetchBatches();
-    } else {
-      fetchDeletedBatches();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    activeTab,
-    page,
-    trashPage,
-    search,
-    sortBy,
-    sortOrder,
-    JSON.stringify(filters),
-  ]);
+    if (activeTab === "active") fetchBatches();
+  }, [activeTab, fetchBatches]);
 
-  // reset correct page when tab changes
   useEffect(() => {
-    if (activeTab === "active") setPage(1);
-    else setTrashPage(1);
+    if (activeTab === "trash") fetchDeletedBatches();
+  }, [activeTab, fetchDeletedBatches]);
+
+  useEffect(() => {
+    setPage(1);
+    setTrashPage(1);
   }, [activeTab]);
 
-  // =========================
-  // CRUD HANDLERS
-  // =========================
+  // ==========================
+  // CRUD
+  // ==========================
   const handleAddBatch = async (data) => {
     try {
-      const res = await batchService.create(data);
-
-      // if you are on page 1, show instantly
-      if (activeTab === "active" && page === 1) {
-        setBatches((prev) => [res.data.batch, ...prev]);
-      } else {
-        // otherwise just refresh
-        await fetchBatches();
-      }
-
+      await batchService.create(data);
+      await fetchBatches();
       setOpenAdd(false);
     } catch (error) {
       console.error("Add batch failed", error);
@@ -197,11 +158,10 @@ const AdminBatches = () => {
 
   const handleUpdateBatch = async (data) => {
     try {
-      const res = await batchService.update(selectedBatch._id, data);
+      if (!selectedBatch?._id) return;
 
-      setBatches((prev) =>
-        prev.map((b) => (b._id === selectedBatch._id ? res.data.batch : b)),
-      );
+      await batchService.update(selectedBatch._id, data);
+      await fetchBatches();
 
       setOpenEdit(false);
       setSelectedBatch(null);
@@ -223,11 +183,12 @@ const AdminBatches = () => {
 
   const handleDelete = async () => {
     try {
+      if (!selectedBatch?._id) return;
+
       await batchService.softDelete(selectedBatch._id);
 
       setBatches((prev) => prev.filter((b) => b._id !== selectedBatch._id));
 
-      // refresh trash if user goes there
       await fetchDeletedBatches();
 
       setOpenDelete(false);
@@ -240,11 +201,12 @@ const AdminBatches = () => {
 
   const handleRestore = async (id) => {
     try {
+      if (!id) return;
+
       await batchService.restore(id);
 
       setDeletedBatches((prev) => prev.filter((b) => b._id !== id));
 
-      // refresh active batches
       await fetchBatches();
     } catch (error) {
       console.error("Restore failed", error);
@@ -254,11 +216,13 @@ const AdminBatches = () => {
 
   const handleToggleStatus = async (id) => {
     try {
+      if (!id) return;
+
       const res = await batchService.toggleStatus(id);
 
       setBatches((prev) =>
         prev.map((b) =>
-          b._id === id ? { ...b, isActive: res.data.isActive } : b,
+          b._id === id ? { ...b, isActive: res.data?.isActive } : b,
         ),
       );
     } catch (error) {
@@ -267,25 +231,68 @@ const AdminBatches = () => {
     }
   };
 
+  // ==========================
+  // Room Assign
+  // ==========================
+  const handleOpenAssignRoom = (batch) => {
+    setSelectedBatch(batch);
+    setOpenAssignRoom(true);
+  };
+
+  const handleRoomAssigned = async () => {
+    await fetchBatches();
+  };
+
   const filteredBatches = activeTab === "active" ? batches : deletedBatches;
+  const loading = activeTab === "active" ? loadingActive : loadingTrash;
+
+  const getRoomLabel = (batch) => {
+    const room =
+      batch?.room ||
+      batch?.roomUnit ||
+      batch?.assignedRoom ||
+      batch?.roomId ||
+      batch?.roomID;
+
+    if (!room) return "—";
+
+    if (typeof room === "string") return "Assigned";
+
+    const parts = [
+      room?.location,
+      room?.buildingName,
+      room?.floorNumber ? `Floor ${room.floorNumber}` : null,
+      room?.roomNumber,
+      room?.name,
+      room?.roomName,
+    ].filter(Boolean);
+
+    return parts.length ? parts.join(" • ") : "Assigned";
+  };
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
+          <h1 className="text-2xl font-semibold text-black/90 dark:text-white">
             Batches
           </h1>
-          <p className="text-sm text-[#3F72AF] dark:text-[#DBE2EF]">
-            Manage all LMS batches
+          <p className="text-sm text-black/50 dark:text-white/50">
+            Manage all LMS batches (with rooms)
           </p>
         </div>
 
         {activeTab === "active" && (
           <button
             onClick={() => setOpenAdd(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#3F72AF] text-white hover:bg-[#112D4E] dark:bg-[#3F72AF] dark:hover:bg-[#DBE2EF] dark:hover:text-[#112D4E] transition-colors shadow-md"
+            className="
+              inline-flex items-center gap-2
+              rounded-2xl bg-black px-5 py-2.5
+              text-sm font-semibold text-white
+              hover:bg-black/80 transition
+              dark:bg-white dark:text-black dark:hover:bg-white/80
+            "
           >
             <Plus size={18} />
             Add Batch
@@ -294,33 +301,47 @@ const AdminBatches = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-4 border-b border-[#DBE2EF] dark:border-[#3F72AF]">
+      <div className="flex gap-2">
         <button
           onClick={() => setActiveTab("active")}
-          className={`pb-2 px-2 transition-colors ${
-            activeTab === "active"
-              ? "border-b-2 border-[#3F72AF] font-medium text-[#3F72AF] dark:text-[#DBE2EF] dark:border-[#DBE2EF]"
-              : "text-[#3F72AF] dark:text-[#DBE2EF]"
-          }`}
+          className={`
+            rounded-2xl px-4 py-2 text-sm font-semibold transition
+            ${
+              activeTab === "active"
+                ? "bg-black text-white dark:bg-white dark:text-black"
+                : "bg-black/[0.04] text-black/60 hover:bg-black/[0.07] dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/10"
+            }
+          `}
         >
           Active
         </button>
 
         <button
           onClick={() => setActiveTab("trash")}
-          className={`pb-2 px-2 transition-colors ${
-            activeTab === "trash"
-              ? "border-b-2 border-red-600 font-medium text-red-600 dark:text-red-400 dark:border-red-400"
-              : "text-[#3F72AF] dark:text-[#DBE2EF]"
-          }`}
+          className={`
+            rounded-2xl px-4 py-2 text-sm font-semibold transition
+            ${
+              activeTab === "trash"
+                ? "bg-red-600 text-white"
+                : "bg-black/[0.04] text-black/60 hover:bg-black/[0.07] dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/10"
+            }
+          `}
         >
           Trash
         </button>
       </div>
 
       {/* Search */}
-      <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-4 flex items-center gap-3 shadow-sm">
-        <Search size={18} className="text-[#3F72AF] dark:text-[#DBE2EF]" />
+      <div
+        className="
+          rounded-2xl border border-black/10 dark:border-white/10
+          bg-white/80 dark:bg-[#141414]/70
+          backdrop-blur-xl
+          p-4 shadow-sm
+          flex items-center gap-3
+        "
+      >
+        <Search size={18} className="text-black/50 dark:text-white/50" />
         <input
           type="text"
           placeholder="Search batches..."
@@ -330,68 +351,32 @@ const AdminBatches = () => {
             setPage(1);
             setTrashPage(1);
           }}
-          className="w-full outline-none text-sm bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
+          className="
+            w-full bg-transparent outline-none text-sm
+            text-black/80 dark:text-white
+            placeholder:text-black/40 dark:placeholder:text-white/30
+          "
         />
-      </div>
-
-      {/* Filters */}
-      <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-4 flex flex-wrap items-center gap-3 shadow-sm">
-        <select
-          value={filterField}
-          onChange={(e) => setFilterField(e.target.value)}
-          className="text-sm border rounded-lg px-2 py-1 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
-        >
-          <option value="status">Status</option>
-          <option value="isActive">Is Active</option>
-          <option value="name">Name</option>
-        </select>
-
-        <input
-          value={filterValue}
-          onChange={(e) => setFilterValue(e.target.value)}
-          placeholder="Filter value"
-          className="text-sm border rounded-lg px-2 py-1 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
-        />
-
-        <button
-          onClick={addFilter}
-          className="px-3 py-1 rounded-lg bg-[#3F72AF] text-white text-sm"
-        >
-          Add Filter
-        </button>
-
-        <button
-          onClick={clearFilters}
-          className="px-3 py-1 rounded-lg border text-sm"
-        >
-          Clear Filters
-        </button>
-
-        <div className="flex flex-wrap gap-2">
-          {Object.keys(filters).map((key) => (
-            <button
-              key={key}
-              onClick={() => removeFilter(key)}
-              className="px-2 py-1 text-xs rounded-lg bg-[#DBE2EF] dark:bg-[#0a1f3a]"
-            >
-              {key}: {String(filters[key])} ×
-            </button>
-          ))}
-        </div>
       </div>
 
       {/* Table */}
-      <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] overflow-hidden shadow-lg">
+      <div
+        className="
+          overflow-hidden rounded-2xl border border-black/10 dark:border-white/10
+          bg-white dark:bg-[#101010]
+          shadow-sm
+        "
+      >
         {loading ? (
-          <div className="p-6 text-center text-gray-500">
+          <div className="p-10 text-center text-black/50 dark:text-white/50">
             Loading batches...
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-[#DBE2EF] dark:bg-[#3F72AF] border-b border-[#DBE2EF] dark:border-[#3F72AF]">
+              <thead className="bg-black/[0.03] dark:bg-white/5">
                 <tr>
-                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                  <th className="px-6 py-4 text-left font-semibold text-black/70 dark:text-white/70">
                     <SortHeader
                       label="Batch"
                       field="name"
@@ -401,15 +386,19 @@ const AdminBatches = () => {
                     />
                   </th>
 
-                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                  <th className="px-6 py-4 text-left font-semibold text-black/70 dark:text-white/70">
                     Course
                   </th>
 
-                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                  <th className="px-6 py-4 text-left font-semibold text-black/70 dark:text-white/70">
                     Tutor
                   </th>
 
-                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                  <th className="px-6 py-4 text-left font-semibold text-black/70 dark:text-white/70">
+                    Room
+                  </th>
+
+                  <th className="px-6 py-4 text-left font-semibold text-black/70 dark:text-white/70">
                     <SortHeader
                       label="Start Date"
                       field="startDate"
@@ -419,23 +408,19 @@ const AdminBatches = () => {
                     />
                   </th>
 
-                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
-                    End Date
-                  </th>
-
-                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                  <th className="px-6 py-4 text-left font-semibold text-black/70 dark:text-white/70">
                     Students
                   </th>
 
-                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                  <th className="px-6 py-4 text-left font-semibold text-black/70 dark:text-white/70">
                     Status
                   </th>
 
-                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                  <th className="px-6 py-4 text-left font-semibold text-black/70 dark:text-white/70">
                     Is Active
                   </th>
 
-                  <th className="px-6 py-3 text-right text-[#112D4E] dark:text-[#DBE2EF]">
+                  <th className="px-6 py-4 text-right font-semibold text-black/70 dark:text-white/70">
                     Actions
                   </th>
                 </tr>
@@ -445,119 +430,154 @@ const AdminBatches = () => {
                 {filteredBatches.map((batch) => (
                   <tr
                     key={batch._id}
-                    className="border-b border-[#DBE2EF] dark:border-[#3F72AF] last:border-none hover:bg-[#DBE2EF] dark:hover:bg-[#0a1f3a] transition-colors"
+                    className="
+                      border-t border-black/5 dark:border-white/10
+                      hover:bg-black/[0.02] dark:hover:bg-white/[0.03]
+                      transition
+                    "
                   >
-                    <td className="px-6 py-4 font-medium text-[#112D4E] dark:text-[#DBE2EF] flex items-center gap-2">
-                      <Users size={16} className="text-[#3F72AF]" />
-                      {batch.name}
+                    <td className="px-6 py-4 font-semibold text-black/80 dark:text-white">
+                      <div className="flex items-center gap-2">
+                        <Users
+                          size={16}
+                          className="text-black/40 dark:text-white/40"
+                        />
+                        {batch?.name || "—"}
+                      </div>
                     </td>
 
-                    <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
-                      {batch.course?.title || "—"}
+                    <td className="px-6 py-4 text-black/60 dark:text-white/60">
+                      {batch?.course?.title || "—"}
                     </td>
 
-                    <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
-                      {batch.tutor?.name || "—"}
+                    <td className="px-6 py-4 text-black/60 dark:text-white/60">
+                      {batch?.tutor?.name || "—"}
                     </td>
 
-                    <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
-                      {batch.startDate
+                    <td className="px-6 py-4 text-black/60 dark:text-white/60">
+                      {getRoomLabel(batch)}
+                    </td>
+
+                    <td className="px-6 py-4 text-black/60 dark:text-white/60">
+                      {batch?.startDate
                         ? new Date(batch.startDate).toLocaleDateString()
                         : "—"}
                     </td>
 
-                    <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
-                      {batch.endDate
-                        ? new Date(batch.endDate).toLocaleDateString()
-                        : "—"}
-                    </td>
-
-                    <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
-                      {batch.studentsCount ?? 0}
+                    <td className="px-6 py-4 text-black/60 dark:text-white/60">
+                      {batch?.studentsCount ?? 0}
                     </td>
 
                     <td className="px-6 py-4">
                       <span
-                        className={`px-2 py-1 text-xs rounded-md capitalize ${
-                          batch.status === "running"
-                            ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
-                            : batch.status === "completed"
-                              ? "bg-gray-100 text-gray-700 dark:bg-gray-600 dark:text-gray-300"
-                              : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300"
-                        }`}
+                        className={`
+                          inline-flex items-center rounded-2xl px-3 py-1 text-xs font-semibold capitalize
+                          ${
+                            batch?.status === "running"
+                              ? "bg-green-500/10 text-green-700 dark:text-green-300"
+                              : batch?.status === "completed"
+                                ? "bg-white/10 text-black/70 dark:text-white/70"
+                                : "bg-yellow-500/10 text-yellow-700 dark:text-yellow-300"
+                          }
+                        `}
                       >
-                        {batch.status || "upcoming"}
+                        {batch?.status || "upcoming"}
                       </span>
                     </td>
 
                     <td className="px-6 py-4">
                       <span
-                        className={`px-2 py-1 text-xs rounded-md ${
-                          batch.isActive
-                            ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
-                            : "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"
-                        }`}
+                        className={`
+                          inline-flex items-center rounded-2xl px-3 py-1 text-xs font-semibold
+                          ${
+                            batch?.isActive
+                              ? "bg-green-500/10 text-green-700 dark:text-green-300"
+                              : "bg-red-500/10 text-red-700 dark:text-red-300"
+                          }
+                        `}
                       >
-                        {batch.isActive ? "Yes" : "No"}
+                        {batch?.isActive ? "Yes" : "No"}
                       </span>
                     </td>
 
-                    <td className="px-6 py-4 text-right space-x-2">
-                      {activeTab === "active" ? (
-                        <>
-                          <button
-                            onClick={() => handleView(batch)}
-                            className="text-[#3F72AF] hover:text-[#112D4E] dark:text-[#DBE2EF] dark:hover:text-white text-sm transition-colors"
-                            title="View"
-                          >
-                            <Eye size={16} className="inline" />
-                          </button>
+                    <td className="px-6 py-4">
+                      <div className="flex justify-end gap-2">
+                        {activeTab === "active" ? (
+                          <>
+                            <button
+                              onClick={() => handleView(batch)}
+                              className="h-9 w-9 inline-flex items-center justify-center rounded-2xl border border-black/10 dark:border-white/10 bg-white dark:bg-white/5 hover:bg-black/[0.03] dark:hover:bg-white/10 transition"
+                              title="View"
+                            >
+                              <Eye
+                                size={16}
+                                className="text-black/70 dark:text-white/70"
+                              />
+                            </button>
 
-                          <button
-                            onClick={() => {
-                              setSelectedBatch(batch);
-                              setOpenManageStudents(true);
-                            }}
-                            className="text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 text-sm transition-colors"
-                            title="Manage Students"
-                          >
-                            <UserCog size={16} className="inline" />
-                          </button>
+                            <button
+                              onClick={() => {
+                                setSelectedBatch(batch);
+                                setOpenManageStudents(true);
+                              }}
+                              className="h-9 w-9 inline-flex items-center justify-center rounded-2xl border border-black/10 dark:border-white/10 bg-white dark:bg-white/5 hover:bg-black/[0.03] dark:hover:bg-white/10 transition"
+                              title="Manage Students"
+                            >
+                              <UserCog
+                                size={16}
+                                className="text-black/70 dark:text-white/70"
+                              />
+                            </button>
 
-                          <button
-                            onClick={() => handleEdit(batch)}
-                            className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-sm transition-colors"
-                            title="Edit"
-                          >
-                            <Edit size={16} className="inline" />
-                          </button>
+                            {/* <button
+                              onClick={() => handleOpenAssignRoom(batch)}
+                              className="h-9 w-9 inline-flex items-center justify-center rounded-2xl border border-black/10 dark:border-white/10 bg-white dark:bg-white/5 hover:bg-black/[0.03] dark:hover:bg-white/10 transition"
+                              title="Assign Room"
+                            >
+                              <Building2
+                                size={16}
+                                className="text-black/70 dark:text-white/70"
+                              />
+                            </button> */}
 
-                          <button
-                            onClick={() => handleToggleStatus(batch._id)}
-                            className="text-yellow-600 hover:text-yellow-700 dark:text-yellow-400 dark:hover:text-yellow-300 text-sm transition-colors"
-                            title="Toggle Status"
-                          >
-                            {batch.isActive ? "Disable" : "Enable"}
-                          </button>
+                            <button
+                              onClick={() => handleEdit(batch)}
+                              className="h-9 w-9 inline-flex items-center justify-center rounded-2xl border border-black/10 dark:border-white/10 bg-white dark:bg-white/5 hover:bg-black/[0.03] dark:hover:bg-white/10 transition"
+                              title="Edit"
+                            >
+                              <Edit
+                                size={16}
+                                className="text-black/70 dark:text-white/70"
+                              />
+                            </button>
 
+                            <button
+                              onClick={() => handleToggleStatus(batch._id)}
+                              className="rounded-2xl px-3 py-2 text-xs font-semibold bg-black text-white hover:bg-black/80 dark:bg-white dark:text-black dark:hover:bg-white/80 transition"
+                              title="Toggle Active"
+                            >
+                              {batch?.isActive ? "Disable" : "Enable"}
+                            </button>
+
+                            <button
+                              onClick={() => handleDeleteClick(batch)}
+                              className="h-9 w-9 inline-flex items-center justify-center rounded-2xl bg-red-600 hover:bg-red-700 transition"
+                              title="Delete"
+                            >
+                              <Trash2 size={16} className="text-white" />
+                            </button>
+                          </>
+                        ) : (
                           <button
-                            onClick={() => handleDeleteClick(batch)}
-                            className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-sm transition-colors"
-                            title="Delete"
+                            onClick={() => handleRestore(batch._id)}
+                            className="inline-flex items-center gap-2 rounded-2xl bg-green-600 px-4 py-2 text-xs font-semibold text-white hover:bg-green-700 transition"
+                            title="Restore"
                           >
-                            <Trash2 size={16} className="inline" />
+                            <RotateCcw size={16} />
+                            Restore
                           </button>
-                        </>
-                      ) : (
-                        <button
-                          onClick={() => handleRestore(batch._id)}
-                          className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 text-sm flex items-center gap-1 transition-colors"
-                          title="Restore"
-                        >
-                          <RotateCcw size={16} />
-                          Restore
-                        </button>
-                      )}
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -567,13 +587,12 @@ const AdminBatches = () => {
         )}
 
         {!loading && filteredBatches.length === 0 && (
-          <div className="p-6 text-center text-[#3F72AF] dark:text-[#DBE2EF] text-sm">
+          <div className="p-10 text-center text-black/50 dark:text-white/50 text-sm">
             No batches found
           </div>
         )}
       </div>
 
-      {/* Pagination */}
       <Pagination
         page={activeTab === "active" ? page : trashPage}
         totalPages={activeTab === "active" ? totalPages : trashTotalPages}
@@ -625,10 +644,19 @@ const AdminBatches = () => {
           setOpenManageStudents(false);
           setSelectedBatch(null);
 
-          // refresh count
           if (activeTab === "active") await fetchBatches();
         }}
       />
+
+      {/* <AssignBatchRoomModal
+        open={openAssignRoom}
+        batch={selectedBatch}
+        onClose={() => {
+          setOpenAssignRoom(false);
+          setSelectedBatch(null);
+        }}
+        onAssigned={handleRoomAssigned}
+      /> */}
     </div>
   );
 };
