@@ -16,4 +16,7 @@ export const batchService = {
   toggleStatus: (id) => axiosInstance.put(`/batch/toggle-status/${id}`),
 
   getAllBatches: () => axiosInstance.get("/batch/all"),
+
+  getByCourse: (courseId) =>
+    axiosInstance.get(`/batch/by-course/${courseId}`),
 };

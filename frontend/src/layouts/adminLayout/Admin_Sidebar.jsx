@@ -15,6 +15,8 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  ClipboardCheck,
+  CalendarCheck2,
 } from "lucide-react";
 
 const AdminSidebar = ({
@@ -36,6 +38,7 @@ const AdminSidebar = ({
     { name: "Rooms", icon: Building2, path: "/admin/rooms" },
     { name: "Visitors", icon: UserRound, path: "/admin/visitor" },
     { name: "Report", icon: FileText, path: "/admin/reports" },
+    { name: "Attandance", icon: CalendarCheck2, path: "/admin/attandance" },
   ];
 
   return (
