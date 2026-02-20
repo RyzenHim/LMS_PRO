@@ -1,5 +1,5 @@
-import React, { useEffect } from "react";
-import { AlertTriangle, X } from "lucide-react";
+import { useEffect } from "react";
+import { AlertTriangle, X, Trash2 } from "lucide-react";
 
 const ConfirmDeleteModal = ({
   open,
@@ -8,89 +8,109 @@ const ConfirmDeleteModal = ({
   title = "this item",
   loading = false,
 }) => {
+  // ESC to close
   useEffect(() => {
     if (!open) return;
-
     const handleEsc = (e) => {
-      if (e.key === "Escape") onClose?.();
+      if (e.key === "Escape" && !loading) onClose?.();
     };
-
     window.addEventListener("keydown", handleEsc);
     return () => window.removeEventListener("keydown", handleEsc);
-  }, [open, onClose]);
+  }, [open, onClose, loading]);
+
+  // Freeze body scroll
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
 
   if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-      {/* Backdrop */}
+      {/* Backdrop — blur + dim */}
       <div
-        onClick={onClose}
-        className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
+        onClick={() => !loading && onClose?.()}
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-[#DBE2EF] dark:border-slate-700 bg-white dark:bg-[#112D4E] shadow-2xl animate-in fade-in zoom-in duration-200">
+      <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#112D4E] shadow-2xl shadow-black/30 animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="flex items-start justify-between gap-4 p-5 border-b border-[#DBE2EF] dark:border-slate-700 bg-gradient-to-r from-red-50 to-white dark:from-red-500/10 dark:to-slate-900">
+        <div className="flex items-start justify-between gap-4 p-5 border-b border-slate-200 dark:border-slate-700 bg-red-50/80 dark:bg-red-500/10">
           <div className="flex items-start gap-3">
-            <div className="rounded-xl bg-red-100 dark:bg-red-500/20 p-2">
-              <AlertTriangle className="text-red-600 dark:text-red-300" />
+            <div className="rounded-xl bg-red-100 dark:bg-red-500/20 p-2.5">
+              <AlertTriangle
+                size={18}
+                className="text-red-600 dark:text-red-400"
+              />
             </div>
-
             <div>
-              <h2 className="text-base font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
-                Confirm Delete
+              <h2 className="text-base font-bold text-slate-800 dark:text-[#DBE2EF]">
+                Move to Trash
               </h2>
-              <p className="text-xs text-[#3F72AF] dark:text-slate-300 mt-0.5">
-                This action cannot be undone
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                You can restore this from the Trash tab
               </p>
             </div>
           </div>
-
           <button
-            onClick={onClose}
+            onClick={() => !loading && onClose?.()}
             disabled={loading}
-            className="p-2 rounded-xl hover:bg-[#DBE2EF] dark:hover:bg-slate-800 text-[#3F72AF] dark:text-[#DBE2EF] disabled:opacity-60"
-            title="Close"
+            className="p-1.5 rounded-xl hover:bg-red-100 dark:hover:bg-slate-800 text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 disabled:opacity-60 transition"
           >
-            <X size={18} />
+            <X size={17} />
           </button>
         </div>
 
         {/* Body */}
         <div className="p-5">
-          <p className="text-sm leading-relaxed text-[#112D4E] dark:text-[#DBE2EF]">
-            Are you sure you want to delete{" "}
-            <span className="font-semibold text-red-600 dark:text-red-300">
+          <p className="text-sm leading-relaxed text-slate-700 dark:text-[#DBE2EF]">
+            Move{" "}
+            <span className="font-bold text-slate-900 dark:text-white">
               {title}
-            </span>
-            ?
+            </span>{" "}
+            to trash?
           </p>
-
-          <div className="mt-3 rounded-xl border border-red-200 bg-red-50 dark:border-red-500/30 dark:bg-red-500/10 p-3">
-            <p className="text-xs text-red-700 dark:text-red-200">
-              Deleting will permanently remove this item from the system.
+          <div className="mt-3 rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-4 py-3">
+            <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
+              This visitor will be moved to the Trash tab and hidden from all
+              other views. You can restore it at any time.
             </p>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 p-5 border-t border-[#DBE2EF] dark:border-slate-700 bg-white/60 dark:bg-slate-900/40">
+        <div className="flex items-center justify-end gap-3 p-5 border-t border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/40">
           <button
-            onClick={onClose}
+            onClick={() => !loading && onClose?.()}
             disabled={loading}
-            className="px-4 py-2.5 rounded-xl border border-[#DBE2EF] dark:border-slate-700 text-sm font-semibold text-[#112D4E] dark:text-[#DBE2EF] hover:bg-[#DBE2EF] dark:hover:bg-slate-800 disabled:opacity-60 transition"
+            className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-semibold text-slate-700 dark:text-[#DBE2EF] hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-60 transition"
           >
             Cancel
           </button>
-
           <button
             onClick={onConfirm}
             disabled={loading}
-            className="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-semibold shadow-md disabled:opacity-60 transition"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-bold shadow-sm shadow-red-600/20 disabled:opacity-60 transition active:scale-95"
           >
-            {loading ? "Deleting..." : "Delete"}
+            {loading ? (
+              <span className="inline-flex items-center gap-2">
+                <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Moving...
+              </span>
+            ) : (
+              <>
+                <Trash2 size={14} />
+                Move to Trash
+              </>
+            )}
           </button>
         </div>
       </div>

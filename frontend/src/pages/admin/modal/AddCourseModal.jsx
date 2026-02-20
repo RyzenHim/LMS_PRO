@@ -10,7 +10,7 @@ const AddCourseModal = ({ open, onClose, onSubmit }) => {
     tutor: "",
     tutorName: "",
     price: "",
-    duration: "",
+    // duration: "",
     level: "beginner",
     status: "draft",
     startDate: "",
@@ -81,7 +81,7 @@ const AddCourseModal = ({ open, onClose, onSubmit }) => {
       tutor: "",
       tutorName: "",
       price: "",
-      duration: "",
+      // duration: "",
       level: "beginner",
       status: "draft",
       startDate: "",
@@ -179,7 +179,7 @@ const AddCourseModal = ({ open, onClose, onSubmit }) => {
               />
             </div>
 
-            <div>
+            {/* <div>
               <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
                 Duration (hours)
               </label>
@@ -192,7 +192,7 @@ const AddCourseModal = ({ open, onClose, onSubmit }) => {
                 min="0"
                 className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               />
-            </div>
+            </div> */}
 
             <div>
               <label className="text-sm font-medium text-gray-600 dark:text-gray-300">

@@ -1,161 +1,131 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Search, Plus, Edit, Trash2, RotateCcw } from "lucide-react";
 
 import { skillService } from "../../services/skillService";
 import ConfirmDeleteModal from "./modal/ConfirmDeleteModal";
 import Pagination from "../../components/Pagination";
-import SortHeader from "../../components/SortHeader";
+
+//#101010
 
 const AdminSkills = () => {
-  const [search, setSearch] = useState("");
+  // ── Data ──────────────────────────────────────────
+  const [skills, setSkills] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const [skills, setSkills] = useState([]);
-  const [deletedSkills, setDeletedSkills] = useState([]);
+  // ── Tabs ──────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState("active");
 
-  const [page, setPage] = useState(1);
-  const [trashPage, setTrashPage] = useState(1);
+  // ── Search ────────────────────────────────────────
+  const [search, setSearch] = useState("");
 
-  const [totalPages, setTotalPages] = useState(1);
-  const [trashTotalPages, setTrashTotalPages] = useState(1);
-
+  // ── Sort ──────────────────────────────────────────
   const [sortBy, setSortBy] = useState("name");
   const [sortOrder, setSortOrder] = useState("asc");
 
-  const [filters, setFilters] = useState({});
-  const [filterField, setFilterField] = useState("category");
-  const [filterValue, setFilterValue] = useState("");
+  // ── Filters ───────────────────────────────────────
+  const [filterIsActive, setFilterIsActive] = useState(""); // "" | "true" | "false"
+  const [filterCategory, setFilterCategory] = useState("");
 
-  const [activeTab, setActiveTab] = useState("active");
+  // ── Pagination ────────────────────────────────────
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
+  // ── Modals ────────────────────────────────────────
   const [openAdd, setOpenAdd] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
-
   const [selectedSkill, setSelectedSkill] = useState(null);
 
-  const [form, setForm] = useState({
-    name: "",
-    description: "",
-    category: "",
-  });
+  // ── Form ──────────────────────────────────────────
+  const [form, setForm] = useState({ name: "", description: "", category: "" });
 
-  // ✅ SORT
-  const handleSort = (field) => {
-    if (sortBy === field) {
-      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
-    } else {
-      setSortBy(field);
-      setSortOrder("asc");
-    }
-    setPage(1);
-    setTrashPage(1);
-  };
-
-  // ✅ FILTERS
-  const addFilter = () => {
-    if (!filterField || !filterValue) return;
-    setFilters((prev) => ({ ...prev, [filterField]: filterValue }));
-    setFilterValue("");
-    setPage(1);
-    setTrashPage(1);
-  };
-
-  const removeFilter = (field) => {
-    setFilters((prev) => {
-      const next = { ...prev };
-      delete next[field];
-      return next;
-    });
-    setPage(1);
-    setTrashPage(1);
-  };
-
-  const clearFilters = () => {
-    setFilters({});
-    setPage(1);
-    setTrashPage(1);
-  };
-
-  // ✅ API CALLS
+  // ─────────────────────────────────────────────────
+  // FETCH
+  // ─────────────────────────────────────────────────
   const fetchSkills = async () => {
     setLoading(true);
     try {
-      const res = await skillService.getAll({
+      const params = {
         page,
         limit: 10,
         search,
         sortBy,
         sortOrder,
-        ...filters,
-      });
+      };
 
-      setSkills(res.data.skills || []);
-      setTotalPages(res.data.totalPages || 1);
+      // Only send isActive filter on active tab
+      if (activeTab === "active" && filterIsActive !== "") {
+        params.isActive = filterIsActive;
+      }
+
+      if (filterCategory.trim()) {
+        params.category = filterCategory.trim();
+      }
+
+      const fn =
+        activeTab === "active" ? skillService.getAll : skillService.getDeleted;
+      const res = await fn(params);
+
+      const data = res?.data ?? res;
+      setSkills(data?.skills ?? []);
+      setTotalPages(data?.totalPages ?? 1);
     } catch (error) {
-      console.error("Error fetching skills", error);
+      console.error("Fetch skills error:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchDeletedSkills = async () => {
-    try {
-      const res = await skillService.getDeleted({
-        page: trashPage,
-        limit: 10,
-        search,
-        sortBy,
-        sortOrder,
-        ...filters,
-      });
-
-      setDeletedSkills(res.data.skills || []);
-      setTrashTotalPages(res.data.totalPages || 1);
-    } catch (error) {
-      console.error("Error fetching deleted skills", error);
-    }
-  };
-
-  // ✅ IMPORTANT: include filters
+  // Re-fetch whenever any of these change
   useEffect(() => {
-    if (activeTab === "active") fetchSkills();
-  }, [activeTab, page, search, sortBy, sortOrder, JSON.stringify(filters)]);
-
-  useEffect(() => {
-    if (activeTab === "trash") fetchDeletedSkills();
+    fetchSkills();
   }, [
     activeTab,
-    trashPage,
+    page,
     search,
     sortBy,
     sortOrder,
-    JSON.stringify(filters),
+    filterIsActive,
+    filterCategory,
   ]);
 
-  // ✅ reset page when tab changes
+  // Reset to page 1 when tab changes
   useEffect(() => {
     setPage(1);
-    setTrashPage(1);
   }, [activeTab]);
 
-  // ✅ CRUD
-  const handleAddSkill = async () => {
+  // ─────────────────────────────────────────────────
+  // SORT
+  // ─────────────────────────────────────────────────
+  const handleSort = (field) => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortBy(field);
+      setSortOrder("asc");
+    }
+    setPage(1);
+  };
+
+  // ─────────────────────────────────────────────────
+  // ADD
+  // ─────────────────────────────────────────────────
+  const handleAdd = async (e) => {
+    e.preventDefault();
     try {
       await skillService.create(form);
-
-      // Refresh list (best)
-      await fetchSkills();
-
       setForm({ name: "", description: "", category: "" });
       setOpenAdd(false);
+      fetchSkills();
     } catch (error) {
-      console.error("Add skill failed", error);
-      alert(error.response?.data?.message || "Failed to add skill");
+      alert(error?.response?.data?.message || "Failed to add skill");
     }
   };
 
-  const handleEdit = (skill) => {
+  // ─────────────────────────────────────────────────
+  // EDIT
+  // ─────────────────────────────────────────────────
+  const handleEditOpen = (skill) => {
     setSelectedSkill(skill);
     setForm({
       name: skill.name,
@@ -165,270 +135,343 @@ const AdminSkills = () => {
     setOpenEdit(true);
   };
 
-  const handleUpdateSkill = async () => {
+  const handleUpdate = async (e) => {
+    e.preventDefault();
     try {
       await skillService.update(selectedSkill._id, form);
-
-      await fetchSkills();
-
       setOpenEdit(false);
       setSelectedSkill(null);
-      setForm({ name: "", description: "", category: "" });
+      fetchSkills();
     } catch (error) {
-      console.error("Update failed", error);
-      alert(error.response?.data?.message || "Failed to update skill");
+      alert(error?.response?.data?.message || "Failed to update skill");
     }
   };
 
-  const handleDeleteClick = (skill) => {
-    setSelectedSkill(skill);
-    setOpenDelete(true);
-  };
-
+  // ─────────────────────────────────────────────────
+  // DELETE (soft)
+  // ─────────────────────────────────────────────────
   const handleDelete = async () => {
     try {
       await skillService.softDelete(selectedSkill._id);
-
-      await fetchSkills();
-      await fetchDeletedSkills();
-
       setOpenDelete(false);
       setSelectedSkill(null);
+      fetchSkills();
     } catch (error) {
-      console.error("Delete failed", error);
-      alert(error.response?.data?.message || "Failed to delete skill");
+      alert(error?.response?.data?.message || "Failed to delete skill");
     }
   };
 
+  // ─────────────────────────────────────────────────
+  // RESTORE
+  // ─────────────────────────────────────────────────
   const handleRestore = async (id) => {
     try {
       await skillService.restore(id);
-
-      await fetchSkills();
-      await fetchDeletedSkills();
+      fetchSkills();
     } catch (error) {
-      console.error("Restore failed", error);
-      alert(error.response?.data?.message || "Failed to restore skill");
+      alert(error?.response?.data?.message || "Failed to restore skill");
     }
   };
 
+  // ─────────────────────────────────────────────────
+  // TOGGLE STATUS
+  // ─────────────────────────────────────────────────
   const handleToggleStatus = async (id) => {
     try {
       await skillService.toggleStatus(id);
-      await fetchSkills();
+      fetchSkills();
     } catch (error) {
-      console.error("Toggle status failed", error);
-      alert(error.response?.data?.message || "Failed to toggle status");
+      alert(error?.response?.data?.message || "Failed to toggle status");
     }
   };
 
-  const filteredSkills = activeTab === "active" ? skills : deletedSkills;
+  // ─────────────────────────────────────────────────
+  // SORT ARROW HELPER
+  // ─────────────────────────────────────────────────
+  const SortArrow = ({ field }) => {
+    if (sortBy !== field)
+      return <span className="ml-1 text-xs opacity-30">↕</span>;
+    return (
+      <span className="ml-1 text-xs">{sortOrder === "asc" ? "↑" : "↓"}</span>
+    );
+  };
 
+  // ─────────────────────────────────────────────────
+  // SHARED INPUT STYLES (matching your other modals)
+  // ─────────────────────────────────────────────────
+  const inputCls =
+    "w-full px-3 py-2.5 rounded-xl border border-[#DBE2EF] dark:border-slate-700 bg-white/70 dark:bg-slate-800/70 text-slate-800 dark:text-[#DBE2EF] placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-[#3F72AF]/40 transition text-sm";
+
+  const selectCls =
+    "w-full px-3 py-2.5 rounded-xl border border-[#DBE2EF] dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-[#DBE2EF] outline-none focus:ring-2 focus:ring-[#3F72AF]/40 transition text-sm";
+
+  // ─────────────────────────────────────────────────
+  // RENDER
+  // ─────────────────────────────────────────────────
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
+    <div className="space-y-5 p-1">
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
+          <h1 className="text-2xl font-semibold text-[#212121] dark:text-[#DBE2EF]">
             Skills
           </h1>
-          <p className="text-sm text-[#3F72AF] dark:text-[#DBE2EF]">
+          <p className="text-sm text-[#3F72AF] dark:text-slate-400 mt-0.5">
             Manage skills for courses
           </p>
         </div>
 
         {activeTab === "active" && (
           <button
-            onClick={() => setOpenAdd(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#3F72AF] text-white hover:bg-[#112D4E] dark:bg-[#3F72AF] dark:hover:bg-[#DBE2EF] dark:hover:text-[#112D4E] transition-colors shadow-md"
+            onClick={() => {
+              setForm({ name: "", description: "", category: "" });
+              setOpenAdd(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#3F72AF] hover:bg-[#212121] text-white text-sm font-semibold transition shadow-sm"
           >
-            <Plus size={18} />
+            <Plus size={16} />
             Add Skill
           </button>
         )}
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-4 border-b border-[#DBE2EF] dark:border-[#3F72AF]">
+      {/* ── Tabs ── */}
+      <div className="flex gap-2 border-b border-[#DBE2EF] dark:border-slate-700 pb-0">
         <button
           onClick={() => setActiveTab("active")}
-          className={`pb-2 px-2 transition-colors ${
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition -mb-px ${
             activeTab === "active"
-              ? "border-b-2 border-[#3F72AF] font-medium text-[#3F72AF] dark:text-[#DBE2EF] dark:border-[#DBE2EF]"
-              : "text-[#3F72AF] dark:text-[#DBE2EF]"
+              ? "border-[#3F72AF] text-[#3F72AF] dark:text-[#DBE2EF] dark:border-[#DBE2EF]"
+              : "border-transparent text-slate-500 dark:text-slate-400 hover:text-[#3F72AF] dark:hover:text-[#DBE2EF]"
           }`}
         >
-          Active ({skills.length})
+          Active
         </button>
         <button
           onClick={() => setActiveTab("trash")}
-          className={`pb-2 px-2 transition-colors ${
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition -mb-px ${
             activeTab === "trash"
-              ? "border-b-2 border-red-600 font-medium text-red-600 dark:text-red-400 dark:border-red-400"
-              : "text-[#3F72AF] dark:text-[#DBE2EF]"
+              ? "border-red-500 text-red-500 dark:text-red-400 dark:border-red-400"
+              : "border-transparent text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400"
           }`}
         >
-          Trash ({deletedSkills.length})
+          Trash
         </button>
       </div>
 
-      {/* Search */}
-      <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-4 flex items-center gap-3 shadow-sm">
-        <Search size={18} className="text-[#3F72AF] dark:text-[#DBE2EF]" />
+      {/* ── Search bar ── */}
+      <div className="bg-white dark:bg-[#212121] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF]/50 p-3 flex items-center gap-3 shadow-sm">
+        <Search
+          size={16}
+          className="text-[#3F72AF] dark:text-slate-400 shrink-0"
+        />
         <input
           type="text"
-          placeholder="Search skills..."
+          placeholder="Search by name, category or description..."
           value={search}
           onChange={(e) => {
             setSearch(e.target.value);
             setPage(1);
-            setTrashPage(1);
           }}
-          className="w-full outline-none text-sm bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
+          className="w-full outline-none text-sm bg-transparent text-[#212121] dark:text-[#DBE2EF] placeholder:text-slate-400 dark:placeholder:text-slate-500"
         />
+        {search && (
+          <button
+            onClick={() => {
+              setSearch("");
+              setPage(1);
+            }}
+            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs shrink-0"
+          >
+            ✕
+          </button>
+        )}
       </div>
 
-      {/* Filters */}
-      <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-4 flex flex-wrap items-center gap-3 shadow-sm">
-        <select
-          value={filterField}
-          onChange={(e) => setFilterField(e.target.value)}
-          className="text-sm border rounded-lg px-2 py-1 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
-        >
-          <option value="category">Category</option>
-          <option value="isActive">Is Active</option>
-          <option value="name">Name</option>
-        </select>
+      {/* ── Filters ── */}
+      <div className="bg-white dark:bg-[#212121] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF]/50 p-4 shadow-sm">
+        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">
+          Filters
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* isActive filter — only useful on Active tab */}
+          {activeTab === "active" && (
+            <div>
+              <label className="block text-xs font-medium text-[#212121] dark:text-[#DBE2EF] mb-1">
+                Status
+              </label>
+              <select
+                value={filterIsActive}
+                onChange={(e) => {
+                  setFilterIsActive(e.target.value);
+                  setPage(1);
+                }}
+                className={selectCls}
+              >
+                <option value="">All (Active & Inactive)</option>
+                <option value="true">Active only</option>
+                <option value="false">Inactive only</option>
+              </select>
+            </div>
+          )}
 
-        <input
-          value={filterValue}
-          onChange={(e) => setFilterValue(e.target.value)}
-          placeholder="Filter value"
-          className="text-sm border rounded-lg px-2 py-1 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
-        />
-
-        <button
-          onClick={addFilter}
-          className="px-3 py-1 rounded-lg bg-[#3F72AF] text-white text-sm"
-        >
-          Add Filter
-        </button>
-
-        <button
-          onClick={clearFilters}
-          className="px-3 py-1 rounded-lg border text-sm"
-        >
-          Clear Filters
-        </button>
-
-        <div className="flex flex-wrap gap-2">
-          {Object.keys(filters).map((key) => (
-            <button
-              key={key}
-              onClick={() => removeFilter(key)}
-              className="px-2 py-1 text-xs rounded-lg bg-[#DBE2EF] dark:bg-[#0a1f3a]"
-            >
-              {key}: {String(filters[key])} ×
-            </button>
-          ))}
+          {/* Category filter */}
+          <div>
+            <label className="block text-xs font-medium text-[#212121] dark:text-[#DBE2EF] mb-1">
+              Category
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. Frontend, Backend..."
+              value={filterCategory}
+              onChange={(e) => {
+                setFilterCategory(e.target.value);
+                setPage(1);
+              }}
+              className={inputCls}
+            />
+          </div>
         </div>
+
+        {/* Clear filters button */}
+        {(filterIsActive !== "" || filterCategory) && (
+          <button
+            onClick={() => {
+              setFilterIsActive("");
+              setFilterCategory("");
+              setPage(1);
+            }}
+            className="mt-3 text-xs text-red-500 hover:text-red-600 dark:text-red-400 underline"
+          >
+            Clear filters
+          </button>
+        )}
       </div>
 
-      {/* Table */}
-      <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] overflow-hidden shadow-lg">
+      {/* ── Table ── */}
+      <div className="bg-white dark:bg-[#212121] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF]/50 overflow-hidden shadow-sm">
         {loading ? (
-          <div className="p-6 text-center text-gray-500">Loading skills...</div>
+          <div className="p-8 text-center text-sm text-slate-500 dark:text-slate-400">
+            Loading skills...
+          </div>
+        ) : skills.length === 0 ? (
+          <div className="p-8 text-center text-sm text-slate-500 dark:text-slate-400">
+            No skills found
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-[#DBE2EF] dark:bg-[#3F72AF] border-b border-[#DBE2EF] dark:border-[#3F72AF]">
+              <thead className="bg-[#DBE2EF]/60 dark:bg-slate-800/60 border-b border-[#DBE2EF] dark:border-slate-700">
                 <tr>
-                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
-                    <SortHeader
-                      label="Name"
-                      field="name"
-                      sortBy={sortBy}
-                      sortOrder={sortOrder}
-                      onSort={handleSort}
-                    />
+                  <th className="px-5 py-3 text-left">
+                    <button
+                      onClick={() => handleSort("name")}
+                      className="font-semibold text-xs uppercase tracking-wider text-[#212121] dark:text-[#DBE2EF] flex items-center"
+                    >
+                      Name <SortArrow field="name" />
+                    </button>
                   </th>
-                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                  <th className="px-5 py-3 text-left font-semibold text-xs uppercase tracking-wider text-[#212121] dark:text-[#DBE2EF]">
                     Category
                   </th>
-                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                  <th className="px-5 py-3 text-left font-semibold text-xs uppercase tracking-wider text-[#212121] dark:text-[#DBE2EF]">
                     Description
                   </th>
-                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
-                    Is Active
-                  </th>
-                  <th className="px-6 py-3 text-right text-[#112D4E] dark:text-[#DBE2EF]">
+                  {activeTab === "active" && (
+                    <th className="px-5 py-3 text-left font-semibold text-xs uppercase tracking-wider text-[#212121] dark:text-[#DBE2EF]">
+                      Status
+                    </th>
+                  )}
+                  <th className="px-5 py-3 text-left font-semibold text-xs uppercase tracking-wider text-[#212121] dark:text-[#DBE2EF]">
                     Actions
                   </th>
                 </tr>
               </thead>
 
-              <tbody>
-                {filteredSkills.map((s) => (
+              <tbody className="divide-y divide-[#DBE2EF] dark:divide-slate-700/50">
+                {skills.map((skill) => (
                   <tr
-                    key={s._id}
-                    className="border-b border-[#DBE2EF] dark:border-[#3F72AF] last:border-none hover:bg-[#DBE2EF] dark:hover:bg-[#0a1f3a] transition-colors"
+                    key={skill._id}
+                    className="hover:bg-[#F9F7F7] dark:hover:bg-slate-800/40 transition-colors"
                   >
-                    <td className="px-6 py-4 font-medium text-[#112D4E] dark:text-[#DBE2EF] capitalize">
-                      {s.name}
+                    {/* Name */}
+                    <td className="px-5 py-3.5 font-medium text-[#212121] dark:text-[#DBE2EF] capitalize">
+                      {skill.name}
                     </td>
-                    <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
-                      {s.category || "—"}
+
+                    {/* Category */}
+                    <td className="px-5 py-3.5 text-[#3F72AF] dark:text-slate-300">
+                      {skill.category || "—"}
                     </td>
-                    <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
-                      {s.description || "—"}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`px-2 py-1 text-xs rounded-md ${
-                          s.isActive
-                            ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
-                            : "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"
-                        }`}
-                      >
-                        {s.isActive ? "Yes" : "No"}
+
+                    {/* Description */}
+                    <td className="px-5 py-3.5 text-slate-500 dark:text-slate-400 max-w-[240px]">
+                      <span className="line-clamp-1">
+                        {skill.description || "—"}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-right space-x-2">
-                      {activeTab === "active" ? (
-                        <>
-                          <button
-                            onClick={() => handleEdit(s)}
-                            className="text-[#3F72AF] hover:text-[#112D4E] dark:text-[#DBE2EF] dark:hover:text-white text-sm transition-colors"
-                            title="Edit"
-                          >
-                            <Edit size={16} className="inline" />
-                          </button>
 
-                          <button
-                            onClick={() => handleToggleStatus(s._id)}
-                            className="text-yellow-600 hover:text-yellow-700 dark:text-yellow-400 dark:hover:text-yellow-300 text-sm transition-colors"
-                            title="Toggle Status"
-                          >
-                            {s.isActive ? "Disable" : "Enable"}
-                          </button>
-
-                          <button
-                            onClick={() => handleDeleteClick(s)}
-                            className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-sm transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 size={16} className="inline" />
-                          </button>
-                        </>
-                      ) : (
-                        <button
-                          onClick={() => handleRestore(s._id)}
-                          className="text-green-600 hover:underline text-sm dark:text-green-400 flex items-center gap-1"
-                          title="Restore"
+                    {/* Status pill — active tab only */}
+                    {activeTab === "active" && (
+                      <td className="px-5 py-3.5">
+                        <span
+                          className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold ${
+                            skill.isActive
+                              ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
+                              : "bg-slate-100 text-slate-500 dark:bg-slate-700/60 dark:text-slate-400"
+                          }`}
                         >
-                          <RotateCcw size={16} />
+                          {skill.isActive ? "Active" : "Inactive"}
+                        </span>
+                      </td>
+                    )}
+
+                    {/* Actions */}
+                    <td className="px-5 py-3.5">
+                      {activeTab === "trash" ? (
+                        <button
+                          onClick={() => handleRestore(skill._id)}
+                          className="flex items-center gap-1.5 text-sm font-medium text-green-600 dark:text-green-400 hover:underline"
+                        >
+                          <RotateCcw size={14} />
                           Restore
                         </button>
+                      ) : (
+                        <div className="flex items-center gap-3">
+                          {/* Edit */}
+                          <button
+                            onClick={() => handleEditOpen(skill)}
+                            className="text-[#3F72AF] dark:text-slate-300 hover:text-[#212121] dark:hover:text-white transition"
+                            title="Edit"
+                          >
+                            <Edit size={15} />
+                          </button>
+
+                          {/* Toggle Active/Inactive */}
+                          <button
+                            onClick={() => handleToggleStatus(skill._id)}
+                            className={`text-xs font-medium transition ${
+                              skill.isActive
+                                ? "text-amber-600 dark:text-amber-400 hover:text-amber-700"
+                                : "text-green-600 dark:text-green-400 hover:text-green-700"
+                            }`}
+                            title={skill.isActive ? "Deactivate" : "Activate"}
+                          >
+                            {skill.isActive ? "Disable" : "Enable"}
+                          </button>
+
+                          {/* Delete */}
+                          <button
+                            onClick={() => {
+                              setSelectedSkill(skill);
+                              setOpenDelete(true);
+                            }}
+                            className="text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 transition"
+                            title="Delete"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -437,185 +480,45 @@ const AdminSkills = () => {
             </table>
           </div>
         )}
-
-        {!loading && filteredSkills.length === 0 && (
-          <div className="p-6 text-center text-[#3F72AF] dark:text-[#DBE2EF] text-sm">
-            No skills found
-          </div>
-        )}
       </div>
 
-      {/* Pagination */}
-      <Pagination
-        page={activeTab === "active" ? page : trashPage}
-        totalPages={activeTab === "active" ? totalPages : trashTotalPages}
-        onPageChange={(p) =>
-          activeTab === "active" ? setPage(p) : setTrashPage(p)
-        }
-      />
+      {/* ── Pagination ── */}
+      {!loading && (
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+        />
+      )}
 
-      {/* Add Modal */}
+      {/* ── Add Modal ── */}
       {openAdd && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-[#112D4E] rounded-xl p-6 w-full max-w-md shadow-2xl border border-[#DBE2EF] dark:border-[#3F72AF]">
-            <h2 className="text-lg font-semibold text-[#112D4E] dark:text-[#DBE2EF] mb-4">
-              Add Skill
-            </h2>
-
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleAddSkill();
-              }}
-              className="space-y-4"
-            >
-              <div>
-                <label className="text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF]">
-                  Name *
-                </label>
-                <input
-                  type="text"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  required
-                  className="w-full px-3 py-2 border border-[#DBE2EF] dark:border-[#3F72AF] rounded-lg bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
-                />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF]">
-                  Category
-                </label>
-                <input
-                  type="text"
-                  value={form.category}
-                  onChange={(e) =>
-                    setForm({ ...form, category: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-[#DBE2EF] dark:border-[#3F72AF] rounded-lg bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
-                />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF]">
-                  Description
-                </label>
-                <textarea
-                  value={form.description}
-                  onChange={(e) =>
-                    setForm({ ...form, description: e.target.value })
-                  }
-                  rows="3"
-                  className="w-full px-3 py-2 border border-[#DBE2EF] dark:border-[#3F72AF] rounded-lg bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
-                />
-              </div>
-
-              <div className="flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOpenAdd(false);
-                    setForm({ name: "", description: "", category: "" });
-                  }}
-                  className="px-4 py-2 border border-[#DBE2EF] dark:border-[#3F72AF] rounded-lg text-[#3F72AF] dark:text-[#DBE2EF] hover:bg-[#DBE2EF] dark:hover:bg-[#3F72AF] transition-colors"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-[#3F72AF] text-white rounded-lg hover:bg-[#112D4E] dark:bg-[#3F72AF] dark:hover:bg-[#DBE2EF] dark:hover:text-[#112D4E] transition-colors"
-                >
-                  Add Skill
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <SimpleModal
+          title="Add Skill"
+          form={form}
+          setForm={setForm}
+          onSubmit={handleAdd}
+          onClose={() => setOpenAdd(false)}
+          submitLabel="Add Skill"
+        />
       )}
 
-      {/* Edit Modal */}
+      {/* ── Edit Modal ── */}
       {openEdit && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-[#112D4E] rounded-xl p-6 w-full max-w-md shadow-2xl border border-[#DBE2EF] dark:border-[#3F72AF]">
-            <h2 className="text-lg font-semibold text-[#112D4E] dark:text-[#DBE2EF] mb-4">
-              Edit Skill
-            </h2>
-
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleUpdateSkill();
-              }}
-              className="space-y-4"
-            >
-              <div>
-                <label className="text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF]">
-                  Name *
-                </label>
-                <input
-                  type="text"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  required
-                  className="w-full px-3 py-2 border border-[#DBE2EF] dark:border-[#3F72AF] rounded-lg bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
-                />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF]">
-                  Category
-                </label>
-                <input
-                  type="text"
-                  value={form.category}
-                  onChange={(e) =>
-                    setForm({ ...form, category: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-[#DBE2EF] dark:border-[#3F72AF] rounded-lg bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
-                />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-[#112D4E] dark:text-[#DBE2EF]">
-                  Description
-                </label>
-                <textarea
-                  value={form.description}
-                  onChange={(e) =>
-                    setForm({ ...form, description: e.target.value })
-                  }
-                  rows="3"
-                  className="w-full px-3 py-2 border border-[#DBE2EF] dark:border-[#3F72AF] rounded-lg bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
-                />
-              </div>
-
-              <div className="flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOpenEdit(false);
-                    setSelectedSkill(null);
-                    setForm({ name: "", description: "", category: "" });
-                  }}
-                  className="px-4 py-2 border border-[#DBE2EF] dark:border-[#3F72AF] rounded-lg text-[#3F72AF] dark:text-[#DBE2EF] hover:bg-[#DBE2EF] dark:hover:bg-[#3F72AF] transition-colors"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-[#3F72AF] text-white rounded-lg hover:bg-[#112D4E] dark:bg-[#3F72AF] dark:hover:bg-[#DBE2EF] dark:hover:text-[#112D4E] transition-colors"
-                >
-                  Update Skill
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <SimpleModal
+          title="Edit Skill"
+          form={form}
+          setForm={setForm}
+          onSubmit={handleUpdate}
+          onClose={() => {
+            setOpenEdit(false);
+            setSelectedSkill(null);
+          }}
+          submitLabel="Update Skill"
+        />
       )}
 
-      {/* Delete */}
+      {/* ── Delete Confirm Modal ── */}
       <ConfirmDeleteModal
         open={openDelete}
         onClose={() => {
@@ -625,6 +528,113 @@ const AdminSkills = () => {
         onConfirm={handleDelete}
         title={selectedSkill?.name}
       />
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────
+// SIMPLE MODAL — reused for Add and Edit
+// Same styling as your AddVisitorModal / EditVisitorModal
+// ─────────────────────────────────────────────────────
+const SimpleModal = ({
+  title,
+  form,
+  setForm,
+  onSubmit,
+  onClose,
+  submitLabel,
+}) => {
+  // Close on ESC
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, [onClose]);
+
+  const inputCls =
+    "mt-1.5 w-full px-3 py-2.5 rounded-xl border border-[#DBE2EF] dark:border-slate-700 bg-white/70 dark:bg-slate-800/70 text-slate-800 dark:text-[#DBE2EF] placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-[#3F72AF]/40 transition text-sm";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+      {/* Backdrop */}
+      <div
+        onClick={onClose}
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+      />
+
+      {/* Modal box */}
+      <div className="relative w-full max-w-md rounded-2xl border border-[#DBE2EF] dark:border-slate-700 bg-white dark:bg-[#212121] shadow-2xl">
+        {/* Header */}
+        <div className="px-6 py-5 border-b border-[#DBE2EF] dark:border-slate-700">
+          <h2 className="text-base font-bold text-[#212121] dark:text-[#DBE2EF]">
+            {title}
+          </h2>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={onSubmit} className="p-6 space-y-4">
+          <div>
+            <label className="text-sm font-medium text-[#212121] dark:text-[#DBE2EF]">
+              Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              placeholder="e.g. React, Node.js"
+              required
+              className={inputCls}
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-[#212121] dark:text-[#DBE2EF]">
+              Category
+            </label>
+            <input
+              type="text"
+              value={form.category}
+              onChange={(e) => setForm({ ...form, category: e.target.value })}
+              placeholder="e.g. Frontend, Backend"
+              className={inputCls}
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-[#212121] dark:text-[#DBE2EF]">
+              Description
+            </label>
+            <textarea
+              value={form.description}
+              onChange={(e) =>
+                setForm({ ...form, description: e.target.value })
+              }
+              placeholder="Short description..."
+              rows={3}
+              className={`${inputCls} resize-none`}
+            />
+          </div>
+
+          {/* Buttons */}
+          <div className="flex justify-end gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2.5 rounded-xl border border-[#DBE2EF] dark:border-slate-700 text-sm font-semibold text-[#212121] dark:text-[#DBE2EF] hover:bg-[#DBE2EF]/60 dark:hover:bg-slate-800 transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-5 py-2.5 rounded-xl bg-[#3F72AF] hover:bg-[#2f5d95] text-white text-sm font-semibold transition"
+            >
+              {submitLabel}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 };

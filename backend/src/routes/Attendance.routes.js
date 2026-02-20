@@ -7,29 +7,30 @@ const {
     getAttendanceByBatchAndDate,
     markAttendance,
     markSingleStudentAttendance,
+    getBatchDashboard,
     getBatchAttendanceSummary,
 } = require("../controllers/Attendance.controller");
 
 router.use(authenticate);
 
-// GET students in a batch
-// GET /attendance/batch/:batchId/students
+// GET students enrolled in a batch
 router.get("/batch/:batchId/students", allowRoles("admin", "hr", "tutor"), getBatchStudents);
 
-// GET attendance for a batch on a date
+// GET full analytics dashboard (daily register + student stats + calendar)
+// GET /attendance/batch/:batchId/dashboard?threshold=75
+router.get("/batch/:batchId/dashboard", allowRoles("admin", "hr", "tutor"), getBatchDashboard);
+
+// GET legacy summary
+router.get("/batch/:batchId/summary", allowRoles("admin", "hr", "tutor"), getBatchAttendanceSummary);
+
+// GET attendance for a specific date
 // GET /attendance/batch/:batchId?date=YYYY-MM-DD
 router.get("/batch/:batchId", allowRoles("admin", "hr", "tutor"), getAttendanceByBatchAndDate);
 
-// GET attendance summary for a batch (all dates)
-// GET /attendance/batch/:batchId/summary
-router.get("/batch/:batchId/summary", allowRoles("admin", "hr", "tutor"), getBatchAttendanceSummary);
-
-// POST mark all students attendance for a batch+date
-// POST /attendance/batch/:batchId/mark
+// POST mark all students for a date
 router.post("/batch/:batchId/mark", allowRoles("admin", "hr", "tutor"), markAttendance);
 
-// PATCH mark single student attendance
-// PATCH /attendance/batch/:batchId/student/:studentId
+// PATCH mark single student
 router.patch("/batch/:batchId/student/:studentId", allowRoles("admin", "hr", "tutor"), markSingleStudentAttendance);
 
 module.exports = router;

@@ -85,7 +85,6 @@ exports.addCourse = async (req, res) => {
             category,
             tutor,
             price,
-            duration,
             level,
             status,
             startDate,

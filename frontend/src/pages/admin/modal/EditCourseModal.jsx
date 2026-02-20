@@ -10,7 +10,7 @@ const EditCourseModal = ({ open, onClose, course, onSubmit }) => {
     tutor: "",
     tutorName: "",
     price: "",
-    duration: "",
+    // duration: "",
     level: "beginner",
     status: "draft",
     startDate: "",
@@ -36,7 +36,7 @@ const EditCourseModal = ({ open, onClose, course, onSubmit }) => {
         tutor: course.tutor?._id || course.tutor || "",
         tutorName: course.tutorName || course.tutor?.name || "",
         price: course.price || "",
-        duration: course.duration || "",
+        // duration: course.duration || "",
         level: course.level || "beginner",
         status: course.status || "draft",
         startDate: course.startDate
@@ -107,7 +107,10 @@ const EditCourseModal = ({ open, onClose, course, onSubmit }) => {
           Edit Course
         </h2>
 
-        <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto">
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-4 max-h-[70vh] overflow-y-auto"
+        >
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
               <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
@@ -186,7 +189,7 @@ const EditCourseModal = ({ open, onClose, course, onSubmit }) => {
               />
             </div>
 
-            <div>
+            {/* <div>
               <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
                 Duration (hours)
               </label>
@@ -199,7 +202,7 @@ const EditCourseModal = ({ open, onClose, course, onSubmit }) => {
                 min="0"
                 className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               />
-            </div>
+            </div> */}
 
             <div>
               <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
@@ -265,7 +268,9 @@ const EditCourseModal = ({ open, onClose, course, onSubmit }) => {
               </label>
               <div className="max-h-40 overflow-y-auto border rounded-lg p-3 dark:border-gray-600">
                 {skills.length === 0 ? (
-                  <p className="text-sm text-gray-500 dark:text-gray-400">No skills available</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    No skills available
+                  </p>
                 ) : (
                   <div className="space-y-2">
                     {skills.map((skill) => (

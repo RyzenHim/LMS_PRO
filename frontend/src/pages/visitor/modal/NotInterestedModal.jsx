@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { X, Ban, CalendarDays } from "lucide-react";
+import { X, Ban, CalendarDays, Loader2 } from "lucide-react";
 import axiosInstance from "../../../api/axios";
 
 const NotInterestedModal = ({ open, onClose, visitor, onSuccess }) => {
@@ -7,18 +7,13 @@ const NotInterestedModal = ({ open, onClose, visitor, onSuccess }) => {
     notInterestedReason: "",
     followUpDate: "",
   });
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // reset on open
+  // Reset on open
   useEffect(() => {
     if (!open) return;
-
-    setForm({
-      notInterestedReason: "",
-      followUpDate: "",
-    });
+    setForm({ notInterestedReason: "", followUpDate: "" });
     setError("");
     setLoading(false);
   }, [open]);
@@ -26,46 +21,43 @@ const NotInterestedModal = ({ open, onClose, visitor, onSuccess }) => {
   // ESC close
   useEffect(() => {
     if (!open) return;
-
     const handleEsc = (e) => {
-      if (e.key === "Escape") onClose?.();
+      if (e.key === "Escape" && !loading) onClose?.();
     };
-
     window.addEventListener("keydown", handleEsc);
     return () => window.removeEventListener("keydown", handleEsc);
-  }, [open, onClose]);
+  }, [open, onClose, loading]);
+
+  // Freeze body scroll
+  useEffect(() => {
+    if (open) document.body.style.overflow = "hidden";
+    else document.body.style.overflow = "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
 
   if (!open || !visitor) return null;
 
-  const handleChange = (e) => {
-    setForm((prev) => ({
-      ...prev,
-      [e.target.name]: e.target.value,
-    }));
-  };
+  const handleChange = (e) =>
+    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-
     if (!form.notInterestedReason.trim()) {
       setError("Please provide a reason.");
       return;
     }
-
     try {
       setLoading(true);
-
-      const payload = {
-        notInterestedReason: form.notInterestedReason.trim(),
-        followUpDate: form.followUpDate || null,
-      };
-
       const res = await axiosInstance.patch(
         `/visitor/${visitor._id}/not-interested`,
-        payload,
+        {
+          notInterestedReason: form.notInterestedReason.trim(),
+          followUpDate: form.followUpDate || null,
+        },
       );
-
       if (res?.data) {
         onSuccess?.(res.data.visitor);
         onClose?.();
@@ -85,113 +77,113 @@ const NotInterestedModal = ({ open, onClose, visitor, onSuccess }) => {
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
       {/* Backdrop */}
       <div
-        onClick={() => (loading ? null : onClose?.())}
-        className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
+        onClick={() => !loading && onClose?.()}
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-[#DBE2EF] dark:border-slate-700 bg-white dark:bg-[#112D4E] shadow-2xl animate-in fade-in zoom-in duration-200">
+      <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#112D4E] shadow-2xl shadow-black/30 animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="flex items-start justify-between gap-4 p-5 border-b border-[#DBE2EF] dark:border-slate-700 bg-gradient-to-r from-orange-50 to-white dark:from-orange-500/10 dark:to-slate-900">
+        <div className="flex items-start justify-between gap-4 p-5 border-b border-slate-200 dark:border-slate-700 bg-orange-50/80 dark:bg-orange-500/10">
           <div className="flex items-start gap-3">
-            <div className="rounded-xl bg-orange-100 dark:bg-orange-500/20 p-2">
-              <Ban className="text-orange-600 dark:text-orange-300" size={20} />
+            <div className="rounded-xl bg-orange-100 dark:bg-orange-500/20 p-2.5">
+              <Ban size={18} className="text-orange-600 dark:text-orange-400" />
             </div>
-
             <div>
-              <h2 className="text-base font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
+              <h2 className="text-base font-bold text-slate-800 dark:text-[#DBE2EF]">
                 Mark as Not Interested
               </h2>
-              <p className="text-xs text-[#3F72AF] dark:text-slate-300 mt-0.5">
-                This visitor will move to the “Not Interested” tab
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                <span className="font-semibold text-slate-700 dark:text-slate-200">
+                  {visitor.name}
+                </span>{" "}
+                will move to the "Not Interested" tab
               </p>
             </div>
           </div>
-
           <button
-            onClick={() => (loading ? null : onClose?.())}
+            onClick={() => !loading && onClose?.()}
             disabled={loading}
-            className="p-2 rounded-xl hover:bg-[#DBE2EF] dark:hover:bg-slate-800 text-[#3F72AF] dark:text-[#DBE2EF] disabled:opacity-60"
-            title="Close"
+            className="p-1.5 rounded-xl hover:bg-orange-100 dark:hover:bg-slate-800 text-slate-400 dark:text-slate-500 hover:text-orange-600 dark:hover:text-orange-400 disabled:opacity-60 transition"
           >
-            <X size={18} />
+            <X size={17} />
           </button>
         </div>
 
-        {/* Body */}
+        {/* Form */}
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
-          {/* Error */}
           {error && (
-            <div className="rounded-xl border border-red-200 bg-red-50 dark:border-red-500/30 dark:bg-red-500/10 px-4 py-3">
-              <p className="text-sm text-red-700 dark:text-red-200">{error}</p>
+            <div className="rounded-xl border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 px-4 py-3">
+              <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
             </div>
           )}
 
-          {/* Reason */}
           <div>
-            <label className="block text-sm font-semibold text-[#112D4E] dark:text-[#DBE2EF] mb-2">
+            <label className="block text-sm font-semibold text-slate-700 dark:text-[#DBE2EF] mb-2">
               Reason <span className="text-red-500">*</span>
             </label>
-
             <textarea
               name="notInterestedReason"
               value={form.notInterestedReason}
               onChange={handleChange}
-              placeholder="Example: Not interested in this course / budget issue / already enrolled elsewhere..."
-              required
+              placeholder="e.g. Not interested in this course / budget issue / already enrolled elsewhere..."
               rows={4}
-              className="w-full resize-none rounded-xl border border-[#DBE2EF] dark:border-slate-700 bg-[#F9F7F7] dark:bg-[#0a1f3a] px-3 py-2.5 text-sm text-[#112D4E] dark:text-[#DBE2EF] outline-none focus:ring-2 focus:ring-orange-400/60 focus:border-orange-400 transition"
+              className="w-full resize-none rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-[#0a1f3a] px-3 py-2.5 text-sm text-slate-800 dark:text-[#DBE2EF] placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-orange-400/50 focus:border-orange-400 dark:focus:border-orange-500 transition"
             />
-
-            <p className="mt-1 text-xs text-[#3F72AF] dark:text-slate-300">
-              Keep it short and clear — it helps future reporting.
+            <p className="mt-1.5 text-xs text-slate-400 dark:text-slate-500">
+              Keep it brief — this helps future reporting.
             </p>
           </div>
 
-          {/* Follow-up Date */}
           <div>
-            <label className="block text-sm font-semibold text-[#112D4E] dark:text-[#DBE2EF] mb-2">
-              Follow-up Date (Optional)
+            <label className="block text-sm font-semibold text-slate-700 dark:text-[#DBE2EF] mb-2">
+              Follow-up Date{" "}
+              <span className="text-slate-400 font-normal">(optional)</span>
             </label>
-
             <div className="relative">
               <CalendarDays
-                size={18}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-[#3F72AF] dark:text-slate-300"
+                size={15}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none"
               />
-
               <input
                 type="date"
                 name="followUpDate"
                 value={form.followUpDate}
                 onChange={handleChange}
                 min={today}
-                className="w-full rounded-xl border border-[#DBE2EF] dark:border-slate-700 bg-[#F9F7F7] dark:bg-[#0a1f3a] pl-10 pr-3 py-2.5 text-sm text-[#112D4E] dark:text-[#DBE2EF] outline-none focus:ring-2 focus:ring-orange-400/60 focus:border-orange-400 transition"
+                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-[#0a1f3a] pl-9 pr-3 py-2.5 text-sm text-slate-800 dark:text-[#DBE2EF] outline-none focus:ring-2 focus:ring-orange-400/50 focus:border-orange-400 dark:focus:border-orange-500 transition"
               />
             </div>
-
-            <p className="mt-1 text-xs text-[#3F72AF] dark:text-slate-300">
-              If you want to contact them later, set a reminder date here.
+            <p className="mt-1.5 text-xs text-slate-400 dark:text-slate-500">
+              Set a reminder to re-engage with them later.
             </p>
           </div>
 
-          {/* Footer Buttons */}
-          <div className="flex items-center justify-end gap-3 pt-2">
+          <div className="flex items-center justify-end gap-3 pt-1">
             <button
               type="button"
-              onClick={() => (loading ? null : onClose?.())}
+              onClick={() => !loading && onClose?.()}
               disabled={loading}
-              className="px-4 py-2.5 rounded-xl border border-[#DBE2EF] dark:border-slate-700 text-sm font-semibold text-[#112D4E] dark:text-[#DBE2EF] hover:bg-[#DBE2EF] dark:hover:bg-slate-800 disabled:opacity-60 transition"
+              className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-semibold text-slate-700 dark:text-[#DBE2EF] hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-60 transition"
             >
               Cancel
             </button>
-
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-sm font-semibold shadow-md disabled:opacity-60 transition"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold shadow-sm shadow-orange-600/20 disabled:opacity-60 transition active:scale-95"
             >
-              {loading ? "Saving..." : "Mark Not Interested"}
+              {loading ? (
+                <>
+                  <Loader2 size={14} className="animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Ban size={14} />
+                  Mark Not Interested
+                </>
+              )}
             </button>
           </div>
         </form>

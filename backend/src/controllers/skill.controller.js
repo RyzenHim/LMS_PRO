@@ -24,7 +24,28 @@ exports.allSkills = async (req, res) => {
             }
             : {};
 
-        const filter = { isDeleted: false, ...searchQuery };
+        const filter = {
+            isDeleted: false,
+            ...searchQuery,
+        };
+
+        if (req.query.isActive !== undefined) {
+            filter.isActive = req.query.isActive === "true";
+        }
+
+        if (req.query.category) {
+            filter.category = {
+                $regex: req.query.category,
+                $options: "i",
+            };
+        }
+
+        if (req.query.name) {
+            filter.name = {
+                $regex: req.query.name,
+                $options: "i",
+            };
+        }
 
         const totalSkills = await Skill.countDocuments(filter);
 
@@ -226,7 +247,24 @@ exports.getDeletedSkills = async (req, res) => {
             }
             : {};
 
-        const filter = { isDeleted: true, ...searchQuery };
+        const filter = {
+            isDeleted: true,
+            ...searchQuery,
+        };
+
+        if (req.query.category) {
+            filter.category = {
+                $regex: req.query.category,
+                $options: "i",
+            };
+        }
+
+        if (req.query.name) {
+            filter.name = {
+                $regex: req.query.name,
+                $options: "i",
+            };
+        }
 
         const totalSkills = await Skill.countDocuments(filter);
 

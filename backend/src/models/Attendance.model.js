@@ -7,7 +7,6 @@ const attendanceRecordSchema = new mongoose.Schema(
             ref: "Student",
             required: true,
         },
-        // present | absent | present-online
         status: {
             type: String,
             enum: ["present", "absent", "present-online"],
@@ -25,10 +24,18 @@ const attendanceSchema = new mongoose.Schema(
             ref: "Batch",
             required: true,
         },
+
         date: {
-            type: String, // stored as "YYYY-MM-DD" for easy lookup
+            type: String, // YYYY-MM-DD
             required: true,
         },
+
+        slot: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Timetable",
+            required: true,
+        },
+
         records: [attendanceRecordSchema],
 
         markedBy: {
@@ -39,7 +46,10 @@ const attendanceSchema = new mongoose.Schema(
     { timestamps: true }
 );
 
-// One attendance document per batch+date
-attendanceSchema.index({ batch: 1, date: 1 }, { unique: true });
+// Unique per batch + date + slot
+attendanceSchema.index(
+    { batch: 1, date: 1, slot: 1 },
+    { unique: true }
+);
 
 module.exports = mongoose.model("Attendance", attendanceSchema);

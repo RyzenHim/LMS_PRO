@@ -339,7 +339,7 @@ const AdminCourses = () => {
           <option value="category">Category</option>
           <option value="isActive">Is Active</option>
           <option value="price">Price</option>
-          <option value="duration">Duration</option>
+          {/* <option value="duration">Duration</option> */}
         </select>
 
         <input
@@ -417,8 +417,8 @@ const AdminCourses = () => {
 
                   <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
                     <SortHeader
-                      label="Duration"
-                      field="duration"
+                      // label="Duration"
+                      // field="duration"
                       sortBy={sortBy}
                       sortOrder={sortOrder}
                       onSort={handleSort}
@@ -473,10 +473,10 @@ const AdminCourses = () => {
                     <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
                       ₹{course.price || 0}
                     </td>
-
+                    {/* 
                     <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
                       {course.duration || 0} hrs
-                    </td>
+                    </td> */}
 
                     <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF] capitalize">
                       {course.level}

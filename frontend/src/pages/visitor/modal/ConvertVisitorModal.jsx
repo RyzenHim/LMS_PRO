@@ -15,7 +15,7 @@ import {
 import axiosInstance from "../../../api/axios";
 import { batchService } from "../../../services/batchService";
 
-// ─── Style constants defined OUTSIDE so they never change reference ───
+// ─── Style constants outside component to prevent remounts ───────────────────
 const inputCls =
   "w-full rounded-xl border border-slate-600/60 bg-slate-800/80 px-3.5 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-[#3F72AF]/60 focus:border-[#3F72AF]/70 transition";
 const selectCls =
@@ -24,7 +24,6 @@ const labelCls =
   "block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider";
 const sectionCls = "rounded-2xl border border-slate-700/60 bg-slate-800/30 p-5";
 
-// ─── Field defined OUTSIDE the modal — prevents unmount/remount on every render ───
 const Field = ({ label, hint, children, required }) => (
   <div>
     <label className={labelCls}>
@@ -41,26 +40,25 @@ const Field = ({ label, hint, children, required }) => (
 const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false); // ← replaces alert()
 
   const [batches, setBatches] = useState([]);
   const [batchLoading, setBatchLoading] = useState(false);
 
-  // Fees fields
+  // Fees
   const [paymentType, setPaymentType] = useState("full");
   const [paymentMode, setPaymentMode] = useState("offline");
   const [amountPaid, setAmountPaid] = useState("");
   const [dueDate, setDueDate] = useState("");
-  const [note, setNote] = useState("");
+  const [feeNote, setFeeNote] = useState("");
   const [batch, setBatch] = useState("");
 
-  // Student optional fields
+  // Student optional
   const [adhaar, setAdhaar] = useState("");
   const [address, setAddress] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
-  // gender enum: male | female | other
-  const [gender, setGender] = useState("");
-  // status enum: active | inactive | suspended
-  const [status, setStatus] = useState("active");
+  const [gender, setGender] = useState(""); // enum: male | female | other
+  const [status, setStatus] = useState("active"); // enum: active | inactive | suspended
   const [guardianName, setGuardianName] = useState("");
   const [guardianPhone, setGuardianPhone] = useState("");
 
@@ -70,7 +68,7 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
   const [identityFrontUrl, setIdentityFrontUrl] = useState("");
   const [identityBackUrl, setIdentityBackUrl] = useState("");
 
-  // Profile Image
+  // Profile image
   const [profileImageUrl, setProfileImageUrl] = useState("");
 
   const courseId = useMemo(() => {
@@ -80,16 +78,17 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
       : visitor.course;
   }, [visitor]);
 
-  // Reset on open
+  // Reset all on open
   useEffect(() => {
     if (!open) return;
     setError("");
+    setSuccess(false);
     setLoading(false);
     setPaymentType("full");
     setPaymentMode("offline");
     setAmountPaid("");
     setDueDate("");
-    setNote("");
+    setFeeNote("");
     setBatch("");
     setAdhaar(visitor?.adhaar || "");
     setAddress(visitor?.address || "");
@@ -111,11 +110,20 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
   useEffect(() => {
     if (!open) return;
     const handleEsc = (e) => {
-      if (e.key === "Escape") onClose?.();
+      if (e.key === "Escape" && !loading) onClose?.();
     };
     window.addEventListener("keydown", handleEsc);
     return () => window.removeEventListener("keydown", handleEsc);
-  }, [open, onClose]);
+  }, [open, onClose, loading]);
+
+  // Freeze body scroll
+  useEffect(() => {
+    if (open) document.body.style.overflow = "hidden";
+    else document.body.style.overflow = "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
 
   // Fetch batches for course
   useEffect(() => {
@@ -125,15 +133,13 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
         setBatchLoading(true);
         const res = await batchService.getAll({ limit: 100 });
         const list = res?.data?.batches || [];
-        const safe = Array.isArray(list) ? list : [];
-        const filtered = safe.filter((b) => {
+        const filtered = (Array.isArray(list) ? list : []).filter((b) => {
           const bCourse =
             typeof b.course === "object" ? b.course?._id : b.course;
           return String(bCourse) === String(courseId);
         });
         setBatches(filtered);
-      } catch (err) {
-        console.error("Fetch batches error:", err);
+      } catch {
         setBatches([]);
       } finally {
         setBatchLoading(false);
@@ -161,7 +167,7 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
     if (paymentType === "partial") {
       const paid = Number(amountPaid);
       if (!amountPaid || isNaN(paid) || paid <= 0) {
-        setError("Please enter a valid amount paid for partial payment.");
+        setError("Enter a valid amount paid for partial payment.");
         return;
       }
     }
@@ -174,20 +180,17 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
         paymentMode,
         amountPaid: paymentType === "partial" ? Number(amountPaid) : undefined,
         dueDate: dueDate || null,
-        note: note || "",
+        note: feeNote || "",
         batch: batch || undefined,
-
         // student
         adhaar: adhaar || undefined,
         address: address || undefined,
         dateOfBirth: dateOfBirth || undefined,
-        gender: gender || undefined, // enum: male | female | other
-        status: status || "active", // enum: active | inactive | suspended
+        gender: gender || undefined,
+        status: status || "active",
         guardianName: guardianName || undefined,
         guardianPhone: guardianPhone || undefined,
-
         profileImage: profileImageUrl ? { url: profileImageUrl } : undefined,
-
         identityProof:
           identityType || identityNumber || identityFrontUrl || identityBackUrl
             ? {
@@ -203,12 +206,11 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
             : undefined,
       };
 
-      const res = await axiosInstance.post(
+      await axiosInstance.post(
         `/visitor/${visitor._id}/convert/student`,
         payload,
       );
-      alert(res?.data?.message || "Visitor converted successfully!");
-      onSuccess?.();
+      setSuccess(true);
     } catch (err) {
       setError(
         err?.response?.data?.message ||
@@ -220,11 +222,50 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
     }
   };
 
+  // ─── Success state ────────────────────────────────────────────────────────
+  if (success) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div
+          className="absolute inset-0 bg-black/75 backdrop-blur-sm"
+          onClick={() => {
+            onSuccess?.();
+          }}
+        />
+        <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-slate-700/60 bg-[#0f172a] shadow-2xl shadow-black/50 p-8 text-center">
+          <div className="w-16 h-16 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center mx-auto mb-4">
+            <CheckCircle2 size={32} className="text-emerald-400" />
+          </div>
+          <h3 className="text-xl font-bold text-white mb-2">
+            Conversion Successful!
+          </h3>
+          <p className="text-sm text-slate-400 mb-1">
+            <span className="text-slate-200 font-medium">{visitor.name}</span>{" "}
+            has been converted to a student.
+          </p>
+          <p className="text-xs text-slate-500 mb-6">
+            A login account and fees record have been created. A welcome email
+            has been sent to{" "}
+            <span className="text-slate-300">{visitor.email}</span>.
+          </p>
+          <button
+            onClick={() => {
+              onSuccess?.();
+            }}
+            className="w-full px-5 py-3 rounded-xl bg-[#3F72AF] hover:bg-[#2f5d95] text-white text-sm font-bold shadow-lg shadow-[#3F72AF]/20 transition active:scale-95"
+          >
+            Done
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
-        onClick={() => (!loading ? onClose?.() : null)}
+        onClick={() => !loading && onClose?.()}
         className="absolute inset-0 bg-black/75 backdrop-blur-sm"
       />
 
@@ -238,19 +279,18 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
             </div>
             <div>
               <h2 className="text-base font-bold text-white">
-                Convert Visitor → Student
+                Convert to Student
               </h2>
               <p className="text-xs text-slate-400 mt-0.5">
-                Converts{" "}
+                Creates Student · Auth Login · Fees record for{" "}
                 <span className="text-slate-200 font-medium">
                   {visitor.name}
-                </span>{" "}
-                and creates Student + Auth User + Fees record
+                </span>
               </p>
             </div>
           </div>
           <button
-            onClick={() => (!loading ? onClose?.() : null)}
+            onClick={() => !loading && onClose?.()}
             disabled={loading}
             className="p-2 rounded-xl hover:bg-slate-700/50 text-slate-400 hover:text-white disabled:opacity-50 transition"
           >
@@ -258,61 +298,70 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
           </button>
         </div>
 
-        {/* Visitor summary strip */}
-        <div className="px-6 py-3 bg-slate-800/40 border-b border-slate-700/40 flex flex-wrap gap-4 text-xs text-slate-400">
+        {/* Visitor info strip */}
+        <div className="px-6 py-3 bg-slate-800/40 border-b border-slate-700/40 flex flex-wrap gap-x-6 gap-y-1.5 text-xs">
           <span>
-            <span className="text-slate-500">Email:</span>{" "}
-            <span className={visitor.email ? "text-slate-200" : "text-red-400"}>
+            <span className="text-slate-500">Email: </span>
+            <span
+              className={
+                visitor.email
+                  ? "text-slate-200 font-medium"
+                  : "text-red-400 font-medium"
+              }
+            >
               {visitor.email || "⚠ Missing — required for conversion"}
             </span>
           </span>
           <span>
-            <span className="text-slate-500">Course:</span>{" "}
+            <span className="text-slate-500">Course: </span>
             <span
-              className={visitor.course ? "text-slate-200" : "text-red-400"}
+              className={
+                visitor.course ? "text-slate-200 font-medium" : "text-red-400"
+              }
             >
               {visitor.course?.title || visitor.course || "⚠ Missing"}
             </span>
           </span>
-          <span>
-            <span className="text-slate-500">Phone:</span>{" "}
-            <span className="text-slate-200">{visitor.phone || "—"}</span>
-          </span>
+          {visitor.phone && (
+            <span>
+              <span className="text-slate-500">Phone: </span>
+              <span className="text-slate-200 font-medium">
+                {visitor.phone}
+              </span>
+            </span>
+          )}
         </div>
 
-        {/* Body */}
+        {/* Scrollable body */}
         <form
           id="convert-form"
           onSubmit={handleSubmit}
-          className="max-h-[66vh] overflow-y-auto p-6 space-y-5 scrollbar-thin scrollbar-track-slate-800 scrollbar-thumb-slate-600"
+          className="max-h-[62vh] overflow-y-auto p-6 space-y-5 scrollbar-thin scrollbar-track-slate-800 scrollbar-thumb-slate-600"
         >
           {/* Error */}
           {error && (
             <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 flex items-start gap-3">
               <AlertTriangle
-                size={16}
+                size={15}
                 className="text-red-400 mt-0.5 shrink-0"
               />
               <p className="text-sm text-red-300">{error}</p>
             </div>
           )}
 
-          {/* ─── SECTION 1: Student Details ─── */}
+          {/* ── SECTION 1: Student Details ── */}
           <div className={sectionCls}>
-            <div className="flex items-center gap-2 mb-5">
+            <div className="flex items-center gap-2 mb-4">
               <div className="p-1.5 rounded-lg bg-[#3F72AF]/15">
-                <User size={16} className="text-[#7aa8d8]" />
+                <User size={14} className="text-[#7aa8d8]" />
               </div>
               <h3 className="text-sm font-semibold text-slate-200">
                 Student Details
               </h3>
-              <span className="text-xs text-slate-500 font-normal ml-1">
-                — optional
-              </span>
+              <span className="text-xs text-slate-500 ml-1">— optional</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* status — enum: active | inactive | suspended */}
               <Field label="Status" required>
                 <select
                   value={status}
@@ -324,8 +373,6 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
                   <option value="suspended">Suspended</option>
                 </select>
               </Field>
-
-              {/* gender — enum: male | female | other */}
               <Field label="Gender">
                 <select
                   value={gender}
@@ -338,7 +385,6 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
                   <option value="other">Other</option>
                 </select>
               </Field>
-
               <Field label="Date of Birth">
                 <input
                   type="date"
@@ -347,7 +393,6 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
                   className={inputCls}
                 />
               </Field>
-
               <Field label="Aadhaar Number">
                 <input
                   type="text"
@@ -357,34 +402,31 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
                   className={inputCls}
                 />
               </Field>
-
               <Field label="Guardian Name">
                 <input
                   type="text"
                   value={guardianName}
                   onChange={(e) => setGuardianName(e.target.value)}
-                  placeholder="Enter guardian name"
+                  placeholder="Guardian full name"
                   className={inputCls}
                 />
               </Field>
-
               <Field label="Guardian Phone">
                 <input
                   type="text"
                   value={guardianPhone}
                   onChange={(e) => setGuardianPhone(e.target.value)}
-                  placeholder="Enter guardian phone"
+                  placeholder="10-digit number"
                   className={inputCls}
                 />
               </Field>
-
               <div className="sm:col-span-2">
                 <Field label="Address">
                   <textarea
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
                     rows={2}
-                    placeholder="Enter full address"
+                    placeholder="Full address"
                     className={`${inputCls} resize-none`}
                   />
                 </Field>
@@ -392,18 +434,16 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
             </div>
           </div>
 
-          {/* ─── SECTION 2: Identity & Profile ─── */}
+          {/* ── SECTION 2: Identity & Profile ── */}
           <div className={sectionCls}>
-            <div className="flex items-center gap-2 mb-5">
+            <div className="flex items-center gap-2 mb-4">
               <div className="p-1.5 rounded-lg bg-emerald-500/15">
-                <ShieldCheck size={16} className="text-emerald-400" />
+                <ShieldCheck size={14} className="text-emerald-400" />
               </div>
               <h3 className="text-sm font-semibold text-slate-200">
                 Identity & Profile
               </h3>
-              <span className="text-xs text-slate-500 font-normal ml-1">
-                — optional
-              </span>
+              <span className="text-xs text-slate-500 ml-1">— optional</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -411,20 +451,18 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
                 <input
                   value={identityType}
                   onChange={(e) => setIdentityType(e.target.value)}
-                  placeholder="e.g. Aadhaar, PAN, DL, Passport"
+                  placeholder="e.g. Aadhaar, PAN, Passport"
                   className={inputCls}
                 />
               </Field>
-
               <Field label="Identity Number">
                 <input
                   value={identityNumber}
                   onChange={(e) => setIdentityNumber(e.target.value)}
-                  placeholder="Enter ID number"
+                  placeholder="ID number"
                   className={inputCls}
                 />
               </Field>
-
               <Field label="Front Image URL">
                 <input
                   value={identityFrontUrl}
@@ -433,7 +471,6 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
                   className={inputCls}
                 />
               </Field>
-
               <Field label="Back Image URL">
                 <input
                   value={identityBackUrl}
@@ -442,19 +479,18 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
                   className={inputCls}
                 />
               </Field>
-
               <div className="sm:col-span-2">
                 <Field label="Profile Image URL">
                   <div className="relative">
                     <ImageIcon
-                      size={15}
+                      size={14}
                       className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"
                     />
                     <input
                       value={profileImageUrl}
                       onChange={(e) => setProfileImageUrl(e.target.value)}
                       placeholder="https://..."
-                      className={`${inputCls} pl-10`}
+                      className={`${inputCls} pl-9`}
                     />
                   </div>
                 </Field>
@@ -462,11 +498,11 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
             </div>
           </div>
 
-          {/* ─── SECTION 3: Fees Details ─── */}
+          {/* ── SECTION 3: Fees ── */}
           <div className={sectionCls}>
-            <div className="flex items-center gap-2 mb-5">
+            <div className="flex items-center gap-2 mb-4">
               <div className="p-1.5 rounded-lg bg-amber-500/15">
-                <CreditCard size={16} className="text-amber-400" />
+                <CreditCard size={14} className="text-amber-400" />
               </div>
               <h3 className="text-sm font-semibold text-slate-200">
                 Fees Details
@@ -474,7 +510,6 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* paymentType — enum: full | partial */}
               <Field label="Payment Type" required>
                 <select
                   value={paymentType}
@@ -485,8 +520,6 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
                   <option value="partial">Partial Payment</option>
                 </select>
               </Field>
-
-              {/* paymentMode — enum: offline | online */}
               <Field label="Payment Mode" required>
                 <select
                   value={paymentMode}
@@ -498,22 +531,21 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
                 </select>
               </Field>
 
-              {paymentType === "partial" && (
-                <Field label="Amount Paid" required>
+              {paymentType === "partial" ? (
+                <Field label="Amount Paid (₹)" required>
                   <input
                     type="number"
                     min="0"
+                    step="0.01"
                     value={amountPaid}
                     onChange={(e) => setAmountPaid(e.target.value)}
                     placeholder="0.00"
                     className={inputCls}
                   />
                 </Field>
-              )}
-
-              {paymentType === "full" && (
-                <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-300">
-                  <CheckCircle2 size={14} className="shrink-0" />
+              ) : (
+                <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-300 self-end mb-0.5">
+                  <CheckCircle2 size={13} className="shrink-0" />
                   Full course price will be recorded as paid
                 </div>
               )}
@@ -532,10 +564,10 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
                   label="Batch"
                   hint={
                     batchLoading
-                      ? "Loading batches for this course..."
+                      ? "Loading batches…"
                       : batches.length === 0
-                        ? "No batches found for this course"
-                        : `${batches.length} batch${batches.length > 1 ? "es" : ""} available for this course`
+                        ? "No batches found for this course — you can skip"
+                        : `${batches.length} batch${batches.length > 1 ? "es" : ""} available`
                   }
                 >
                   <select
@@ -545,7 +577,7 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
                     disabled={batchLoading || batches.length === 0}
                   >
                     <option value="">
-                      {batchLoading ? "Loading..." : "No batch (skip)"}
+                      {batchLoading ? "Loading…" : "No batch (skip)"}
                     </option>
                     {batches.map((b) => (
                       <option key={b._id} value={b._id}>
@@ -559,10 +591,10 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
               <div className="sm:col-span-2">
                 <Field label="Note">
                   <textarea
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
+                    value={feeNote}
+                    onChange={(e) => setFeeNote(e.target.value)}
                     rows={2}
-                    placeholder="Optional note about payment..."
+                    placeholder="Optional note about payment…"
                     className={`${inputCls} resize-none`}
                   />
                 </Field>
@@ -572,11 +604,14 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
 
           {/* Info box */}
           <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-[#3F72AF]/10 border border-[#3F72AF]/20 text-xs text-[#7aa8d8]">
-            <Info size={14} className="shrink-0 mt-0.5" />
+            <Info size={13} className="shrink-0 mt-0.5" />
             <span>
               A login account will be created with a randomly generated password
               and sent to{" "}
-              <strong>{visitor.email || "the visitor's email"}</strong>.
+              <strong className="text-slate-200">
+                {visitor.email || "the visitor's email"}
+              </strong>
+              .
             </span>
           </div>
         </form>
@@ -585,23 +620,22 @@ const ConvertVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-700/60 bg-slate-900/50">
           <button
             type="button"
-            onClick={() => (!loading ? onClose?.() : null)}
+            onClick={() => !loading && onClose?.()}
             disabled={loading}
             className="px-5 py-2.5 rounded-xl border border-slate-600/60 text-sm font-semibold text-slate-300 hover:bg-slate-700/50 hover:text-white disabled:opacity-50 transition"
           >
             Cancel
           </button>
-
           <button
             type="submit"
             form="convert-form"
             disabled={loading}
-            className="px-6 py-2.5 rounded-xl bg-[#3F72AF] hover:bg-[#2f5d95] text-white text-sm font-bold shadow-lg shadow-[#3F72AF]/20 disabled:opacity-60 transition inline-flex items-center gap-2"
+            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#3F72AF] hover:bg-[#2f5d95] text-white text-sm font-bold shadow-lg shadow-[#3F72AF]/20 disabled:opacity-60 transition active:scale-95"
           >
             {loading ? (
               <>
                 <Loader2 size={15} className="animate-spin" />
-                Converting...
+                Converting…
               </>
             ) : (
               <>

@@ -33,7 +33,7 @@ const ModalShell = ({
               </p>
             ) : null}
           </div>
-          <h1>hey lets see what is this</h1>
+          {/* <h1>hey lets see what is this</h1> */}
           <button
             type="button"
             onClick={onClose}

@@ -37,10 +37,6 @@ const courseSchema = new mongoose.Schema({
         min: 1
     },
 
-    duration: {
-        type: Number,
-        default: 0
-    },
 
     level: {
         type: String,

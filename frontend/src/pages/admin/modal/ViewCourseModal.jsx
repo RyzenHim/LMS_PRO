@@ -31,7 +31,9 @@ const ViewCourseModal = ({ open, onClose, course }) => {
               <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
                 Description
               </label>
-              <p className="text-gray-900 dark:text-white">{course.description || "—"}</p>
+              <p className="text-gray-900 dark:text-white">
+                {course.description || "—"}
+              </p>
             </div>
 
             <div>
@@ -54,35 +56,43 @@ const ViewCourseModal = ({ open, onClose, course }) => {
               <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
                 Price
               </label>
-              <p className="text-gray-900 dark:text-white">₹{course.price || 0}</p>
+              <p className="text-gray-900 dark:text-white">
+                ₹{course.price || 0}
+              </p>
             </div>
 
-            <div>
+            {/* <div>
               <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
                 Duration
               </label>
               <p className="text-gray-900 dark:text-white">{course.duration || 0} hours</p>
-            </div>
+            </div> */}
 
             <div>
               <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
                 Level
               </label>
-              <p className="text-gray-900 dark:text-white capitalize">{course.level}</p>
+              <p className="text-gray-900 dark:text-white capitalize">
+                {course.level}
+              </p>
             </div>
 
             <div>
               <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
                 Status
               </label>
-              <p className="text-gray-900 dark:text-white capitalize">{course.status}</p>
+              <p className="text-gray-900 dark:text-white capitalize">
+                {course.status}
+              </p>
             </div>
 
             <div>
               <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
                 Students Enrolled
               </label>
-              <p className="text-gray-900 dark:text-white">{course.studentsEnrolled || 0}</p>
+              <p className="text-gray-900 dark:text-white">
+                {course.studentsEnrolled || 0}
+              </p>
             </div>
 
             <div>
@@ -131,7 +141,9 @@ const ViewCourseModal = ({ open, onClose, course }) => {
                     </span>
                   ))
                 ) : (
-                  <span className="text-gray-500 dark:text-gray-400">No skills assigned</span>
+                  <span className="text-gray-500 dark:text-gray-400">
+                    No skills assigned
+                  </span>
                 )}
               </div>
             </div>
@@ -170,4 +182,3 @@ const ViewCourseModal = ({ open, onClose, course }) => {
 };
 
 export default ViewCourseModal;
-

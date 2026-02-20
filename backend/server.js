@@ -76,3 +76,6 @@ app.use("/rooms", roomRoutes);
 
 const attendanceRoutes = require("./src/routes/attendance.routes");
 app.use("/attendance", attendanceRoutes);
+
+const holidayRoutes = require("./src/routes/Holiday.routes");
+app.use("/holidays", holidayRoutes);
