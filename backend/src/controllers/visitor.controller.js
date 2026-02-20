@@ -11,24 +11,17 @@ const nodemailer = require("nodemailer");
 
 const parseListParams = (req) => {
     const page = Math.max(parseInt(req.query.page || "1", 10), 1);
-    const limit = Math.min(
-        Math.max(parseInt(req.query.limit || "10", 10), 1),
-        100
-    );
+    const limit = Math.min(Math.max(parseInt(req.query.limit || "10", 10), 1), 100);
     const skip = (page - 1) * limit;
-
     const sortBy = (req.query.sortBy || "createdAt").trim();
     const sortOrder = req.query.sortOrder === "asc" ? 1 : -1;
-
     const search = (req.query.search || "").trim();
-
     return { page, limit, skip, sortBy, sortOrder, search };
 };
 
 const calculateFees = ({ coursePrice, amountPaid }) => {
     const paid = Number(amountPaid || 0);
     const price = Number(coursePrice || 0);
-
     const remaining = Math.max(price - paid, 0);
 
     let status = "unpaid";
@@ -44,22 +37,12 @@ const getDateRangeFilter = ({ created, from, to }) => {
 
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const startOfTomorrow = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate() + 1
-    );
+    const startOfTomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
 
-    if (created === "today") {
-        return { $gte: startOfToday, $lt: startOfTomorrow };
-    }
+    if (created === "today") return { $gte: startOfToday, $lt: startOfTomorrow };
 
     if (created === "yesterday") {
-        const startOfYesterday = new Date(
-            now.getFullYear(),
-            now.getMonth(),
-            now.getDate() - 1
-        );
+        const startOfYesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
         return { $gte: startOfYesterday, $lt: startOfToday };
     }
 
@@ -92,7 +75,6 @@ const getDateRangeFilter = ({ created, from, to }) => {
 
 const buildVisitorFilter = (req, tabType) => {
     const { search } = parseListParams(req);
-
     const { status, source, course, created, from, to } = req.query;
 
     const filter = {};
@@ -100,26 +82,17 @@ const buildVisitorFilter = (req, tabType) => {
     if (tabType === "trash") filter.isDeleted = true;
     else filter.isDeleted = false;
 
-    if (tabType === "active") {
-        filter.status = { $ne: "converted" };
-    }
-
-    if (tabType === "not-interested") {
-        filter.status = "not-interested";
-    }
-
+    if (tabType === "active") filter.status = { $ne: "converted" };
+    if (tabType === "not-interested") filter.status = "not-interested";
     if (tabType === "follow-up") {
         filter.status = "follow-up";
         filter.followUpDate = { $lte: new Date() };
     }
+    if (tabType === "converted") filter.status = "converted";
 
-    if (tabType === "converted") {
-        filter.status = "converted";
-    }
-
+    // query param filters override tab defaults only when explicitly provided
     if (status) filter.status = status;
     if (source) filter.source = source;
-
     if (course) filter.course = course;
 
     const createdRange = getDateRangeFilter({ created, from, to });
@@ -140,28 +113,16 @@ const buildVisitorFilter = (req, tabType) => {
 };
 
 const getSafeSort = (sortBy, sortOrder) => {
-    const allowedSortFields = [
-        "createdAt",
-        "name",
-        "email",
-        "status",
-        "source",
-        "followUpDate",
-    ];
-
+    const allowedSortFields = ["createdAt", "name", "email", "status", "source", "followUpDate"];
     const finalSortBy = allowedSortFields.includes(sortBy) ? sortBy : "createdAt";
-
     return { [finalSortBy]: sortOrder };
 };
 
 const listVisitorsByTab = async (req, res, tabType) => {
     try {
         const { page, limit, skip, sortBy, sortOrder } = parseListParams(req);
-
         const filter = buildVisitorFilter(req, tabType);
-
         const totalVisitors = await Visitor.countDocuments(filter);
-
         const visitors = await Visitor.find(filter)
             .populate("course", "title category level price")
             .sort(getSafeSort(sortBy, sortOrder))
@@ -182,10 +143,8 @@ const listVisitorsByTab = async (req, res, tabType) => {
     }
 };
 
-
 const generateRandomPassword = (length = 10) => {
-    const chars =
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%";
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%";
     let pass = "";
     for (let i = 0; i < length; i++) {
         pass += chars.charAt(Math.floor(Math.random() * chars.length));
@@ -193,25 +152,15 @@ const generateRandomPassword = (length = 10) => {
     return pass;
 };
 
-const sendStudentWelcomeEmail = async ({
-    to,
-    name,
-    password,
-    courseTitle,
-    paid,
-    remaining,
-}) => {
+const sendStudentWelcomeEmail = async ({ to, name, password, courseTitle, paid, remaining }) => {
     if (!process.env.EMAILID || !process.env.PASSKEY) {
-        console.log(" EMAILID/PASSKEY missing in env. Skipping email.");
+        console.log("EMAILID/PASSKEY missing in env. Skipping email.");
         return;
     }
 
     const transporter = nodemailer.createTransport({
         service: "gmail",
-        auth: {
-            user: process.env.EMAILID,
-            pass: process.env.PASSKEY,
-        },
+        auth: { user: process.env.EMAILID, pass: process.env.PASSKEY },
     });
 
     await transporter.sendMail({
@@ -220,25 +169,50 @@ const sendStudentWelcomeEmail = async ({
         subject: "Your Student Account has been created",
         html: `
       <div style="font-family: Arial, sans-serif; line-height: 1.6;">
-        <h2>Welcome</h2>
-
+        <h2>Welcome to the LMS</h2>
         <p>Hello <b>${name}</b>,</p>
-
-        <p>Welcome aboard</p>
-
+        <p>Your student account has been created. Here are your login details:</p>
         <h3>Login Details</h3>
         <p><b>Email:</b> ${to}</p>
         <p><b>Password:</b> ${password}</p>
-
         <h3>Course Details</h3>
         <p><b>Course:</b> ${courseTitle}</p>
-        <p><b>Paid:</b> ₹${paid}</p>
-        <p><b>Remaining:</b> ₹${remaining}</p>
+        <p><b>Amount Paid:</b> ₹${paid}</p>
+        <p><b>Remaining Amount:</b> ₹${remaining}</p>
+        <p style="margin-top:16px;">Please login and change your password after first login.</p>
+        <p>Thanks,<br/>LMS Team</p>
+      </div>
+    `,
+    });
+};
 
-        <p style="margin-top:16px;">
-          Please login and change your password after first login.
-        </p>
+const sendEmployeeWelcomeEmail = async ({ to, name, password, designation, department }) => {
+    if (!process.env.EMAILID || !process.env.PASSKEY) {
+        console.log("EMAILID/PASSKEY missing in env. Skipping email.");
+        return;
+    }
 
+    const transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: { user: process.env.EMAILID, pass: process.env.PASSKEY },
+    });
+
+    await transporter.sendMail({
+        from: `"LMS Support" <${process.env.EMAILID}>`,
+        to,
+        subject: "Your Employee Account has been created",
+        html: `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+        <h2>Welcome to the Team</h2>
+        <p>Hello <b>${name}</b>,</p>
+        <p>Your employee account has been created. Here are your details:</p>
+        <h3>Login Details</h3>
+        <p><b>Email:</b> ${to}</p>
+        <p><b>Password:</b> ${password}</p>
+        <h3>Role Details</h3>
+        <p><b>Department:</b> ${department}</p>
+        <p><b>Designation:</b> ${designation}</p>
+        <p style="margin-top:16px;">Please login and change your password after first login.</p>
         <p>Thanks,<br/>LMS Team</p>
       </div>
     `,
@@ -246,15 +220,15 @@ const sendStudentWelcomeEmail = async ({
 };
 
 
+// ─────────────────────────────────────────────
+// CREATE VISITOR
+// ─────────────────────────────────────────────
 exports.createVisitor = async (req, res) => {
     try {
         const { name, email, course } = req.body;
 
         if (!name) return res.status(400).json({ message: "Name is required" });
-
-        if (!course) {
-            return res.status(400).json({ message: "Course is required" });
-        }
+        if (!course) return res.status(400).json({ message: "Course is required" });
 
         const courseDoc = await Course.findOne({ _id: course, isDeleted: false });
         if (!courseDoc) return res.status(404).json({ message: "Course not found" });
@@ -262,9 +236,7 @@ exports.createVisitor = async (req, res) => {
         if (email) {
             const existing = await Visitor.findOne({ email, isDeleted: false });
             if (existing) {
-                return res
-                    .status(400)
-                    .json({ message: "Visitor with this email already exists" });
+                return res.status(400).json({ message: "Visitor with this email already exists" });
             }
         }
 
@@ -275,11 +247,7 @@ exports.createVisitor = async (req, res) => {
             deletedAt: null,
         });
 
-        const populated = await Visitor.findById(visitor._id).populate(
-            "course",
-            "title category level price"
-        );
-
+        const populated = await Visitor.findById(visitor._id).populate("course", "title category level price");
         return res.status(201).json(populated);
     } catch (err) {
         console.error("createVisitor error:", err);
@@ -288,23 +256,15 @@ exports.createVisitor = async (req, res) => {
 };
 
 exports.getVisitors = async (req, res) => listVisitorsByTab(req, res, "active");
-exports.getDeletedVisitors = async (req, res) =>
-    listVisitorsByTab(req, res, "trash");
-exports.getNotInterestedVisitors = async (req, res) =>
-    listVisitorsByTab(req, res, "not-interested");
-exports.getFollowUpVisitors = async (req, res) =>
-    listVisitorsByTab(req, res, "follow-up");
-exports.getConvertedVisitors = async (req, res) =>
-    listVisitorsByTab(req, res, "converted");
+exports.getDeletedVisitors = async (req, res) => listVisitorsByTab(req, res, "trash");
+exports.getNotInterestedVisitors = async (req, res) => listVisitorsByTab(req, res, "not-interested");
+exports.getFollowUpVisitors = async (req, res) => listVisitorsByTab(req, res, "follow-up");
+exports.getConvertedVisitors = async (req, res) => listVisitorsByTab(req, res, "converted");
 
 exports.getVisitorById = async (req, res) => {
     try {
-        const visitor = await Visitor.findOne({
-            _id: req.params.id,
-        }).populate("course", "title category level price");
-
+        const visitor = await Visitor.findOne({ _id: req.params.id }).populate("course", "title category level price");
         if (!visitor) return res.status(404).json({ message: "Visitor not found" });
-
         return res.status(200).json(visitor);
     } catch (error) {
         console.error("getVisitorById error:", error);
@@ -314,29 +274,18 @@ exports.getVisitorById = async (req, res) => {
 
 exports.updateVisitor = async (req, res) => {
     try {
-        const visitor = await Visitor.findOne({
-            _id: req.params.id,
-            isDeleted: false,
-        });
-
+        const visitor = await Visitor.findOne({ _id: req.params.id, isDeleted: false });
         if (!visitor) return res.status(404).json({ message: "Visitor not found" });
 
         if (req.body.course) {
-            const courseDoc = await Course.findOne({
-                _id: req.body.course,
-                isDeleted: false,
-            });
+            const courseDoc = await Course.findOne({ _id: req.body.course, isDeleted: false });
             if (!courseDoc) return res.status(404).json({ message: "Course not found" });
         }
 
         Object.assign(visitor, req.body);
         await visitor.save();
 
-        const populated = await Visitor.findById(visitor._id).populate(
-            "course",
-            "title category level price"
-        );
-
+        const populated = await Visitor.findById(visitor._id).populate("course", "title category level price");
         return res.status(200).json(populated);
     } catch (error) {
         console.error("updateVisitor error:", error);
@@ -351,16 +300,13 @@ exports.softDeleteVisitor = async (req, res) => {
             { isDeleted: true, deletedAt: new Date() },
             { new: true }
         );
-
         if (!visitor) return res.status(404).json({ message: "Visitor not found" });
-
         return res.status(200).json({ message: "Visitor moved to trash" });
     } catch (error) {
         console.error("softDeleteVisitor error:", error);
         return res.status(500).json({ message: "Internal server error" });
     }
 };
-
 
 exports.restoreVisitor = async (req, res) => {
     try {
@@ -369,16 +315,13 @@ exports.restoreVisitor = async (req, res) => {
             { isDeleted: false, deletedAt: null },
             { new: true }
         );
-
         if (!visitor) return res.status(404).json({ message: "Visitor not found" });
-
         return res.status(200).json({ message: "Visitor restored successfully", visitor });
     } catch (error) {
         console.error("restoreVisitor error:", error);
         return res.status(500).json({ message: "Internal server error" });
     }
 };
-
 
 exports.markNotInterested = async (req, res) => {
     try {
@@ -392,7 +335,6 @@ exports.markNotInterested = async (req, res) => {
         visitor.followUpDate = followUpDate || null;
 
         await visitor.save();
-
         return res.status(200).json({ message: "Visitor marked as not interested", visitor });
     } catch (error) {
         console.error("markNotInterested error:", error);
@@ -400,6 +342,10 @@ exports.markNotInterested = async (req, res) => {
     }
 };
 
+
+// ─────────────────────────────────────────────
+// CONVERT TO STUDENT
+// ─────────────────────────────────────────────
 exports.convertToStudent = async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -411,10 +357,7 @@ exports.convertToStudent = async (req, res) => {
     let remainingAmount = 0;
 
     try {
-        const visitor = await Visitor.findOne({
-            _id: req.params.id,
-            isDeleted: false,
-        }).session(session);
+        const visitor = await Visitor.findOne({ _id: req.params.id, isDeleted: false }).session(session);
 
         if (!visitor) {
             await session.abortTransaction();
@@ -433,48 +376,30 @@ exports.convertToStudent = async (req, res) => {
 
         if (!visitor.course) {
             await session.abortTransaction();
-            return res.status(400).json({ message: "Visitor must have a course" });
+            return res.status(400).json({ message: "Visitor must have a course assigned" });
         }
 
-        const existingStudent = await Student.findOne({
-            visitor: visitor._id,
-            isDeleted: false,
-        }).session(session);
-
+        const existingStudent = await Student.findOne({ visitor: visitor._id, isDeleted: false }).session(session);
         if (existingStudent) {
             await session.abortTransaction();
-            return res
-                .status(400)
-                .json({ message: "Student already exists for this visitor" });
+            return res.status(400).json({ message: "Student already exists for this visitor" });
         }
 
-        const existingUser = await User.findOne({
-            email: visitor.email,
-            isDeleted: false,
-        }).session(session);
-
+        const existingUser = await User.findOne({ email: visitor.email, isDeleted: false }).session(session);
         if (existingUser) {
             await session.abortTransaction();
-            return res.status(400).json({ message: "User already exists with this email" });
+            return res.status(400).json({ message: "A user account already exists with this email" });
         }
 
-        const courseDoc = await Course.findOne({
-            _id: visitor.course,
-            isDeleted: false,
-        }).session(session);
-
+        const courseDoc = await Course.findOne({ _id: visitor.course, isDeleted: false }).session(session);
         if (!courseDoc) {
             await session.abortTransaction();
-            return res.status(400).json({
-                message: "Course not found. Update visitor course first.",
-            });
+            return res.status(400).json({ message: "Course not found. Update visitor course first." });
         }
 
         if (!courseDoc.price || courseDoc.price <= 0) {
             await session.abortTransaction();
-            return res.status(400).json({
-                message: "Course price missing. Set course price first.",
-            });
+            return res.status(400).json({ message: "Course price is missing. Set the course price first." });
         }
 
         courseTitle = courseDoc.title;
@@ -484,10 +409,10 @@ exports.convertToStudent = async (req, res) => {
             adhaar,
             address,
             dateOfBirth,
-            gender,
+            gender,       // enum: male | female | other
             guardianName,
             guardianPhone,
-            status,
+            status,       // enum: active | inactive | suspended
             profileImage,
             identityProof,
             documents,
@@ -509,52 +434,35 @@ exports.convertToStudent = async (req, res) => {
             [
                 {
                     visitor: visitor._id,
-
                     enrollmentDate: new Date(),
                     status: studentStatus,
-
                     adhaar: adhaar || undefined,
                     address: address || undefined,
                     dateOfBirth: dobValue || undefined,
                     gender: studentGender,
-
                     guardianName: guardianName || undefined,
                     guardianPhone: guardianPhone || undefined,
 
                     profileImage: profileImage?.url
-                        ? {
-                            url: profileImage.url,
-                            publicId: profileImage.publicId || undefined,
-                        }
+                        ? { url: profileImage.url, publicId: profileImage.publicId || undefined }
                         : undefined,
 
                     identityProof:
-                        identityProof?.type ||
-                            identityProof?.number ||
-                            identityProof?.frontImage?.url ||
-                            identityProof?.backImage?.url
+                        identityProof?.type || identityProof?.number ||
+                            identityProof?.frontImage?.url || identityProof?.backImage?.url
                             ? {
                                 type: identityProof?.type || undefined,
                                 number: identityProof?.number || undefined,
-
                                 frontImage: identityProof?.frontImage?.url
-                                    ? {
-                                        url: identityProof.frontImage.url,
-                                        publicId: identityProof.frontImage.publicId || undefined,
-                                    }
+                                    ? { url: identityProof.frontImage.url, publicId: identityProof.frontImage.publicId || undefined }
                                     : undefined,
-
                                 backImage: identityProof?.backImage?.url
-                                    ? {
-                                        url: identityProof.backImage.url,
-                                        publicId: identityProof.backImage.publicId || undefined,
-                                    }
+                                    ? { url: identityProof.backImage.url, publicId: identityProof.backImage.publicId || undefined }
                                     : undefined,
                             }
                             : undefined,
 
                     documents: Array.isArray(documents) ? documents : [],
-
                     isActive: true,
                     isDeleted: false,
                 },
@@ -563,7 +471,6 @@ exports.convertToStudent = async (req, res) => {
         );
 
         const studentDoc = student[0];
-
         studentPassword = generateRandomPassword(10);
 
         const user = await User.create(
@@ -579,8 +486,8 @@ exports.convertToStudent = async (req, res) => {
         );
 
         const {
-            paymentType = "full",
-            paymentMode = "offline",
+            paymentType = "full",   // enum: full | partial
+            paymentMode = "offline", // enum: offline | online
             amountPaid,
             dueDate,
             note,
@@ -589,11 +496,7 @@ exports.convertToStudent = async (req, res) => {
 
         let batchDoc = null;
         if (batch) {
-            batchDoc = await Batch.findOne({
-                _id: batch,
-                isDeleted: false,
-            }).session(session);
-
+            batchDoc = await Batch.findOne({ _id: batch, isDeleted: false }).session(session);
             if (!batchDoc) {
                 await session.abortTransaction();
                 return res.status(404).json({ message: "Batch not found" });
@@ -606,20 +509,13 @@ exports.convertToStudent = async (req, res) => {
             paidAmount = coursePrice;
         } else {
             paidAmount = Number(amountPaid || 0);
-
             if (!amountPaid || isNaN(paidAmount) || paidAmount < 0) {
                 await session.abortTransaction();
-                return res.status(400).json({
-                    message: "Valid amountPaid is required for partial payment",
-                });
+                return res.status(400).json({ message: "Valid amountPaid is required for partial payment" });
             }
         }
 
-        const { remainingAmount: rem, status: feesStatus } = calculateFees({
-            coursePrice,
-            amountPaid: paidAmount,
-        });
-
+        const { remainingAmount: rem, status: feesStatus } = calculateFees({ coursePrice, amountPaid: paidAmount });
         remainingAmount = rem;
 
         const dueDateValue = dueDate ? new Date(dueDate) : null;
@@ -634,15 +530,12 @@ exports.convertToStudent = async (req, res) => {
                     student: studentDoc._id,
                     course: courseDoc._id,
                     batch: batchDoc?._id || null,
-
                     coursePrice,
                     paymentType,
                     paymentMode,
-
                     amountPaid: paidAmount,
                     remainingAmount,
                     status: feesStatus,
-
                     dueDate: dueDateValue,
                     note: note || "",
                 },
@@ -657,21 +550,18 @@ exports.convertToStudent = async (req, res) => {
 
         await session.commitTransaction();
 
-        try {
-            await sendStudentWelcomeEmail({
-                to: studentEmail,
-                name: visitor.name,
-                password: studentPassword,
-                courseTitle,
-                paid: paidAmount,
-                remaining: remainingAmount,
-            });
-        } catch (mailErr) {
-            console.error("Student welcome email failed:", mailErr);
-        }
+        // Send welcome email (non-blocking)
+        sendStudentWelcomeEmail({
+            to: studentEmail,
+            name: visitor.name,
+            password: studentPassword,
+            courseTitle,
+            paid: paidAmount,
+            remaining: remainingAmount,
+        }).catch((mailErr) => console.error("Student welcome email failed:", mailErr));
 
         return res.status(201).json({
-            message: "Visitor converted to student + fees added successfully",
+            message: "Visitor converted to student successfully",
             visitor,
             student: studentDoc,
             user: { email: user[0].email, role: user[0].role },
@@ -679,13 +569,17 @@ exports.convertToStudent = async (req, res) => {
         });
     } catch (err) {
         await session.abortTransaction();
-        console.error("Convert to student error:", err);
+        console.error("convertToStudent error:", err);
         return res.status(500).json({ message: err.message });
     } finally {
         session.endSession();
     }
 };
 
+
+// ─────────────────────────────────────────────
+// CONVERT TO EMPLOYEE
+// ─────────────────────────────────────────────
 exports.convertToEmployee = async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -694,10 +588,7 @@ exports.convertToEmployee = async (req, res) => {
         const { id } = req.params;
         const { department, designation, salary } = req.body;
 
-        const visitor = await Visitor.findOne({
-            _id: id,
-            isDeleted: false,
-        }).session(session);
+        const visitor = await Visitor.findOne({ _id: id, isDeleted: false }).session(session);
 
         if (!visitor) {
             await session.abortTransaction();
@@ -716,25 +607,21 @@ exports.convertToEmployee = async (req, res) => {
 
         if (!department || !designation) {
             await session.abortTransaction();
-            return res
-                .status(400)
-                .json({ message: "Department and designation are required" });
+            return res.status(400).json({ message: "Department and designation are required" });
         }
 
-        const existingUser = await User.findOne({
-            email: visitor.email,
-            isDeleted: false,
-        }).session(session);
-
+        const existingUser = await User.findOne({ email: visitor.email, isDeleted: false }).session(session);
         if (existingUser) {
             await session.abortTransaction();
-            return res.status(400).json({ message: "User already exists with this email" });
+            return res.status(400).json({ message: "A user account already exists with this email" });
         }
 
         const employee = await Employee.create(
             [
                 {
                     name: visitor.name,
+                    email: visitor.email,  // store email on employee if model supports it
+                    phone: visitor.phone || undefined,
                     department,
                     designation,
                     salary: Number(salary || 0),
@@ -746,9 +633,12 @@ exports.convertToEmployee = async (req, res) => {
         );
 
         const employeeDoc = employee[0];
-
         const defaultPassword = generateRandomPassword(10);
-        const role = designation.toLowerCase().includes("hr") ? "hr" : "admin";
+
+        // Role: "hr" if designation contains "hr" (case-insensitive), otherwise "admin"
+        const designationLower = designation.toLowerCase();
+        let role = "admin";
+        if (designationLower.includes("hr")) role = "hr";
 
         const user = await User.create(
             [
@@ -769,6 +659,15 @@ exports.convertToEmployee = async (req, res) => {
 
         await session.commitTransaction();
 
+        // Send welcome email (non-blocking)
+        sendEmployeeWelcomeEmail({
+            to: visitor.email,
+            name: visitor.name,
+            password: defaultPassword,
+            designation,
+            department,
+        }).catch((mailErr) => console.error("Employee welcome email failed:", mailErr));
+
         return res.status(201).json({
             message: "Visitor converted to employee successfully",
             visitor,
@@ -777,7 +676,7 @@ exports.convertToEmployee = async (req, res) => {
         });
     } catch (err) {
         await session.abortTransaction();
-        console.error("Convert to employee error:", err);
+        console.error("convertToEmployee error:", err);
         return res.status(500).json({ message: err.message });
     } finally {
         session.endSession();

@@ -1,5 +1,8 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import axiosInstance from "../../api/axios";
+import dayjs from "dayjs";
+import customParseFormat from "dayjs/plugin/customParseFormat";
+import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 import {
   CalendarCheck2,
   Users,
@@ -8,12 +11,106 @@ import {
   BookOpen,
   GraduationCap,
   RefreshCcw,
+  Wifi,
+  Save,
+  ChevronRight,
+  AlertCircle,
+  Clock,
 } from "lucide-react";
 
+dayjs.extend(customParseFormat);
+dayjs.extend(isSameOrBefore);
+
+// ─── Status config — enum: present | absent | present-online ───
+const STATUS_CONFIG = {
+  present: {
+    label: "Present",
+    icon: CheckCircle2,
+    // button active
+    activeBtn:
+      "bg-emerald-600 text-white border-emerald-600 shadow-sm shadow-emerald-200 dark:shadow-none",
+    // button idle
+    idleBtn:
+      "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:border-emerald-300 dark:hover:border-emerald-700 hover:text-emerald-700 dark:hover:text-emerald-300",
+    // status pill
+    pill: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-700",
+    dot: "bg-emerald-500",
+  },
+  "present-online": {
+    label: "Online",
+    icon: Wifi,
+    activeBtn:
+      "bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-200 dark:shadow-none",
+    idleBtn:
+      "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-300 dark:hover:border-blue-700 hover:text-blue-700 dark:hover:text-blue-300",
+    pill: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700",
+    dot: "bg-blue-500",
+  },
+  absent: {
+    label: "Absent",
+    icon: XCircle,
+    activeBtn:
+      "bg-red-600 text-white border-red-600 shadow-sm shadow-red-200 dark:shadow-none",
+    idleBtn:
+      "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-300 dark:hover:border-red-700 hover:text-red-700 dark:hover:text-red-300",
+    pill: "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-700",
+    dot: "bg-red-500",
+  },
+};
+
+// ─── Batch status pill — enum: upcoming | running | completed ───
+const batchStatusPill = (status) => {
+  const s = String(status || "upcoming").toLowerCase();
+  const map = {
+    upcoming:
+      "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-700",
+    running:
+      "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-700",
+    completed:
+      "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-700/50 dark:text-slate-400 dark:border-slate-600",
+  };
+  return map[s] || map.upcoming;
+};
+
+const toISODate = (d) => {
+  const parsed = dayjs(d);
+  return parsed.isValid() ? parsed.format("YYYY-MM-DD") : "";
+};
+
+const formatUI = (d) => {
+  const parsed = dayjs(d);
+  return parsed.isValid() ? parsed.format("DD MMM YYYY") : "—";
+};
+
+const formatDay = (d) => {
+  const parsed = dayjs(d);
+  return parsed.isValid() ? parsed.format("ddd") : "";
+};
+
+const getDatesBetween = (start, end) => {
+  const s = dayjs(start);
+  const e = dayjs(end);
+  if (!s.isValid() || !e.isValid()) return [];
+  const dates = [];
+  let cur = s;
+  while (cur.isSameOrBefore(e, "day")) {
+    dates.push(cur.format("YYYY-MM-DD"));
+    cur = cur.add(1, "day");
+  }
+  return dates;
+};
+
+// ─── Stat card ───
+const StatCard = ({ label, value, color }) => (
+  <div className={`rounded-2xl border p-4 ${color}`}>
+    <p className="text-xs font-semibold uppercase tracking-wider opacity-70">
+      {label}
+    </p>
+    <p className="text-2xl font-bold mt-1">{value}</p>
+  </div>
+);
+
 const AdminAttendance = () => {
-  // =========================
-  // State
-  // =========================
   const [courses, setCourses] = useState([]);
   const [batches, setBatches] = useState([]);
   const [students, setStudents] = useState([]);
@@ -22,6 +119,7 @@ const AdminAttendance = () => {
   const [selectedBatch, setSelectedBatch] = useState(null);
   const [selectedDate, setSelectedDate] = useState("");
 
+  // attendanceMap: { studentId: "present" | "absent" | "present-online" }
   const [attendanceMap, setAttendanceMap] = useState({});
 
   const [loadingCourses, setLoadingCourses] = useState(true);
@@ -29,79 +127,54 @@ const AdminAttendance = () => {
   const [loadingStudents, setLoadingStudents] = useState(false);
   const [loadingAttendance, setLoadingAttendance] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   const [error, setError] = useState("");
 
-  // =========================
-  // Helpers
-  // =========================
-  const toISODate = (dateInput) => {
-    const d = new Date(dateInput);
-    if (isNaN(d.getTime())) return "";
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    return `${yyyy}-${mm}-${dd}`;
-  };
-
-  const getDatesBetween = (start, end) => {
-    const startDate = new Date(start);
-    const endDate = new Date(end);
-
-    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) return [];
-
-    const dates = [];
-    const cur = new Date(startDate);
-
-    while (cur <= endDate) {
-      dates.push(toISODate(cur));
-      cur.setDate(cur.getDate() + 1);
-    }
-
-    return dates;
-  };
-
-  // =========================
-  // Calendar dates
-  // =========================
   const calendarDates = useMemo(() => {
     if (!selectedBatch?.startDate) return [];
-
-    // if no endDate, show only startDate
     if (!selectedBatch?.endDate) {
       const d = toISODate(selectedBatch.startDate);
       return d ? [d] : [];
     }
-
     return getDatesBetween(selectedBatch.startDate, selectedBatch.endDate);
   }, [selectedBatch]);
 
-  // =========================
-  // Fetch Courses
-  // =========================
+  // Attendance stats
+  const stats = useMemo(() => {
+    const total = students.length;
+    let present = 0,
+      online = 0,
+      absent = 0,
+      unmarked = 0;
+    students.forEach((s) => {
+      const st = attendanceMap[s._id];
+      if (st === "present") present++;
+      else if (st === "present-online") online++;
+      else if (st === "absent") absent++;
+      else unmarked++;
+    });
+    return { total, present, online, absent, unmarked };
+  }, [students, attendanceMap]);
+
+  // ─── Fetch courses ───
   useEffect(() => {
     const fetchCourses = async () => {
       try {
         setLoadingCourses(true);
-        setError("");
-
         const res = await axiosInstance.get("/courses/all");
         const list = res.data?.courses || res.data || [];
         setCourses(Array.isArray(list) ? list : []);
       } catch (err) {
-        console.error(err);
         setError("Failed to load courses");
       } finally {
         setLoadingCourses(false);
       }
     };
-
     fetchCourses();
   }, []);
 
-  // =========================
-  // Fetch Batches by Course
-  // =========================
+  // ─── Fetch batches by course ───
   useEffect(() => {
     if (!selectedCourse) {
       setBatches([]);
@@ -111,102 +184,78 @@ const AdminAttendance = () => {
       setAttendanceMap({});
       return;
     }
-
     const fetchBatches = async () => {
       try {
         setLoadingBatches(true);
         setError("");
-
-        // ✅ FIXED ENDPOINT
         const res = await axiosInstance.get(
           `/batch/by-course/${selectedCourse}`,
         );
-
         const list = res.data?.batches || [];
         setBatches(Array.isArray(list) ? list : []);
-
-        // reset batch selection
         setSelectedBatch(null);
         setSelectedDate("");
         setStudents([]);
         setAttendanceMap({});
       } catch (err) {
-        console.error(err);
         setError("Failed to load batches for selected course");
       } finally {
         setLoadingBatches(false);
       }
     };
-
     fetchBatches();
   }, [selectedCourse]);
 
-  // =========================
-  // Fetch Students for Batch
-  // =========================
-  const fetchBatchStudents = async (batchId) => {
+  // ─── Fetch students ───
+  const fetchBatchStudents = useCallback(async (batchId) => {
     try {
       setLoadingStudents(true);
       setError("");
-
-      // ⚠️ Make sure this route exists in backend
-      const res = await axiosInstance.get(`/batch/${batchId}/students`);
-
+      const res = await axiosInstance.get(
+        `/attendance/batch/${batchId}/students`,
+      );
       const list = res.data?.students || [];
       setStudents(Array.isArray(list) ? list : []);
     } catch (err) {
-      console.error(err);
       setError("Failed to load students for batch");
     } finally {
       setLoadingStudents(false);
     }
-  };
+  }, []);
 
-  // =========================
-  // Fetch Attendance for date
-  // =========================
-  const fetchAttendance = async ({ batchId, date }) => {
+  // ─── Fetch attendance ───
+  const fetchAttendance = useCallback(async ({ batchId, date }) => {
     try {
       setLoadingAttendance(true);
       setError("");
-
       const res = await axiosInstance.get(`/attendance/batch/${batchId}`, {
         params: { date },
       });
-
       const records = res.data?.records || [];
       const map = {};
-
       records.forEach((r) => {
-        const studentId =
-          typeof r.student === "object" ? r.student?._id : r.student;
-        if (studentId) map[studentId] = r.status;
+        const sid = typeof r.student === "object" ? r.student?._id : r.student;
+        if (sid) map[sid] = r.status;
       });
-
       setAttendanceMap(map);
     } catch (err) {
-      console.error(err);
-
-      // if not marked yet, treat as empty
       if (err?.response?.status === 404) {
         setAttendanceMap({});
         return;
       }
-
       setError("Failed to load attendance for selected date");
     } finally {
       setLoadingAttendance(false);
     }
-  };
+  }, []);
 
-  // =========================
-  // Select Batch
-  // =========================
+  // ─── Select batch ───
   const handleSelectBatch = async (batch) => {
     setSelectedBatch(batch);
     setSelectedDate("");
     setAttendanceMap({});
     setStudents([]);
+    setSaveSuccess(false);
 
     await fetchBatchStudents(batch._id);
 
@@ -218,53 +267,44 @@ const AdminAttendance = () => {
           : [];
 
     const firstDate = dates[0];
-
     if (firstDate) {
       setSelectedDate(firstDate);
       await fetchAttendance({ batchId: batch._id, date: firstDate });
     }
   };
 
-  // =========================
-  // Select Date
-  // =========================
+  // ─── Select date ───
   const handleSelectDate = async (date) => {
-    if (!selectedBatch?._id) return;
-    if (!date) return;
-
+    if (!selectedBatch?._id || !date) return;
     setSelectedDate(date);
+    setSaveSuccess(false);
     await fetchAttendance({ batchId: selectedBatch._id, date });
   };
 
-  // =========================
-  // Mark Attendance
-  // =========================
-  const setStatus = (studentId, status) => {
-    setAttendanceMap((prev) => ({
-      ...prev,
-      [studentId]: status,
-    }));
-  };
+  // ─── Set single student status ───
+  const setStudentStatus = useCallback((studentId, status) => {
+    setAttendanceMap((prev) => ({ ...prev, [studentId]: status }));
+  }, []);
 
-  const markAll = (status) => {
-    const map = {};
-    students.forEach((s) => {
-      map[s._id] = status;
-    });
-    setAttendanceMap(map);
-  };
+  // ─── Mark all ───
+  const markAll = useCallback(
+    (status) => {
+      const map = {};
+      students.forEach((s) => {
+        map[s._id] = status;
+      });
+      setAttendanceMap(map);
+    },
+    [students],
+  );
 
-  // =========================
-  // Save Attendance
-  // =========================
+  // ─── Save ───
   const handleSave = async () => {
-    if (!selectedBatch?._id) return;
-    if (!selectedDate) return;
-
+    if (!selectedBatch?._id || !selectedDate) return;
     try {
       setSaving(true);
+      setSaveSuccess(false);
       setError("");
-
       const payload = {
         date: selectedDate,
         records: students.map((s) => ({
@@ -272,72 +312,61 @@ const AdminAttendance = () => {
           status: attendanceMap[s._id] || "absent",
         })),
       };
-
       await axiosInstance.post(
         `/attendance/batch/${selectedBatch._id}/mark`,
         payload,
       );
-
-      alert("Attendance saved successfully ✅");
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err) {
-      console.error(err);
       setError(err?.response?.data?.message || "Failed to save attendance");
     } finally {
       setSaving(false);
     }
   };
 
-  // =========================
-  // UI Helpers
-  // =========================
-  const statusPill = (status) => {
-    const s = String(status || "").toLowerCase();
-
-    const map = {
-      ongoing:
-        "bg-emerald-500/10 text-emerald-700 border-emerald-300/40 dark:text-emerald-200",
-      upcoming:
-        "bg-blue-500/10 text-blue-700 border-blue-300/40 dark:text-blue-200",
-      completed:
-        "bg-slate-500/10 text-slate-700 border-slate-300/40 dark:text-slate-200",
-    };
-
-    return map[s] || "bg-slate-500/10 text-slate-700 border-slate-300/40";
-  };
-
   if (loadingCourses) {
     return (
-      <div className="p-6 text-center text-[#3F72AF] dark:text-[#DBE2EF]">
-        Loading attendance module...
+      <div className="p-8 flex items-center justify-center">
+        <div className="flex items-center gap-3 text-slate-500 dark:text-slate-400">
+          <div className="w-5 h-5 border-2 border-[#3F72AF] border-t-transparent rounded-full animate-spin" />
+          <span className="text-sm font-medium">
+            Loading attendance module...
+          </span>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
-      {/* HEADER */}
-      <div className="rounded-3xl border border-white/50 dark:border-slate-700 bg-white/70 dark:bg-slate-900/55 backdrop-blur-xl shadow-xl p-6">
-        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+    <div className="p-6 space-y-5 max-w-[1400px] mx-auto">
+      {/* ── HEADER ── */}
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm p-6">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
           <div>
-            <h1 className="text-2xl font-bold text-[#112D4E] dark:text-[#DBE2EF]">
-              Attendance
-            </h1>
-            <p className="text-sm text-[#3F72AF] dark:text-slate-300 mt-1">
-              Select a course → choose batch → mark attendance date-wise.
+            <div className="flex items-center gap-3 mb-1">
+              <div className="p-2 rounded-xl bg-[#3F72AF]/10 dark:bg-[#3F72AF]/20">
+                <CalendarCheck2 size={20} className="text-[#3F72AF]" />
+              </div>
+              <h1 className="text-xl font-bold text-slate-800 dark:text-white">
+                Attendance
+              </h1>
+            </div>
+            <p className="text-sm text-slate-500 dark:text-slate-400 ml-11">
+              Select course → batch → date → mark attendance
             </p>
           </div>
 
-          <div className="w-full lg:w-[360px]">
-            <label className="text-xs font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
-              Select Course
+          <div className="lg:w-80">
+            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+              Course
             </label>
-
             <select
               value={selectedCourse}
               onChange={(e) => setSelectedCourse(e.target.value)}
-              className="mt-2 w-full text-sm border border-[#DBE2EF] dark:border-slate-700 rounded-2xl px-4 py-3 bg-white/80 dark:bg-slate-800/70 dark:text-[#DBE2EF] outline-none"
+              className="w-full text-sm border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-[#3F72AF]/40 transition"
             >
-              <option value="">Choose course</option>
+              <option value="">Select a course...</option>
               {courses.map((c) => (
                 <option key={c._id} value={c._id}>
                   {c.title}
@@ -348,92 +377,98 @@ const AdminAttendance = () => {
         </div>
       </div>
 
-      {/* ERROR */}
+      {/* ── ERROR ── */}
       {error && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-4 py-3 flex items-center gap-3 text-sm text-red-700 dark:text-red-300">
+          <AlertCircle size={16} className="shrink-0" />
           {error}
         </div>
       )}
 
-      {/* BATCHES */}
-      <div className="rounded-3xl border border-white/50 dark:border-slate-700 bg-white/70 dark:bg-slate-900/55 backdrop-blur-xl shadow-sm p-6">
-        <div className="flex items-center gap-2 text-sm font-semibold text-[#112D4E] dark:text-[#DBE2EF] mb-4">
-          <BookOpen size={18} className="text-[#3F72AF]" />
-          Batches
+      {/* ── BATCHES ── */}
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm p-6">
+        <div className="flex items-center gap-2 mb-5">
+          <BookOpen size={17} className="text-[#3F72AF]" />
+          <h2 className="text-sm font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
+            Batches
+          </h2>
         </div>
 
         {!selectedCourse ? (
-          <div className="text-sm text-[#3F72AF] dark:text-slate-300">
-            Select a course to view its batches.
-          </div>
+          <p className="text-sm text-slate-400 dark:text-slate-500 py-4 text-center">
+            Select a course above to view its batches
+          </p>
         ) : loadingBatches ? (
-          <div className="text-sm text-[#3F72AF] dark:text-slate-300">
+          <div className="flex items-center gap-2 text-sm text-slate-400 py-4">
+            <div className="w-4 h-4 border-2 border-[#3F72AF] border-t-transparent rounded-full animate-spin" />
             Loading batches...
           </div>
         ) : batches.length === 0 ? (
-          <div className="text-sm text-[#3F72AF] dark:text-slate-300">
-            No batches found for this course.
-          </div>
+          <p className="text-sm text-slate-400 dark:text-slate-500 py-4 text-center">
+            No batches found for this course
+          </p>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
             {batches.map((b) => {
               const active = selectedBatch?._id === b._id;
-
               return (
                 <button
                   key={b._id}
                   onClick={() => handleSelectBatch(b)}
-                  className={`text-left rounded-3xl border p-5 transition ${
+                  className={`text-left rounded-2xl border p-4 transition-all ${
                     active
-                      ? "border-[#3F72AF] bg-[#DBE2EF]/60 dark:bg-[#3F72AF]/20 shadow-md"
-                      : "border-white/60 dark:border-slate-700 bg-white/60 dark:bg-slate-800/40 hover:bg-white/80 dark:hover:bg-slate-800/70"
+                      ? "border-[#3F72AF] bg-[#3F72AF]/5 dark:bg-[#3F72AF]/10 shadow-sm ring-1 ring-[#3F72AF]/20"
+                      : "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-white dark:hover:bg-slate-800"
                   }`}
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-bold text-[#112D4E] dark:text-[#DBE2EF]">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-bold text-slate-800 dark:text-white text-sm truncate">
                         {b.name}
                       </p>
-
-                      <p className="text-xs text-[#3F72AF] dark:text-slate-300 mt-1">
-                        Start:{" "}
-                        {b.startDate
-                          ? new Date(b.startDate).toLocaleDateString()
-                          : "—"}{" "}
-                        • End:{" "}
-                        {b.endDate
-                          ? new Date(b.endDate).toLocaleDateString()
-                          : "—"}
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                        {formatUI(b.startDate)} →{" "}
+                        {b.endDate ? formatUI(b.endDate) : "ongoing"}
                       </p>
                     </div>
-
-                    <div className="p-2 rounded-2xl bg-white/70 dark:bg-slate-900/40 border border-white/60 dark:border-slate-700">
+                    <div
+                      className={`p-1.5 rounded-lg shrink-0 transition ${active ? "bg-[#3F72AF]/10" : "bg-white dark:bg-slate-700"}`}
+                    >
                       <GraduationCap
-                        size={18}
-                        className="text-[#3F72AF] dark:text-[#DBE2EF]"
+                        size={16}
+                        className={
+                          active
+                            ? "text-[#3F72AF]"
+                            : "text-slate-400 dark:text-slate-500"
+                        }
                       />
                     </div>
                   </div>
 
-                  <div className="mt-4 flex flex-wrap items-center gap-2">
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {/* batch status — enum: upcoming | running | completed */}
                     <span
-                      className={`inline-flex items-center px-3 py-1 rounded-full border text-xs font-semibold ${statusPill(
-                        b.status,
-                      )}`}
+                      className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold border ${batchStatusPill(b.status)}`}
                     >
                       {b.status || "upcoming"}
                     </span>
-
                     <span
-                      className={`inline-flex items-center px-3 py-1 rounded-full border text-xs font-semibold ${
+                      className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold border ${
                         b.isActive
-                          ? "bg-emerald-500/10 text-emerald-700 border-emerald-300/40"
-                          : "bg-red-500/10 text-red-700 border-red-300/40"
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-700"
+                          : "bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-700 dark:text-slate-400 dark:border-slate-600"
                       }`}
                     >
                       {b.isActive ? "Active" : "Disabled"}
                     </span>
                   </div>
+
+                  {active && (
+                    <div className="mt-3 flex items-center gap-1 text-xs font-semibold text-[#3F72AF]">
+                      <ChevronRight size={12} />
+                      Selected
+                    </div>
+                  )}
                 </button>
               );
             })}
@@ -441,62 +476,72 @@ const AdminAttendance = () => {
         )}
       </div>
 
-      {/* ATTENDANCE PANEL */}
+      {/* ── ATTENDANCE PANEL ── */}
       {selectedBatch && (
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          {/* CALENDAR */}
-          <div className="xl:col-span-1 rounded-3xl border border-white/50 dark:border-slate-700 bg-white/70 dark:bg-slate-900/55 backdrop-blur-xl shadow-sm p-6">
-            <div className="flex items-center justify-between gap-3 mb-4">
-              <div className="flex items-center gap-2 text-sm font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
-                <CalendarCheck2 size={18} className="text-[#3F72AF]" />
-                Calendar
+        <div className="grid grid-cols-1 xl:grid-cols-[280px_1fr] gap-5">
+          {/* ── CALENDAR SIDEBAR ── */}
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <CalendarCheck2 size={16} className="text-[#3F72AF]" />
+                <h3 className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
+                  Calendar
+                </h3>
               </div>
-
               <button
-                onClick={() => {
-                  if (selectedBatch?._id && selectedDate) {
-                    fetchAttendance({
-                      batchId: selectedBatch._id,
-                      date: selectedDate,
-                    });
-                  }
-                }}
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-2xl border border-[#DBE2EF] dark:border-slate-700 text-xs font-semibold text-[#112D4E] dark:text-[#DBE2EF] hover:bg-[#DBE2EF]/60 dark:hover:bg-slate-800 transition"
+                onClick={() =>
+                  selectedBatch?._id &&
+                  selectedDate &&
+                  fetchAttendance({
+                    batchId: selectedBatch._id,
+                    date: selectedDate,
+                  })
+                }
+                className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition"
+                title="Refresh"
               >
                 <RefreshCcw size={14} />
-                Refresh
               </button>
             </div>
 
-            <div className="text-xs text-[#3F72AF] dark:text-slate-300 mb-4">
-              Dates from batch start → end
-            </div>
-
             {calendarDates.length === 0 ? (
-              <div className="text-sm text-[#3F72AF] dark:text-slate-300">
+              <p className="text-sm text-slate-400 dark:text-slate-500">
                 Batch has no valid dates.
-              </div>
+              </p>
             ) : (
-              <div className="max-h-[360px] overflow-y-auto space-y-2 pr-1">
+              <div className="space-y-1.5 max-h-[420px] overflow-y-auto pr-1">
                 {calendarDates.map((d) => {
                   const active = selectedDate === d;
-
+                  const isToday = d === dayjs().format("YYYY-MM-DD");
                   return (
                     <button
                       key={d}
                       onClick={() => handleSelectDate(d)}
-                      className={`w-full text-left px-4 py-3 rounded-2xl border transition ${
+                      className={`w-full text-left px-3 py-2.5 rounded-xl border transition-all ${
                         active
-                          ? "border-[#3F72AF] bg-[#DBE2EF]/60 dark:bg-[#3F72AF]/20"
-                          : "border-white/60 dark:border-slate-700 bg-white/60 dark:bg-slate-800/40 hover:bg-white/80 dark:hover:bg-slate-800/70"
+                          ? "border-[#3F72AF] bg-[#3F72AF]/8 dark:bg-[#3F72AF]/15 ring-1 ring-[#3F72AF]/20"
+                          : "border-transparent hover:border-slate-200 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
                       }`}
                     >
-                      <p className="text-sm font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
-                        {new Date(d).toLocaleDateString()}
-                      </p>
-                      <p className="text-xs text-[#3F72AF] dark:text-slate-300 mt-0.5">
-                        {d}
-                      </p>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p
+                            className={`text-sm font-semibold ${active ? "text-[#3F72AF]" : "text-slate-700 dark:text-slate-200"}`}
+                          >
+                            {formatUI(d)}
+                          </p>
+                          <p
+                            className={`text-xs mt-0.5 ${active ? "text-[#3F72AF]/70" : "text-slate-400 dark:text-slate-500"}`}
+                          >
+                            {formatDay(d)}
+                          </p>
+                        </div>
+                        {isToday && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#3F72AF] text-white">
+                            Today
+                          </span>
+                        )}
+                      </div>
                     </button>
                   );
                 })}
@@ -504,140 +549,258 @@ const AdminAttendance = () => {
             )}
           </div>
 
-          {/* STUDENTS */}
-          <div className="xl:col-span-2 rounded-3xl border border-white/50 dark:border-slate-700 bg-white/70 dark:bg-slate-900/55 backdrop-blur-xl shadow-sm p-6">
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-5">
-              <div className="flex items-center gap-2 text-sm font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
-                <Users size={18} className="text-[#3F72AF]" />
-                Students Attendance
+          {/* ── STUDENTS TABLE ── */}
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm p-5">
+            {/* Table header */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Users size={16} className="text-[#3F72AF]" />
+                  <h3 className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
+                    Student Attendance
+                  </h3>
+                </div>
+                {selectedDate && (
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 ml-6">
+                    {selectedBatch.name} · {formatUI(selectedDate)}
+                  </p>
+                )}
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                <button
-                  onClick={() => markAll("present")}
-                  disabled={loadingStudents || loadingAttendance}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition disabled:opacity-60"
-                >
-                  <CheckCircle2 size={14} />
-                  Mark All Present
-                </button>
+                {/* Mark all buttons */}
+                {["present", "present-online", "absent"].map((s) => {
+                  const cfg = STATUS_CONFIG[s];
+                  const Icon = cfg.icon;
+                  return (
+                    <button
+                      key={s}
+                      onClick={() => markAll(s)}
+                      disabled={
+                        loadingStudents ||
+                        loadingAttendance ||
+                        students.length === 0
+                      }
+                      className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-semibold transition disabled:opacity-50 ${cfg.idleBtn}`}
+                    >
+                      <Icon size={13} />
+                      All {cfg.label}
+                    </button>
+                  );
+                })}
 
-                <button
-                  onClick={() => markAll("absent")}
-                  disabled={loadingStudents || loadingAttendance}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-red-600 hover:bg-red-700 text-white text-xs font-semibold transition disabled:opacity-60"
-                >
-                  <XCircle size={14} />
-                  Mark All Absent
-                </button>
-
+                {/* Save button */}
                 <button
                   onClick={handleSave}
                   disabled={
                     saving ||
                     loadingStudents ||
                     loadingAttendance ||
-                    !selectedDate
+                    !selectedDate ||
+                    students.length === 0
                   }
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-[#3F72AF] hover:bg-[#2f5d95] text-white text-xs font-semibold shadow-lg shadow-[#3F72AF]/20 transition disabled:opacity-60"
+                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition disabled:opacity-50 shadow-sm ${
+                    saveSuccess
+                      ? "bg-emerald-600 text-white border border-emerald-600"
+                      : "bg-[#3F72AF] hover:bg-[#2f5d95] text-white border border-[#3F72AF]"
+                  }`}
                 >
-                  {saving ? "Saving..." : "Save Attendance"}
+                  {saving ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Saving...
+                    </>
+                  ) : saveSuccess ? (
+                    <>
+                      <CheckCircle2 size={13} />
+                      Saved!
+                    </>
+                  ) : (
+                    <>
+                      <Save size={13} />
+                      Save Attendance
+                    </>
+                  )}
                 </button>
               </div>
             </div>
 
-            {/* INFO */}
-            <div className="rounded-2xl border border-white/50 dark:border-slate-700 bg-white/60 dark:bg-slate-800/40 px-4 py-3 mb-5">
-              <p className="text-sm font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
-                Batch: {selectedBatch.name}
-              </p>
-              <p className="text-xs text-[#3F72AF] dark:text-slate-300 mt-1">
-                Date:{" "}
-                {selectedDate
-                  ? new Date(selectedDate).toLocaleDateString()
-                  : "Select a date"}
-              </p>
-            </div>
-
-            {/* CONTENT */}
-            {loadingStudents ? (
-              <div className="text-sm text-[#3F72AF] dark:text-slate-300">
-                Loading students...
+            {/* Stats row */}
+            {students.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+                <StatCard
+                  label="Present"
+                  value={stats.present}
+                  color="border-emerald-200 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300"
+                />
+                <StatCard
+                  label="Online"
+                  value={stats.online}
+                  color="border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300"
+                />
+                <StatCard
+                  label="Absent"
+                  value={stats.absent}
+                  color="border-red-200 dark:border-red-700 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300"
+                />
+                <StatCard
+                  label="Unmarked"
+                  value={stats.unmarked}
+                  color="border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                />
               </div>
-            ) : loadingAttendance ? (
-              <div className="text-sm text-[#3F72AF] dark:text-slate-300">
-                Loading attendance...
+            )}
+
+            {/* Loading states */}
+            {loadingStudents || loadingAttendance ? (
+              <div className="flex items-center gap-2 py-8 justify-center text-sm text-slate-400 dark:text-slate-500">
+                <div className="w-4 h-4 border-2 border-[#3F72AF] border-t-transparent rounded-full animate-spin" />
+                {loadingStudents
+                  ? "Loading students..."
+                  : "Loading attendance..."}
               </div>
             ) : students.length === 0 ? (
-              <div className="text-sm text-[#3F72AF] dark:text-slate-300">
-                No students found in this batch.
+              <div className="py-12 text-center">
+                <Users
+                  size={36}
+                  className="mx-auto text-slate-300 dark:text-slate-600 mb-3"
+                />
+                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                  No students in this batch
+                </p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+                  Add students to this batch first
+                </p>
+              </div>
+            ) : !selectedDate ? (
+              <div className="py-12 text-center">
+                <Clock
+                  size={36}
+                  className="mx-auto text-slate-300 dark:text-slate-600 mb-3"
+                />
+                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                  Select a date from the calendar
+                </p>
               </div>
             ) : (
-              <div className="overflow-x-auto rounded-3xl border border-white/50 dark:border-slate-700">
+              <div className="overflow-x-auto rounded-xl border border-slate-100 dark:border-slate-700/60">
                 <table className="w-full text-sm">
-                  <thead className="bg-[#DBE2EF]/80 dark:bg-slate-800/80 border-b border-white/40 dark:border-slate-700">
-                    <tr>
-                      <th className="p-4 text-left">Student</th>
-                      <th className="p-4 text-left">Email</th>
-                      <th className="p-4 text-left">Status</th>
-                      <th className="p-4 text-right">Mark</th>
+                  <thead>
+                    <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-700/60">
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                        #
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                        Student
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider hidden md:table-cell">
+                        Email
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                        Mark
+                      </th>
                     </tr>
                   </thead>
 
-                  <tbody className="divide-y divide-[#DBE2EF]/60 dark:divide-slate-700">
-                    {students.map((s) => {
-                      const status = attendanceMap[s._id] || "";
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700/40">
+                    {students.map((s, idx) => {
+                      const currentStatus = attendanceMap[s._id] || "";
+                      const cfg = currentStatus
+                        ? STATUS_CONFIG[currentStatus]
+                        : null;
 
                       return (
                         <tr
                           key={s._id}
-                          className="hover:bg-[#DBE2EF]/40 dark:hover:bg-slate-800/40 transition"
+                          className={`transition-colors ${
+                            currentStatus === "present"
+                              ? "bg-emerald-50/40 dark:bg-emerald-900/5"
+                              : currentStatus === "present-online"
+                                ? "bg-blue-50/40 dark:bg-blue-900/5"
+                                : currentStatus === "absent"
+                                  ? "bg-red-50/30 dark:bg-red-900/5"
+                                  : "hover:bg-slate-50 dark:hover:bg-slate-800/40"
+                          }`}
                         >
-                          <td className="p-4 font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
-                            {s.name}
-                          </td>
-
-                          <td className="p-4 text-[#3F72AF] dark:text-slate-300">
-                            {s.email || "—"}
-                          </td>
-
-                          <td className="p-4">
-                            <span
-                              className={`inline-flex items-center px-3 py-1 rounded-full border text-xs font-semibold ${
-                                status === "present"
-                                  ? "bg-emerald-500/10 text-emerald-700 border-emerald-300/40"
-                                  : status === "absent"
-                                    ? "bg-red-500/10 text-red-700 border-red-300/40"
-                                    : "bg-slate-500/10 text-slate-700 border-slate-300/40"
-                              }`}
-                            >
-                              {status || "not marked"}
+                          <td className="px-4 py-3.5">
+                            <span className="text-xs font-bold text-slate-400 dark:text-slate-500">
+                              {idx + 1}
                             </span>
                           </td>
 
-                          <td className="p-4">
-                            <div className="flex justify-end gap-2">
-                              <button
-                                onClick={() => setStatus(s._id, "present")}
-                                className={`px-3 py-2 rounded-2xl border text-xs font-semibold transition ${
-                                  status === "present"
-                                    ? "bg-emerald-600 text-white border-emerald-600"
-                                    : "bg-white/70 dark:bg-slate-800/50 border-white/60 dark:border-slate-700 text-[#112D4E] dark:text-[#DBE2EF] hover:bg-emerald-50 dark:hover:bg-emerald-500/10"
-                                }`}
-                              >
-                                Present
-                              </button>
+                          <td className="px-4 py-3.5">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-[#3F72AF]/10 dark:bg-[#3F72AF]/20 flex items-center justify-center shrink-0">
+                                <span className="text-xs font-bold text-[#3F72AF]">
+                                  {(s.name || "?")[0].toUpperCase()}
+                                </span>
+                              </div>
+                              <div>
+                                <p className="font-semibold text-slate-800 dark:text-white text-sm">
+                                  {s.name}
+                                </p>
+                                {s.phone && (
+                                  <p className="text-xs text-slate-400 dark:text-slate-500">
+                                    {s.phone}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </td>
 
-                              <button
-                                onClick={() => setStatus(s._id, "absent")}
-                                className={`px-3 py-2 rounded-2xl border text-xs font-semibold transition ${
-                                  status === "absent"
-                                    ? "bg-red-600 text-white border-red-600"
-                                    : "bg-white/70 dark:bg-slate-800/50 border-white/60 dark:border-slate-700 text-[#112D4E] dark:text-[#DBE2EF] hover:bg-red-50 dark:hover:bg-red-500/10"
-                                }`}
+                          <td className="px-4 py-3.5 hidden md:table-cell">
+                            <span className="text-slate-500 dark:text-slate-400 text-sm">
+                              {s.email || "—"}
+                            </span>
+                          </td>
+
+                          <td className="px-4 py-3.5">
+                            {currentStatus && cfg ? (
+                              <span
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${cfg.pill}`}
                               >
-                                Absent
-                              </button>
+                                <span
+                                  className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`}
+                                />
+                                {cfg.label}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-slate-400 dark:text-slate-500 italic">
+                                Not marked
+                              </span>
+                            )}
+                          </td>
+
+                          <td className="px-4 py-3.5">
+                            {/* 3 status buttons — present | present-online | absent */}
+                            <div className="flex justify-end gap-1.5">
+                              {["present", "present-online", "absent"].map(
+                                (st) => {
+                                  const c = STATUS_CONFIG[st];
+                                  const Icon = c.icon;
+                                  const isActive = currentStatus === st;
+                                  return (
+                                    <button
+                                      key={st}
+                                      onClick={() =>
+                                        setStudentStatus(s._id, st)
+                                      }
+                                      title={c.label}
+                                      className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-all ${
+                                        isActive ? c.activeBtn : c.idleBtn
+                                      }`}
+                                    >
+                                      <Icon size={12} />
+                                      <span className="hidden sm:inline">
+                                        {c.label}
+                                      </span>
+                                    </button>
+                                  );
+                                },
+                              )}
                             </div>
                           </td>
                         </tr>

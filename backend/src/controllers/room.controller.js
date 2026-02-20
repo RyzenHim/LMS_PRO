@@ -58,9 +58,7 @@ const toSetup = (doc) => {
     };
 };
 
-// ===============================
-// GET ALL ROOM SETUPS
-// ===============================
+
 exports.getAllRoomSetups = async (req, res) => {
     try {
         const rooms = await Room.find({ isDeleted: false })
@@ -77,9 +75,7 @@ exports.getAllRoomSetups = async (req, res) => {
     }
 };
 
-// ===============================
-// GET ROOM OPTIONS (RoomUnit)
-// ===============================
+
 exports.getRoomOptions = async (req, res) => {
     try {
         const units = await RoomUnit.find({ isDeleted: false })
@@ -103,9 +99,6 @@ exports.getRoomOptions = async (req, res) => {
     }
 };
 
-// ===============================
-// CREATE ROOM SETUP + CREATE UNITS
-// ===============================
 exports.createRoomSetup = async (req, res) => {
     try {
         const { location, buildingName, totalFloors, floors } = req.body;
@@ -121,7 +114,6 @@ exports.createRoomSetup = async (req, res) => {
             return res.status(400).json({ message: "At least one floor is required" });
         }
 
-        // 1) Create setup
         const roomSetup = await Room.create({
             location: String(location).trim(),
             buildingName: String(buildingName).trim(),
@@ -129,7 +121,6 @@ exports.createRoomSetup = async (req, res) => {
             floors: normalizedFloors,
         });
 
-        // 2) Create RoomUnits (scalable)
         const units = [];
         normalizedFloors.forEach((floor) => {
             (floor.rooms || []).forEach((r) => {
@@ -158,9 +149,7 @@ exports.createRoomSetup = async (req, res) => {
     }
 };
 
-// ===============================
-// UPDATE ROOM SETUP + REBUILD UNITS
-// ===============================
+
 exports.updateRoomSetup = async (req, res) => {
     try {
         const { id } = req.params;
@@ -193,8 +182,7 @@ exports.updateRoomSetup = async (req, res) => {
         existing.floors = nextFloors;
         await existing.save();
 
-        // ✅ sync units
-        // 1) soft delete old units
+
         await RoomUnit.updateMany(
             { setup: existing._id, isDeleted: false },
             { $set: { isDeleted: true, deletedAt: new Date() } }
@@ -229,9 +217,6 @@ exports.updateRoomSetup = async (req, res) => {
     }
 };
 
-// ===============================
-// DELETE ROOM SETUP + DELETE UNITS
-// ===============================
 exports.deleteRoomSetup = async (req, res) => {
     try {
         const { id } = req.params;
@@ -249,7 +234,6 @@ exports.deleteRoomSetup = async (req, res) => {
         room.deletedAt = new Date();
         await room.save();
 
-        // also delete all units
         await RoomUnit.updateMany(
             { setup: room._id, isDeleted: false },
             { $set: { isDeleted: true, deletedAt: new Date() } }

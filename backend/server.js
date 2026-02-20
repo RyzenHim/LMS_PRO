@@ -72,3 +72,7 @@ app.use("/assignments", assignmentRoutes);
 
 const roomRoutes = require("./src/routes/room.routes");
 app.use("/rooms", roomRoutes);
+
+
+const attendanceRoutes = require("./src/routes/attendance.routes");
+app.use("/attendance", attendanceRoutes);
