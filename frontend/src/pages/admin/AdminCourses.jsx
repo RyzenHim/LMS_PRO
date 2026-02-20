@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   Search,
   Plus,
@@ -7,580 +7,690 @@ import {
   Trash2,
   RotateCcw,
   BookOpen,
+  Filter,
+  X,
 } from "lucide-react";
 
 import { courseService } from "../../services/courseService";
-
 import AddCourseModal from "./modal/AddCourseModal";
 import EditCourseModal from "./modal/EditCourseModal";
 import ViewCourseModal from "./modal/ViewCourseModal";
 import ConfirmDeleteModal from "./modal/ConfirmDeleteModal";
-
 import Pagination from "../../components/Pagination";
-import SortHeader from "../../components/SortHeader";
 
+// ── Status pill styles ─────────────────────────────────────
+const STATUS_STYLES = {
+  published:
+    "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
+  archived:
+    "bg-slate-100 text-slate-600 dark:bg-slate-700/50 dark:text-slate-300",
+  draft:
+    "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300",
+};
+
+// ── Level pill styles ──────────────────────────────────────
+const LEVEL_STYLES = {
+  beginner: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+  intermediate:
+    "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
+  advanced: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
+};
+
+// ── Sort arrow helper ──────────────────────────────────────
+const SortArrow = ({ field, sortBy, sortOrder }) => {
+  if (sortBy !== field)
+    return <span className="ml-1 opacity-30 text-xs">↕</span>;
+  return (
+    <span className="ml-1 text-xs">{sortOrder === "asc" ? "↑" : "↓"}</span>
+  );
+};
+
+// ── Shared input style ─────────────────────────────────────
+const selectCls =
+  "w-full text-sm px-3 py-2.5 rounded-xl border border-[#DBE2EF] dark:border-slate-700 bg-white dark:bg-[#1a1a1a] text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-[#3F72AF]/40 transition";
+
+const inputCls =
+  "w-full text-sm px-3 py-2.5 rounded-xl border border-[#DBE2EF] dark:border-slate-700 bg-white dark:bg-[#1a1a1a] text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-[#3F72AF]/40 transition";
+
+// ══════════════════════════════════════════════════════════
+// MAIN COMPONENT
+// ══════════════════════════════════════════════════════════
 const AdminCourses = () => {
-  const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(false);
-
+  // ── Data ──────────────────────────────────────────────
   const [courses, setCourses] = useState([]);
-  const [deletedCourses, setDeletedCourses] = useState([]);
-
-  const [page, setPage] = useState(1);
-  const [trashPage, setTrashPage] = useState(1);
-
+  const [loading, setLoading] = useState(false);
   const [totalPages, setTotalPages] = useState(1);
-  const [trashTotalPages, setTrashTotalPages] = useState(1);
+  const [totalCourses, setTotalCourses] = useState(0);
 
+  // ── Tab ───────────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState("active");
+
+  // ── Search ────────────────────────────────────────────
+  const [search, setSearch] = useState("");
+
+  // ── Sort ──────────────────────────────────────────────
   const [sortBy, setSortBy] = useState("createdAt");
   const [sortOrder, setSortOrder] = useState("desc");
 
-  const [filters, setFilters] = useState({});
-  const [filterField, setFilterField] = useState("status");
-  const [filterValue, setFilterValue] = useState("");
+  // ── Filters ───────────────────────────────────────────
+  const [filterStatus, setFilterStatus] = useState(""); // draft | published | archived
+  const [filterLevel, setFilterLevel] = useState(""); // beginner | intermediate | advanced
+  const [filterCategory, setFilterCategory] = useState(""); // text
+  const [filterIsActive, setFilterIsActive] = useState(""); // true | false
+  const [showFilters, setShowFilters] = useState(false);
 
-  const [activeTab, setActiveTab] = useState("active");
+  // ── Pagination ────────────────────────────────────────
+  const [page, setPage] = useState(1);
 
+  // ── Modals ────────────────────────────────────────────
   const [openAdd, setOpenAdd] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [openView, setOpenView] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
-
   const [selectedCourse, setSelectedCourse] = useState(null);
 
-  // =========================
-  // SORT + FILTER FUNCTIONS
-  // =========================
-  const handleSort = (field) => {
-    if (sortBy === field) {
-      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
-    } else {
-      setSortBy(field);
-      setSortOrder("asc");
-    }
-
-    setPage(1);
-    setTrashPage(1);
-  };
-
-  const addFilter = () => {
-    if (!filterField || !filterValue) return;
-
-    setFilters((prev) => ({
-      ...prev,
-      [filterField]: filterValue,
-    }));
-
-    setFilterValue("");
-    setPage(1);
-    setTrashPage(1);
-  };
-
-  const removeFilter = (field) => {
-    setFilters((prev) => {
-      const next = { ...prev };
-      delete next[field];
-      return next;
-    });
-
-    setPage(1);
-    setTrashPage(1);
-  };
-
-  const clearFilters = () => {
-    setFilters({});
-    setPage(1);
-    setTrashPage(1);
-  };
-
-  // =========================
-  // API CALLS
-  // =========================
+  // ─────────────────────────────────────────────────────
+  // FETCH
+  // ─────────────────────────────────────────────────────
   const fetchCourses = async () => {
     setLoading(true);
     try {
-      const res = await courseService.getAll({
+      const params = {
         page,
         limit: 10,
         search,
         sortBy,
         sortOrder,
-        ...filters,
-      });
+      };
 
-      setCourses(res.data.courses || []);
-      setTotalPages(res.data.totalPages || 1);
+      // Active tab filters
+      if (activeTab === "active") {
+        if (filterStatus) params.status = filterStatus;
+        if (filterLevel) params.level = filterLevel;
+        if (filterCategory) params.category = filterCategory;
+        if (filterIsActive) params.isActive = filterIsActive;
+      }
+
+      // Trash tab filters (backend supports category + level)
+      if (activeTab === "trash") {
+        if (filterCategory) params.category = filterCategory;
+        if (filterLevel) params.level = filterLevel;
+      }
+
+      const fn =
+        activeTab === "active"
+          ? courseService.getAll
+          : courseService.getDeleted;
+      const res = await fn(params);
+
+      const data = res?.data ?? res;
+      setCourses(data?.courses ?? []);
+      setTotalPages(data?.totalPages ?? 1);
+      setTotalCourses(data?.totalCourses ?? 0);
     } catch (error) {
-      console.error("Error fetching courses", error);
+      console.error("Fetch courses error:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchDeletedCourses = async () => {
-    setLoading(true);
-    try {
-      const res = await courseService.getDeleted({
-        page: trashPage,
-        limit: 10,
-        search,
-        sortBy,
-        sortOrder,
-        ...filters,
-      });
-
-      setDeletedCourses(res.data.courses || []);
-      setTrashTotalPages(res.data.totalPages || 1);
-    } catch (error) {
-      console.error("Error fetching deleted courses", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // =========================
-  // FETCH BASED ON ACTIVE TAB
-  // =========================
+  // Re-fetch whenever any dependency changes
   useEffect(() => {
-    if (activeTab === "active") {
-      fetchCourses();
-    } else {
-      fetchDeletedCourses();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    fetchCourses();
   }, [
     activeTab,
     page,
-    trashPage,
     search,
     sortBy,
     sortOrder,
-    JSON.stringify(filters),
+    filterStatus,
+    filterLevel,
+    filterCategory,
+    filterIsActive,
   ]);
 
-  // reset correct page when tab changes
+  // Reset page when tab changes
   useEffect(() => {
-    if (activeTab === "active") setPage(1);
-    else setTrashPage(1);
+    setPage(1);
   }, [activeTab]);
 
-  // =========================
-  // CRUD HANDLERS
-  // =========================
-  const handleAddCourse = async (data) => {
-    try {
-      const res = await courseService.create(data);
-
-      // if on page 1, show instantly
-      if (activeTab === "active" && page === 1) {
-        setCourses((prev) => [res.data.course, ...prev]);
-      } else {
-        await fetchCourses();
-      }
-
-      setOpenAdd(false);
-    } catch (error) {
-      console.error("Add course failed", error);
-      alert(error.response?.data?.message || "Failed to add course");
+  // ─────────────────────────────────────────────────────
+  // SORT
+  // ─────────────────────────────────────────────────────
+  const handleSort = (field) => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortBy(field);
+      setSortOrder("asc");
     }
+    setPage(1);
   };
 
-  const handleEdit = (course) => {
-    setSelectedCourse(course);
-    setOpenEdit(true);
+  // ─────────────────────────────────────────────────────
+  // CLEAR FILTERS
+  // ─────────────────────────────────────────────────────
+  const clearFilters = () => {
+    setFilterStatus("");
+    setFilterLevel("");
+    setFilterCategory("");
+    setFilterIsActive("");
+    setPage(1);
+  };
+
+  const activeFilterCount = [
+    filterStatus,
+    filterLevel,
+    filterCategory,
+    filterIsActive,
+  ].filter(Boolean).length;
+
+  // ─────────────────────────────────────────────────────
+  // CRUD
+  // ─────────────────────────────────────────────────────
+  const handleAddCourse = async (data) => {
+    try {
+      await courseService.create(data);
+      setOpenAdd(false);
+      fetchCourses();
+    } catch (error) {
+      alert(error?.response?.data?.message || "Failed to add course");
+    }
   };
 
   const handleUpdateCourse = async (data) => {
     try {
-      const res = await courseService.update(selectedCourse._id, data);
-
-      setCourses((prev) =>
-        prev.map((c) => (c._id === selectedCourse._id ? res.data.course : c)),
-      );
-
+      await courseService.update(selectedCourse._id, data);
       setOpenEdit(false);
       setSelectedCourse(null);
+      fetchCourses();
     } catch (error) {
-      console.error("Update failed", error);
-      alert(error.response?.data?.message || "Failed to update course");
+      alert(error?.response?.data?.message || "Failed to update course");
     }
-  };
-
-  const handleView = (course) => {
-    setSelectedCourse(course);
-    setOpenView(true);
-  };
-
-  const handleDeleteClick = (course) => {
-    setSelectedCourse(course);
-    setOpenDelete(true);
   };
 
   const handleDelete = async () => {
     try {
       await courseService.softDelete(selectedCourse._id);
-
-      setCourses((prev) => prev.filter((c) => c._id !== selectedCourse._id));
-
-      await fetchDeletedCourses();
-
       setOpenDelete(false);
       setSelectedCourse(null);
+      fetchCourses();
     } catch (error) {
-      console.error("Delete failed", error);
-      alert(error.response?.data?.message || "Failed to delete course");
+      alert(error?.response?.data?.message || "Failed to delete course");
     }
   };
 
   const handleRestore = async (id) => {
     try {
       await courseService.restore(id);
-
-      setDeletedCourses((prev) => prev.filter((c) => c._id !== id));
-
-      await fetchCourses();
+      fetchCourses();
     } catch (error) {
-      console.error("Restore failed", error);
-      alert(error.response?.data?.message || "Failed to restore course");
+      alert(error?.response?.data?.message || "Failed to restore course");
     }
   };
 
   const handleToggleStatus = async (id) => {
     try {
-      const res = await courseService.toggleStatus(id);
-
-      setCourses((prev) =>
-        prev.map((c) =>
-          c._id === id ? { ...c, isActive: res.data.isActive } : c,
-        ),
-      );
+      await courseService.toggleStatus(id);
+      fetchCourses();
     } catch (error) {
-      console.error("Toggle status failed", error);
-      alert(error.response?.data?.message || "Failed to toggle status");
+      alert(error?.response?.data?.message || "Failed to toggle status");
     }
   };
 
-  const filteredCourses = activeTab === "active" ? courses : deletedCourses;
-
+  // ─────────────────────────────────────────────────────
+  // RENDER
+  // ─────────────────────────────────────────────────────
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
-            Courses
-          </h1>
-          <p className="text-sm text-[#3F72AF] dark:text-[#DBE2EF]">
-            Manage all LMS courses
-          </p>
+    <div className="space-y-5 p-1">
+      {/* ── Header card (matches screenshot layout) ── */}
+      <div className="bg-white dark:bg-[#101010] rounded-2xl border border-[#DBE2EF] dark:border-slate-800 p-5 shadow-sm">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-[#3F72AF]/10 dark:bg-[#3F72AF]/20 shrink-0">
+              <BookOpen size={20} className="text-[#3F72AF]" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-[#112D4E] dark:text-slate-100">
+                Courses
+              </h1>
+              <p className="text-xs text-[#3F72AF] dark:text-slate-400 mt-0.5">
+                Manage all LMS courses
+                {totalCourses > 0 && (
+                  <span className="ml-2 font-semibold">
+                    · {totalCourses} total
+                  </span>
+                )}
+              </p>
+            </div>
+          </div>
+
+          {activeTab === "active" && (
+            <button
+              onClick={() => setOpenAdd(true)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#3F72AF] hover:bg-[#112D4E] text-white text-sm font-semibold transition shadow-sm shrink-0"
+            >
+              <Plus size={16} />
+              Add Course
+            </button>
+          )}
         </div>
 
-        {activeTab === "active" && (
+        {/* Tabs */}
+        <div className="mt-4 flex gap-2 border-b border-[#DBE2EF] dark:border-slate-800 pb-0">
           <button
-            onClick={() => setOpenAdd(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#3F72AF] text-white hover:bg-[#112D4E] dark:bg-[#3F72AF] dark:hover:bg-[#DBE2EF] dark:hover:text-[#112D4E] transition-colors shadow-md"
+            onClick={() => setActiveTab("active")}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition -mb-px ${
+              activeTab === "active"
+                ? "border-[#3F72AF] text-[#3F72AF] dark:text-slate-100 dark:border-slate-100"
+                : "border-transparent text-slate-500 dark:text-slate-400 hover:text-[#3F72AF] dark:hover:text-slate-200"
+            }`}
           >
-            <Plus size={18} />
-            Add Course
+            Active
           </button>
+          <button
+            onClick={() => setActiveTab("trash")}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition -mb-px ${
+              activeTab === "trash"
+                ? "border-red-500 text-red-500 dark:text-red-400 dark:border-red-400"
+                : "border-transparent text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400"
+            }`}
+          >
+            Trash
+          </button>
+        </div>
+      </div>
+
+      {/* ── Search + Filters (matches screenshot: full-width search + Filters button) ── */}
+      <div className="bg-white dark:bg-[#101010] rounded-2xl border border-[#DBE2EF] dark:border-slate-800 p-4 shadow-sm space-y-3">
+        <div className="flex gap-3">
+          {/* Search input */}
+          <div className="flex-1 flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border border-[#DBE2EF] dark:border-slate-700 bg-[#F9F7F7] dark:bg-[#1a1a1a] focus-within:ring-2 focus-within:ring-[#3F72AF]/30 transition">
+            <Search
+              size={15}
+              className="text-[#3F72AF] dark:text-slate-500 shrink-0"
+            />
+            <input
+              type="text"
+              placeholder="Search by title, category, level, status..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+              className="w-full bg-transparent outline-none text-sm text-[#112D4E] dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+            />
+            {search && (
+              <button
+                onClick={() => {
+                  setSearch("");
+                  setPage(1);
+                }}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+
+          {/* Filters toggle button */}
+          <button
+            onClick={() => setShowFilters((p) => !p)}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-semibold transition ${
+              showFilters || activeFilterCount > 0
+                ? "bg-[#3F72AF]/10 dark:bg-[#3F72AF]/20 border-[#3F72AF]/30 text-[#3F72AF] dark:text-blue-400"
+                : "bg-white dark:bg-[#1a1a1a] border-[#DBE2EF] dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-[#F9F7F7] dark:hover:bg-[#252525]"
+            }`}
+          >
+            <Filter size={14} />
+            Filters
+            {activeFilterCount > 0 && (
+              <span className="w-5 h-5 rounded-full bg-[#3F72AF] text-white text-[10px] font-bold flex items-center justify-center">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Filter panel */}
+        {showFilters && (
+          <div className="border-t border-[#DBE2EF] dark:border-slate-800 pt-3 space-y-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {/* Status — active tab only */}
+              {activeTab === "active" && (
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">
+                    Status
+                  </label>
+                  <select
+                    value={filterStatus}
+                    onChange={(e) => {
+                      setFilterStatus(e.target.value);
+                      setPage(1);
+                    }}
+                    className={selectCls}
+                  >
+                    <option value="">All Status</option>
+                    <option value="draft">Draft</option>
+                    <option value="published">Published</option>
+                    <option value="archived">Archived</option>
+                  </select>
+                </div>
+              )}
+
+              {/* Level */}
+              <div>
+                <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">
+                  Level
+                </label>
+                <select
+                  value={filterLevel}
+                  onChange={(e) => {
+                    setFilterLevel(e.target.value);
+                    setPage(1);
+                  }}
+                  className={selectCls}
+                >
+                  <option value="">All Levels</option>
+                  <option value="beginner">Beginner</option>
+                  <option value="intermediate">Intermediate</option>
+                  <option value="advanced">Advanced</option>
+                </select>
+              </div>
+
+              {/* Category */}
+              <div>
+                <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">
+                  Category
+                </label>
+                <input
+                  type="text"
+                  value={filterCategory}
+                  onChange={(e) => {
+                    setFilterCategory(e.target.value);
+                    setPage(1);
+                  }}
+                  placeholder="e.g. Programming"
+                  className={inputCls}
+                />
+              </div>
+
+              {/* isActive — active tab only */}
+              {activeTab === "active" && (
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">
+                    Is Active
+                  </label>
+                  <select
+                    value={filterIsActive}
+                    onChange={(e) => {
+                      setFilterIsActive(e.target.value);
+                      setPage(1);
+                    }}
+                    className={selectCls}
+                  >
+                    <option value="">All</option>
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                  </select>
+                </div>
+              )}
+            </div>
+
+            {activeFilterCount > 0 && (
+              <button
+                onClick={clearFilters}
+                className="text-xs text-red-500 dark:text-red-400 hover:underline"
+              >
+                Clear all filters
+              </button>
+            )}
+          </div>
         )}
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-4 border-b border-[#DBE2EF] dark:border-[#3F72AF]">
-        <button
-          onClick={() => setActiveTab("active")}
-          className={`pb-2 px-2 transition-colors ${
-            activeTab === "active"
-              ? "border-b-2 border-[#3F72AF] font-medium text-[#3F72AF] dark:text-[#DBE2EF] dark:border-[#DBE2EF]"
-              : "text-[#3F72AF] dark:text-[#DBE2EF]"
-          }`}
-        >
-          Active
-        </button>
-
-        <button
-          onClick={() => setActiveTab("trash")}
-          className={`pb-2 px-2 transition-colors ${
-            activeTab === "trash"
-              ? "border-b-2 border-red-600 font-medium text-red-600 dark:text-red-400 dark:border-red-400"
-              : "text-[#3F72AF] dark:text-[#DBE2EF]"
-          }`}
-        >
-          Trash
-        </button>
-      </div>
-
-      {/* Search */}
-      <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-4 flex items-center gap-3 shadow-sm">
-        <Search size={18} className="text-[#3F72AF] dark:text-[#DBE2EF]" />
-        <input
-          type="text"
-          placeholder="Search courses..."
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setPage(1);
-            setTrashPage(1);
-          }}
-          className="w-full outline-none text-sm bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
-        />
-      </div>
-
-      {/* Filters */}
-      <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-4 flex flex-wrap items-center gap-3 shadow-sm">
-        <select
-          value={filterField}
-          onChange={(e) => setFilterField(e.target.value)}
-          className="text-sm border rounded-lg px-2 py-1 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
-        >
-          <option value="status">Status</option>
-          <option value="level">Level</option>
-          <option value="category">Category</option>
-          <option value="isActive">Is Active</option>
-          <option value="price">Price</option>
-          {/* <option value="duration">Duration</option> */}
-        </select>
-
-        <input
-          value={filterValue}
-          onChange={(e) => setFilterValue(e.target.value)}
-          placeholder="Filter value"
-          className="text-sm border rounded-lg px-2 py-1 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
-        />
-
-        <button
-          onClick={addFilter}
-          className="px-3 py-1 rounded-lg bg-[#3F72AF] text-white text-sm"
-        >
-          Add Filter
-        </button>
-
-        <button
-          onClick={clearFilters}
-          className="px-3 py-1 rounded-lg border text-sm"
-        >
-          Clear Filters
-        </button>
-
-        <div className="flex flex-wrap gap-2">
-          {Object.keys(filters).map((key) => (
-            <button
-              key={key}
-              onClick={() => removeFilter(key)}
-              className="px-2 py-1 text-xs rounded-lg bg-[#DBE2EF] dark:bg-[#0a1f3a]"
-            >
-              {key}: {String(filters[key])} ×
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Table */}
-      <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] overflow-hidden shadow-lg">
+      {/* ── Table ── */}
+      <div className="bg-white dark:bg-[#101010] rounded-2xl border border-[#DBE2EF] dark:border-slate-800 overflow-hidden shadow-sm">
         {loading ? (
-          <div className="p-6 text-center text-gray-500">
+          <div className="p-10 text-center text-sm text-slate-500 dark:text-slate-400">
             Loading courses...
+          </div>
+        ) : courses.length === 0 ? (
+          <div className="p-10 text-center text-sm text-slate-500 dark:text-slate-400">
+            No courses found
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-[#DBE2EF] dark:bg-[#3F72AF] border-b border-[#DBE2EF] dark:border-[#3F72AF]">
+              {/* Table head */}
+              <thead className="bg-[#DBE2EF]/50 dark:bg-[#1a1a1a] border-b border-[#DBE2EF] dark:border-slate-800">
                 <tr>
-                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
-                    <SortHeader
-                      label="Course"
-                      field="title"
-                      sortBy={sortBy}
-                      sortOrder={sortOrder}
-                      onSort={handleSort}
-                    />
+                  <th className="px-5 py-3.5 text-left">
+                    <button
+                      onClick={() => handleSort("title")}
+                      className="flex items-center font-semibold text-xs uppercase tracking-wider text-[#112D4E] dark:text-slate-300"
+                    >
+                      Course{" "}
+                      <SortArrow
+                        field="title"
+                        sortBy={sortBy}
+                        sortOrder={sortOrder}
+                      />
+                    </button>
                   </th>
-
-                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                  <th className="px-5 py-3.5 text-left font-semibold text-xs uppercase tracking-wider text-[#112D4E] dark:text-slate-300">
                     Category
                   </th>
-
-                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
-                    Tutor
+                  <th className="px-5 py-3.5 text-left">
+                    <button
+                      onClick={() => handleSort("price")}
+                      className="flex items-center font-semibold text-xs uppercase tracking-wider text-[#112D4E] dark:text-slate-300"
+                    >
+                      Price{" "}
+                      <SortArrow
+                        field="price"
+                        sortBy={sortBy}
+                        sortOrder={sortOrder}
+                      />
+                    </button>
                   </th>
-
-                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
-                    <SortHeader
-                      label="Price"
-                      field="price"
-                      sortBy={sortBy}
-                      sortOrder={sortOrder}
-                      onSort={handleSort}
-                    />
-                  </th>
-
-                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
-                    <SortHeader
-                      // label="Duration"
-                      // field="duration"
-                      sortBy={sortBy}
-                      sortOrder={sortOrder}
-                      onSort={handleSort}
-                    />
-                  </th>
-
-                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                  <th className="px-5 py-3.5 text-left font-semibold text-xs uppercase tracking-wider text-[#112D4E] dark:text-slate-300">
                     Level
                   </th>
-
-                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
-                    Students
-                  </th>
-
-                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                  <th className="px-5 py-3.5 text-left font-semibold text-xs uppercase tracking-wider text-[#112D4E] dark:text-slate-300">
                     Skills
                   </th>
-
-                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
-                    Status
+                  <th className="px-5 py-3.5 text-left">
+                    <button
+                      onClick={() => handleSort("status")}
+                      className="flex items-center font-semibold text-xs uppercase tracking-wider text-[#112D4E] dark:text-slate-300"
+                    >
+                      Status{" "}
+                      <SortArrow
+                        field="status"
+                        sortBy={sortBy}
+                        sortOrder={sortOrder}
+                      />
+                    </button>
                   </th>
-
-                  <th className="px-6 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
-                    Is Active
+                  <th className="px-5 py-3.5 text-left font-semibold text-xs uppercase tracking-wider text-[#112D4E] dark:text-slate-300">
+                    Active
                   </th>
-
-                  <th className="px-6 py-3 text-right text-[#112D4E] dark:text-[#DBE2EF]">
+                  {activeTab === "trash" && (
+                    <th className="px-5 py-3.5 text-left font-semibold text-xs uppercase tracking-wider text-[#112D4E] dark:text-slate-300">
+                      Deleted On
+                    </th>
+                  )}
+                  <th className="px-5 py-3.5 text-left font-semibold text-xs uppercase tracking-wider text-[#112D4E] dark:text-slate-300">
                     Actions
                   </th>
                 </tr>
               </thead>
 
-              <tbody>
-                {filteredCourses.map((course) => (
+              {/* Table body */}
+              <tbody className="divide-y divide-[#DBE2EF] dark:divide-slate-800">
+                {courses.map((course) => (
                   <tr
                     key={course._id}
-                    className="border-b border-[#DBE2EF] dark:border-[#3F72AF] last:border-none hover:bg-[#DBE2EF] dark:hover:bg-[#0a1f3a] transition-colors"
+                    className="hover:bg-[#F9F7F7] dark:hover:bg-[#1a1a1a] transition-colors group"
                   >
-                    <td className="px-6 py-4 font-medium text-[#112D4E] dark:text-[#DBE2EF] flex items-center gap-2">
-                      <BookOpen size={16} className="text-[#3F72AF]" />
-                      {course.title}
+                    {/* Course title */}
+                    <td className="px-5 py-4 max-w-[200px]">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-[#3F72AF]/10 dark:bg-[#3F72AF]/20 flex items-center justify-center shrink-0">
+                          <BookOpen size={14} className="text-[#3F72AF]" />
+                        </div>
+                        <span className="font-semibold text-[#112D4E] dark:text-slate-100 line-clamp-1">
+                          {course.title}
+                        </span>
+                      </div>
                     </td>
 
-                    <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
+                    {/* Category */}
+                    <td className="px-5 py-4 text-slate-600 dark:text-slate-300 capitalize">
                       {course.category}
                     </td>
 
-                    <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
-                      {course.tutorName || course.tutor?.name || "—"}
+                    {/* Price */}
+                    <td className="px-5 py-4 text-slate-700 dark:text-slate-200 font-medium whitespace-nowrap">
+                      ₹{course.price?.toLocaleString() || 0}
                     </td>
 
-                    <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
-                      ₹{course.price || 0}
-                    </td>
-                    {/* 
-                    <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
-                      {course.duration || 0} hrs
-                    </td> */}
-
-                    <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF] capitalize">
-                      {course.level}
+                    {/* Level */}
+                    <td className="px-5 py-4">
+                      <span
+                        className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold capitalize ${LEVEL_STYLES[course.level] || LEVEL_STYLES.beginner}`}
+                      >
+                        {course.level}
+                      </span>
                     </td>
 
-                    <td className="px-6 py-4 text-[#3F72AF] dark:text-[#DBE2EF]">
-                      {course.studentsEnrolled || 0}
-                    </td>
-
-                    <td className="px-6 py-4">
+                    {/* Skills */}
+                    <td className="px-5 py-4">
                       <div className="flex flex-wrap gap-1">
                         {course.skills && course.skills.length > 0 ? (
-                          course.skills.slice(0, 2).map((skill, idx) => (
-                            <span
-                              key={idx}
-                              className="px-2 py-1 text-xs rounded-md bg-[#DBE2EF] dark:bg-[#3F72AF] text-[#112D4E] dark:text-[#DBE2EF] capitalize"
-                            >
-                              {typeof skill === "object" ? skill.name : skill}
-                            </span>
-                          ))
+                          <>
+                            {course.skills.slice(0, 2).map((skill, idx) => (
+                              <span
+                                key={idx}
+                                className="px-2 py-0.5 rounded-full text-xs bg-[#DBE2EF] dark:bg-slate-700 text-[#112D4E] dark:text-slate-200 capitalize"
+                              >
+                                {typeof skill === "object" ? skill.name : skill}
+                              </span>
+                            ))}
+                            {course.skills.length > 2 && (
+                              <span className="text-xs text-slate-400 dark:text-slate-500 self-center">
+                                +{course.skills.length - 2}
+                              </span>
+                            )}
+                          </>
                         ) : (
-                          <span className="text-[#3F72AF] dark:text-[#DBE2EF] text-xs">
+                          <span className="text-xs text-slate-400 dark:text-slate-500">
                             —
-                          </span>
-                        )}
-
-                        {course.skills && course.skills.length > 2 && (
-                          <span className="text-xs text-[#3F72AF] dark:text-[#DBE2EF]">
-                            +{course.skills.length - 2} more
                           </span>
                         )}
                       </div>
                     </td>
 
-                    <td className="px-6 py-4">
+                    {/* Status */}
+                    <td className="px-5 py-4">
                       <span
-                        className={`px-2 py-1 text-xs rounded-md capitalize ${
-                          course.status === "published"
-                            ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
-                            : course.status === "archived"
-                              ? "bg-gray-100 text-gray-700 dark:bg-gray-600 dark:text-gray-300"
-                              : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300"
-                        }`}
+                        className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold capitalize ${STATUS_STYLES[course.status] || STATUS_STYLES.draft}`}
                       >
                         {course.status}
                       </span>
                     </td>
 
-                    <td className="px-6 py-4">
+                    {/* isActive */}
+                    <td className="px-5 py-4">
                       <span
-                        className={`px-2 py-1 text-xs rounded-md ${
+                        className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold ${
                           course.isActive
-                            ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
-                            : "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"
+                            ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
+                            : "bg-slate-100 text-slate-500 dark:bg-slate-700/50 dark:text-slate-400"
                         }`}
                       >
                         {course.isActive ? "Yes" : "No"}
                       </span>
                     </td>
 
-                    <td className="px-6 py-4 text-right space-x-2">
-                      {activeTab === "active" ? (
-                        <>
+                    {/* Deleted on — trash tab only */}
+                    {activeTab === "trash" && (
+                      <td className="px-5 py-4 text-xs text-slate-400 dark:text-slate-500 whitespace-nowrap">
+                        {course.deletedAt
+                          ? new Date(course.deletedAt).toLocaleDateString(
+                              "en-IN",
+                              {
+                                day: "2-digit",
+                                month: "short",
+                                year: "numeric",
+                              },
+                            )
+                          : "—"}
+                      </td>
+                    )}
+
+                    {/* Actions */}
+                    <td className="px-5 py-4">
+                      {activeTab === "trash" ? (
+                        <button
+                          onClick={() => handleRestore(course._id)}
+                          className="flex items-center gap-1.5 text-sm font-medium text-green-600 dark:text-green-400 hover:underline"
+                        >
+                          <RotateCcw size={14} />
+                          Restore
+                        </button>
+                      ) : (
+                        <div className="flex items-center gap-3 opacity-70 group-hover:opacity-100 transition-opacity">
+                          {/* View */}
                           <button
-                            onClick={() => handleView(course)}
-                            className="text-[#3F72AF] hover:text-[#112D4E] dark:text-[#DBE2EF] dark:hover:text-white text-sm transition-colors"
+                            onClick={() => {
+                              setSelectedCourse(course);
+                              setOpenView(true);
+                            }}
+                            className="text-[#3F72AF] dark:text-slate-300 hover:text-[#112D4E] dark:hover:text-white transition"
                             title="View"
                           >
-                            <Eye size={16} className="inline" />
+                            <Eye size={15} />
                           </button>
 
+                          {/* Edit */}
                           <button
-                            onClick={() => handleEdit(course)}
-                            className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-sm transition-colors"
+                            onClick={() => {
+                              setSelectedCourse(course);
+                              setOpenEdit(true);
+                            }}
+                            className="text-slate-500 dark:text-slate-400 hover:text-[#112D4E] dark:hover:text-white transition"
                             title="Edit"
                           >
-                            <Edit size={16} className="inline" />
+                            <Edit size={15} />
                           </button>
 
+                          {/* Toggle active */}
                           <button
                             onClick={() => handleToggleStatus(course._id)}
-                            className="text-yellow-600 hover:text-yellow-700 dark:text-yellow-400 dark:hover:text-yellow-300 text-sm transition-colors"
-                            title="Toggle Status"
+                            className={`text-xs font-medium transition ${
+                              course.isActive
+                                ? "text-amber-600 dark:text-amber-400 hover:text-amber-700"
+                                : "text-green-600 dark:text-green-400 hover:text-green-700"
+                            }`}
+                            title={course.isActive ? "Deactivate" : "Activate"}
                           >
                             {course.isActive ? "Disable" : "Enable"}
                           </button>
 
+                          {/* Delete */}
                           <button
-                            onClick={() => handleDeleteClick(course)}
-                            className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-sm transition-colors"
-                            title="Delete"
+                            onClick={() => {
+                              setSelectedCourse(course);
+                              setOpenDelete(true);
+                            }}
+                            className="text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 transition"
+                            title="Move to Trash"
                           >
-                            <Trash2 size={16} className="inline" />
+                            <Trash2 size={15} />
                           </button>
-                        </>
-                      ) : (
-                        <button
-                          onClick={() => handleRestore(course._id)}
-                          className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 text-sm flex items-center gap-1 transition-colors"
-                          title="Restore"
-                        >
-                          <RotateCcw size={16} />
-                          Restore
-                        </button>
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -589,24 +699,18 @@ const AdminCourses = () => {
             </table>
           </div>
         )}
-
-        {!loading && filteredCourses.length === 0 && (
-          <div className="p-6 text-center text-[#3F72AF] dark:text-[#DBE2EF] text-sm">
-            No courses found
-          </div>
-        )}
       </div>
 
-      {/* Pagination */}
-      <Pagination
-        page={activeTab === "active" ? page : trashPage}
-        totalPages={activeTab === "active" ? totalPages : trashTotalPages}
-        onPageChange={(p) =>
-          activeTab === "active" ? setPage(p) : setTrashPage(p)
-        }
-      />
+      {/* ── Pagination ── */}
+      {!loading && totalPages > 1 && (
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+        />
+      )}
 
-      {/* Modals */}
+      {/* ── Modals ── */}
       <AddCourseModal
         open={openAdd}
         onClose={() => setOpenAdd(false)}

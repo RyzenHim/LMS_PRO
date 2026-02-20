@@ -1,13 +1,5 @@
 const Course = require("../models/course.model");
 
-const tutorPopulate = {
-    path: "tutor",
-    populate: {
-        path: "employee",
-        select: "name email phone",
-    },
-};
-
 const parseListParams = (req) => {
     const page = Math.max(parseInt(req.query.page || "1", 10), 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit || "10", 10), 1), 100);
@@ -35,11 +27,30 @@ exports.allCourses = async (req, res) => {
 
         const filter = { isDeleted: false, ...searchQuery };
 
+        // status filter — enum: draft | published | archived
+        if (req.query.status) {
+            filter.status = req.query.status;
+        }
+
+        // level filter — enum: beginner | intermediate | advanced
+        if (req.query.level) {
+            filter.level = req.query.level;
+        }
+
+        // category filter — partial match
+        if (req.query.category) {
+            filter.category = { $regex: req.query.category, $options: "i" };
+        }
+
+        // isActive filter
+        if (req.query.isActive !== undefined && req.query.isActive !== "") {
+            filter.isActive = req.query.isActive === "true";
+        }
+
         const totalCourses = await Course.countDocuments(filter);
 
         const courses = await Course.find(filter)
-            .populate(tutorPopulate)
-            .populate("skills", "name description category")
+            .populate("skills", "name category")
             .sort({ [sortBy]: sortOrder })
             .skip(skip)
             .limit(limit);
@@ -62,9 +73,7 @@ exports.getCourseById = async (req, res) => {
         const course = await Course.findOne({
             _id: req.params.id,
             isDeleted: false,
-        })
-            .populate(tutorPopulate)
-            .populate("skills", "name description category");
+        }).populate("skills", "name category");
 
         if (!course) {
             return res.status(404).json({ message: "Course not found" });
@@ -83,7 +92,6 @@ exports.addCourse = async (req, res) => {
             title,
             description,
             category,
-            tutor,
             price,
             level,
             status,
@@ -97,17 +105,8 @@ exports.addCourse = async (req, res) => {
         }
 
         if (price === undefined || Number(price) <= 0) {
-            return res
-                .status(400)
-                .json({ message: "Course price is required and must be greater than 0" });
+            return res.status(400).json({ message: "Price is required and must be greater than 0" });
         }
-
-        const tutorArray =
-            tutor === undefined || tutor === null
-                ? []
-                : Array.isArray(tutor)
-                    ? tutor
-                    : [tutor];
 
         const skillsArray =
             skills === undefined || skills === null
@@ -120,9 +119,7 @@ exports.addCourse = async (req, res) => {
             title,
             description,
             category,
-            tutor: tutorArray,
             price: Number(price),
-            duration: duration || 0,
             level: level || "beginner",
             status: status || "draft",
             startDate: startDate || null,
@@ -131,8 +128,7 @@ exports.addCourse = async (req, res) => {
         });
 
         const populatedCourse = await Course.findById(course._id)
-            .populate(tutorPopulate)
-            .populate("skills", "name description category");
+            .populate("skills", "name category");
 
         return res.status(201).json({
             message: "Course added successfully",
@@ -157,9 +153,7 @@ exports.updateCourse = async (req, res) => {
             title,
             description,
             category,
-            tutor,
             price,
-            duration,
             level,
             status,
             startDate,
@@ -172,19 +166,13 @@ exports.updateCourse = async (req, res) => {
         if (description !== undefined) course.description = description;
         if (category !== undefined) course.category = category;
 
-        if (tutor !== undefined) {
-            course.tutor =
-                tutor === null ? [] : Array.isArray(tutor) ? tutor : [tutor];
-        }
-
         if (price !== undefined) {
             if (Number(price) <= 0) {
-                return res.status(400).json({ message: "Course price must be greater than 0" });
+                return res.status(400).json({ message: "Price must be greater than 0" });
             }
             course.price = Number(price);
         }
 
-        if (duration !== undefined) course.duration = Number(duration || 0);
         if (level !== undefined) course.level = level;
         if (status !== undefined) course.status = status;
         if (startDate !== undefined) course.startDate = startDate || null;
@@ -202,8 +190,7 @@ exports.updateCourse = async (req, res) => {
         await course.save();
 
         const populatedCourse = await Course.findById(course._id)
-            .populate(tutorPopulate)
-            .populate("skills", "name description category");
+            .populate("skills", "name category");
 
         return res.status(200).json({
             message: "Course updated successfully",
@@ -243,10 +230,7 @@ exports.softDeleteCourse = async (req, res) => {
     try {
         const course = await Course.findByIdAndUpdate(
             req.params.id,
-            {
-                isDeleted: true,
-                deletedAt: new Date(),
-            },
+            { isDeleted: true, deletedAt: new Date() },
             { new: true }
         );
 
@@ -265,10 +249,7 @@ exports.restoreCourse = async (req, res) => {
     try {
         const course = await Course.findByIdAndUpdate(
             req.params.id,
-            {
-                isDeleted: false,
-                deletedAt: null,
-            },
+            { isDeleted: false, deletedAt: null },
             { new: true }
         );
 
@@ -300,11 +281,20 @@ exports.getDeletedCourses = async (req, res) => {
 
         const filter = { isDeleted: true, ...searchQuery };
 
+        // category filter — partial match
+        if (req.query.category) {
+            filter.category = { $regex: req.query.category, $options: "i" };
+        }
+
+        // level filter
+        if (req.query.level) {
+            filter.level = req.query.level;
+        }
+
         const totalCourses = await Course.countDocuments(filter);
 
         const courses = await Course.find(filter)
-            .populate(tutorPopulate)
-            .populate("skills", "name description category")
+            .populate("skills", "name category")
             .sort({ [sortBy]: sortOrder })
             .skip(skip)
             .limit(limit);

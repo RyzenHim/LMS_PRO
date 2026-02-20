@@ -19,16 +19,9 @@ const courseSchema = new mongoose.Schema({
         trim: true
     },
 
-
     skills: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: "Skill"
-    }],
-
-    tutor: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Tutor",
-        default: null
     }],
 
     price: {
@@ -36,7 +29,6 @@ const courseSchema = new mongoose.Schema({
         required: true,
         min: 1
     },
-
 
     level: {
         type: String,
@@ -76,6 +68,7 @@ const courseSchema = new mongoose.Schema({
     deletedAt: {
         type: Date
     }
+
 }, { timestamps: true })
 
 module.exports = mongoose.model("Course", courseSchema)
