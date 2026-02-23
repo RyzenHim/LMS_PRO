@@ -32,7 +32,7 @@ import StudentLayout from "../layouts/studentLayout/StudentLayout";
 import StudentDashboard from "../pages/students/StudentDashboard";
 import StudentTimetable from "../pages/students/StudentTimetable";
 
-import InstructorLayout from "../layouts/TutorLayout";
+import InstructorLayout from "../layouts/instructorLayout/InstructorLayout";
 import InstructorDashboard from "../pages/tutor/InstructorDashboard";
 
 import AdminReports from "../pages/admin/report/AdminReports";
@@ -47,6 +47,7 @@ import EmployeeReport from "../pages/admin/report/EmployeeReport";
 import SkillReport from "../pages/admin/report/SkillReport";
 import AdminRooms from "../pages/admin/AdminRooms";
 import AdminAttendance from "../pages/admin/AdminAttendance";
+import TutorStudents from "../pages/tutor/Tutorstudents ";
 
 const router = createBrowserRouter([
   {
@@ -139,7 +140,11 @@ const router = createBrowserRouter([
             </RoleRoute>
           </ProtectedRoute>
         ),
-        children: [{ index: true, element: <InstructorDashboard /> }],
+        children: [
+          { index: true, element: <InstructorDashboard /> },
+
+          { path: "students", element: <TutorStudents /> },
+        ],
       },
 
       { path: "*", element: <NotFound /> },

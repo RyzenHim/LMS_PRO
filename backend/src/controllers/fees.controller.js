@@ -3,6 +3,10 @@ const Student = require("../models/student.model");
 const Course = require("../models/course.model");
 const Batch = require("../models/batch.model");
 
+// ────────────────────────────────────────────────────────────────
+// Helpers
+// ────────────────────────────────────────────────────────────────
+
 const parseListParams = (req) => {
     const page = Math.max(parseInt(req.query.page || "1", 10), 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit || "10", 10), 1), 100);
@@ -10,6 +14,7 @@ const parseListParams = (req) => {
     const sortBy = req.query.sortBy || "createdAt";
     const sortOrder = req.query.sortOrder === "asc" ? 1 : -1;
     const search = (req.query.search || "").trim();
+
     return { page, limit, skip, sortBy, sortOrder, search };
 };
 
@@ -24,10 +29,7 @@ const calculateFees = ({ coursePrice, amountPaid }) => {
     else if (paid >= price) status = "paid";
     else status = "partial";
 
-    return {
-        remainingAmount: remaining,
-        status,
-    };
+    return { remainingAmount: remaining, status };
 };
 
 const studentPopulate = {
@@ -39,29 +41,72 @@ const studentPopulate = {
     },
 };
 
+// Map frontend sort keys → actual mongoose paths (supports nested fields)
+const buildSortObject = (sortBy, sortOrder) => {
+    const order = sortOrder === "asc" ? 1 : -1;
+
+    const sortMap = {
+        student: "student.visitor.name",
+        coursePrice: "coursePrice",
+        amountPaid: "amountPaid",
+        remainingAmount: "remainingAmount",
+        dueDate: "dueDate",
+        status: "status",
+        createdAt: "createdAt",
+        // You can add more later: paymentMode, paymentType, etc.
+    };
+
+    const path = sortMap[sortBy] || "createdAt";
+    return { [path]: order };
+};
+
+// Search across payment fields + student name + email
+const buildSearchQuery = (search) => {
+    if (!search) return {};
+
+    const regex = new RegExp(search, "i");
+
+    return {
+        $or: [
+            { paymentMode: regex },
+            { paymentType: regex },
+            { status: regex },
+            { "student.visitor.name": regex },   // ← added
+            { "student.visitor.email": regex },  // ← added
+        ],
+    };
+};
+
+// ────────────────────────────────────────────────────────────────
+// Controllers
+// ────────────────────────────────────────────────────────────────
+
 exports.allFees = async (req, res) => {
     try {
         const { page, limit, skip, sortBy, sortOrder, search } = parseListParams(req);
 
-        const searchQuery = search
-            ? {
-                $or: [
-                    { paymentMode: { $regex: search, $options: "i" } },
-                    { paymentType: { $regex: search, $options: "i" } },
-                    { status: { $regex: search, $options: "i" } },
-                ],
-            }
-            : {};
+        // Base filter
+        const filter = { isDeleted: false };
 
-        const filter = { isDeleted: false, ...searchQuery };
+        // Search (now includes student name & email)
+        Object.assign(filter, buildSearchQuery(search));
+
+        // Explicit filters from frontend
+        if (req.query.status) filter.status = req.query.status;
+        if (req.query.paymentMode) filter.paymentMode = req.query.paymentMode;
+        if (req.query.isActive !== undefined) {
+            filter.isActive = req.query.isActive === "true";
+        }
 
         const totalFees = await Fees.countDocuments(filter);
+
+        const sortObj = buildSortObject(sortBy, sortOrder);
 
         const fees = await Fees.find(filter)
             .populate(studentPopulate)
             .populate("course", "title category price duration level")
             .populate("batch", "name startDate status")
-            .sort({ [sortBy]: sortOrder })
+            .sort(sortObj)
             .skip(skip)
             .limit(limit);
 
@@ -82,25 +127,24 @@ exports.getDeletedFees = async (req, res) => {
     try {
         const { page, limit, skip, sortBy, sortOrder, search } = parseListParams(req);
 
-        const searchQuery = search
-            ? {
-                $or: [
-                    { paymentMode: { $regex: search, $options: "i" } },
-                    { paymentType: { $regex: search, $options: "i" } },
-                    { status: { $regex: search, $options: "i" } },
-                ],
-            }
-            : {};
+        const filter = { isDeleted: true };
 
-        const filter = { isDeleted: true, ...searchQuery };
+        // Search (same logic as active)
+        Object.assign(filter, buildSearchQuery(search));
+
+        // Optional: you can allow status/paymentMode filters in trash too if needed
+        // if (req.query.status)       filter.status      = req.query.status;
+        // if (req.query.paymentMode)  filter.paymentMode = req.query.paymentMode;
 
         const totalFees = await Fees.countDocuments(filter);
+
+        const sortObj = buildSortObject(sortBy, sortOrder);
 
         const fees = await Fees.find(filter)
             .populate(studentPopulate)
             .populate("course", "title category price duration level")
             .populate("batch", "name startDate status")
-            .sort({ [sortBy]: sortOrder })
+            .sort(sortObj)
             .skip(skip)
             .limit(limit);
 
@@ -135,8 +179,7 @@ exports.getFeesById = async (req, res) => {
 
 exports.addFees = async (req, res) => {
     try {
-        const { student, course, batch, paymentType, paymentMode, amountPaid, dueDate, note } =
-            req.body;
+        const { student, course, batch, paymentType, paymentMode, amountPaid, dueDate, note } = req.body;
 
         if (!student || !course) {
             return res.status(400).json({ message: "Student and Course are required" });
@@ -149,9 +192,7 @@ exports.addFees = async (req, res) => {
         if (!courseExists) return res.status(404).json({ message: "Course not found" });
 
         if (!courseExists.price || courseExists.price <= 0) {
-            return res
-                .status(400)
-                .json({ message: "Course price is missing. Set course price first." });
+            return res.status(400).json({ message: "Course price is missing. Set course price first." });
         }
 
         let batchDoc = null;
@@ -161,13 +202,9 @@ exports.addFees = async (req, res) => {
         }
 
         const coursePrice = Number(courseExists.price);
-
         const paid = paymentType === "full" ? coursePrice : Number(amountPaid || 0);
 
-        const { remainingAmount, status } = calculateFees({
-            coursePrice,
-            amountPaid: paid,
-        });
+        const { remainingAmount, status } = calculateFees({ coursePrice, amountPaid: paid });
 
         const fees = await Fees.create({
             student,
@@ -205,8 +242,7 @@ exports.updateFees = async (req, res) => {
         const fees = await Fees.findOne({ _id: id, isDeleted: false });
         if (!fees) return res.status(404).json({ message: "Fees record not found" });
 
-        const { student, course, batch, paymentType, paymentMode, amountPaid, dueDate, note, isActive } =
-            req.body;
+        const { student, course, batch, paymentType, paymentMode, amountPaid, dueDate, note, isActive } = req.body;
 
         if (student) fees.student = student;
         if (course) fees.course = course;
@@ -224,19 +260,15 @@ exports.updateFees = async (req, res) => {
         }
 
         if (!courseDoc.price || courseDoc.price <= 0) {
-            return res
-                .status(400)
-                .json({ message: "Course price is missing. Set course price first." });
+            return res.status(400).json({ message: "Course price is missing. Set course price first." });
         }
 
         fees.coursePrice = Number(courseDoc.price);
 
         if (fees.paymentType === "full") {
             fees.amountPaid = fees.coursePrice;
-        } else {
-            if (amountPaid !== undefined) {
-                fees.amountPaid = Number(amountPaid || 0);
-            }
+        } else if (amountPaid !== undefined) {
+            fees.amountPaid = Number(amountPaid || 0);
         }
 
         const { remainingAmount, status } = calculateFees({
@@ -286,10 +318,7 @@ exports.softDeleteFees = async (req, res) => {
     try {
         const fees = await Fees.findByIdAndUpdate(
             req.params.id,
-            {
-                isDeleted: true,
-                deletedAt: new Date(),
-            },
+            { isDeleted: true, deletedAt: new Date() },
             { new: true }
         );
 
@@ -306,10 +335,7 @@ exports.restoreFees = async (req, res) => {
     try {
         const fees = await Fees.findByIdAndUpdate(
             req.params.id,
-            {
-                isDeleted: false,
-                deletedAt: null,
-            },
+            { isDeleted: false, deletedAt: null },
             { new: true }
         );
 

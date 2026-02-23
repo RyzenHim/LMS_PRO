@@ -13,8 +13,8 @@ const EditVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
     course: "",
     note: "",
     status: "new",
-    followUpDate: "", // ← added: was missing
-    notInterestedReason: "", // ← added: needed when status = not-interested
+    followUpDate: "",
+    notInterestedReason: "",
   });
 
   const [loading, setLoading] = useState(false);
@@ -29,7 +29,7 @@ const EditVisitorModal = ({ open, onClose, visitor, onSuccess }) => {
       try {
         setDropdownLoading(true);
         const res = await courseService.getAll({ limit: 100 });
-        const list = res?.courses || res || [];
+        const list = res.data?.courses || res || [];
         setCourses(Array.isArray(list) ? list : []);
       } catch {
         // silent

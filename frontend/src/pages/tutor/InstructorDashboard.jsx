@@ -40,7 +40,9 @@ const InstructorDashboard = () => {
   const todaySlots = useMemo(() => {
     return (data?.timetable || [])
       .filter((s) => s?.day === todayKey)
-      .sort((a, b) => Number(a?.startMinutes || 0) - Number(b?.startMinutes || 0));
+      .sort(
+        (a, b) => Number(a?.startMinutes || 0) - Number(b?.startMinutes || 0),
+      );
   }, [data, todayKey]);
 
   if (loading) {
@@ -74,7 +76,9 @@ const InstructorDashboard = () => {
               <GraduationCap className="text-[#3F72AF]" size={18} />
             </div>
             <div>
-              <p className="text-xs text-[#3F72AF] dark:text-[#DBE2EF]">Assigned Batches</p>
+              <p className="text-xs text-[#3F72AF] dark:text-[#DBE2EF]">
+                Assigned Batches
+              </p>
               <p className="text-xl font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
                 {data?.summary?.totalBatches || 0}
               </p>
@@ -88,7 +92,9 @@ const InstructorDashboard = () => {
               <Users className="text-[#3F72AF]" size={18} />
             </div>
             <div>
-              <p className="text-xs text-[#3F72AF] dark:text-[#DBE2EF]">Active Students</p>
+              <p className="text-xs text-[#3F72AF] dark:text-[#DBE2EF]">
+                Active Students
+              </p>
               <p className="text-xl font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
                 {data?.summary?.totalStudents || 0}
               </p>
@@ -102,7 +108,9 @@ const InstructorDashboard = () => {
               <CalendarDays className="text-[#3F72AF]" size={18} />
             </div>
             <div>
-              <p className="text-xs text-[#3F72AF] dark:text-[#DBE2EF]">Weekly Slots</p>
+              <p className="text-xs text-[#3F72AF] dark:text-[#DBE2EF]">
+                Weekly Slots
+              </p>
               <p className="text-xl font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
                 {data?.summary?.totalSlots || 0}
               </p>
@@ -118,10 +126,15 @@ const InstructorDashboard = () => {
           </h2>
           <div className="mt-4 space-y-3">
             {(data?.batches || []).length === 0 && (
-              <p className="text-sm text-[#3F72AF] dark:text-[#DBE2EF]">No batch assigned.</p>
+              <p className="text-sm text-[#3F72AF] dark:text-[#DBE2EF]">
+                No batch assigned.
+              </p>
             )}
             {(data?.batches || []).map((b) => (
-              <div key={b?._id} className="p-3 rounded-lg border border-[#DBE2EF] dark:border-[#3F72AF]">
+              <div
+                key={b?._id}
+                className="p-3 rounded-lg border border-[#DBE2EF] dark:border-[#3F72AF]"
+              >
                 <p className="text-sm font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
                   {b?.name || "-"}
                 </p>
@@ -146,12 +159,18 @@ const InstructorDashboard = () => {
 
           <div className="mt-4 space-y-3">
             {todaySlots.length === 0 && (
-              <p className="text-sm text-[#3F72AF] dark:text-[#DBE2EF]">No slots today.</p>
+              <p className="text-sm text-[#3F72AF] dark:text-[#DBE2EF]">
+                No slots today.
+              </p>
             )}
             {todaySlots.map((slot) => (
-              <div key={slot?._id} className="p-3 rounded-lg border border-[#DBE2EF] dark:border-[#3F72AF]">
+              <div
+                key={slot?._id}
+                className="p-3 rounded-lg border border-[#DBE2EF] dark:border-[#3F72AF]"
+              >
                 <p className="text-sm font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
-                  {minutesToTime(slot?.startMinutes)} - {minutesToTime(slot?.endMinutes)}
+                  {minutesToTime(slot?.startMinutes)} -{" "}
+                  {minutesToTime(slot?.endMinutes)}
                 </p>
                 <p className="text-xs text-[#3F72AF] dark:text-[#DBE2EF]">
                   {slot?.batch?.name || "-"} • {slot?.course?.title || "-"}

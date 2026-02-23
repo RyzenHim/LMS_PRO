@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import axiosInstance from "../../api/axios";
+import { attendanceService } from "../../services/attendanceService";
 import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
@@ -28,11 +29,9 @@ import {
 dayjs.extend(customParseFormat);
 dayjs.extend(isSameOrBefore);
 
-// ══════════════════════════════════════════════════════
-// CONSTANTS & HELPERS — all defined outside components
-// to prevent React remount / focus-loss bugs
-// ══════════════════════════════════════════════════════
-
+// ─────────────────────────────────────────────
+// CONSTANTS & HELPERS
+// ─────────────────────────────────────────────
 const ATTENDANCE_STATUSES = ["present", "present-online", "absent"];
 
 const STATUS_CONFIG = {
@@ -128,22 +127,30 @@ const getCalendarDayStyle = (calData) => {
   };
 };
 
-const computeCalendarDates = (batch) => {
-  if (!batch?.startDate) return [];
+const computeCalendarDates = (batch, timetableSlots) => {
+  if (!batch?.startDate || !timetableSlots?.length) return [];
+
   const start = dayjs(batch.startDate);
-  const rawEnd = batch.endDate ? dayjs(batch.endDate) : dayjs();
-  const end = rawEnd.isSameOrBefore(dayjs(), "day") ? rawEnd : dayjs();
+  const end = batch.endDate ? dayjs(batch.endDate) : dayjs();
+
+  const hasSlotOnWeekday = {};
+  timetableSlots.forEach((slot) => {
+    hasSlotOnWeekday[slot.day] = true;
+  });
+
   const dates = [];
   let cur = start;
   while (cur.isSameOrBefore(end, "day")) {
-    dates.push(cur.format("YYYY-MM-DD"));
+    const weekday = cur.format("ddd").toLowerCase().slice(0, 3);
+    if (hasSlotOnWeekday[weekday]) {
+      dates.push(cur.format("YYYY-MM-DD"));
+    }
     cur = cur.add(1, "day");
   }
   return dates;
 };
 
-// ── Sub-components defined OUTSIDE to prevent remount ──
-
+// ── Sub-components ──
 const StatCard = ({ label, value, sub, color }) => (
   <div className={`rounded-2xl border p-4 ${color}`}>
     <p className="text-xs font-semibold uppercase tracking-wider opacity-60 mb-1">
@@ -163,16 +170,22 @@ const PctBar = ({ pct, atRisk }) => (
       />
     </div>
     <span
-      className={`text-xs font-bold w-9 text-right tabular-nums ${atRisk ? "text-red-600 dark:text-red-400" : pct >= 75 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}
+      className={`text-xs font-bold w-9 text-right tabular-nums ${
+        atRisk
+          ? "text-red-600 dark:text-red-400"
+          : pct >= 75
+            ? "text-emerald-600 dark:text-emerald-400"
+            : "text-amber-600 dark:text-amber-400"
+      }`}
     >
       {pct}%
     </span>
   </div>
 );
 
-// AddHolidayModal — outside to prevent remount on every render
 const modalInputCls =
   "w-full rounded-xl border border-slate-600/60 bg-slate-800 px-3.5 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-[#3F72AF]/60 transition";
+
 const modalSelectCls =
   "w-full rounded-xl border border-slate-600/60 bg-slate-800 px-3.5 py-2.5 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-[#3F72AF]/60 transition";
 
@@ -331,9 +344,9 @@ const AddHolidayModal = ({
   );
 };
 
-// ══════════════════════════════════════════════
+// ─────────────────────────────────────────────
 // MAIN COMPONENT
-// ══════════════════════════════════════════════
+// ─────────────────────────────────────────────
 const AdminAttendance = () => {
   const [courses, setCourses] = useState([]);
   const [batches, setBatches] = useState([]);
@@ -341,7 +354,6 @@ const AdminAttendance = () => {
   const [selectedBatch, setSelectedBatch] = useState(null);
   const [activeTab, setActiveTab] = useState("mark");
 
-  // Mark tab
   const [students, setStudents] = useState([]);
   const [selectedDate, setSelectedDate] = useState("");
   const [attendanceMap, setAttendanceMap] = useState({});
@@ -351,14 +363,11 @@ const AdminAttendance = () => {
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
-  // Dashboard
   const [dashboard, setDashboard] = useState(null);
   const [loadingDashboard, setLoadingDashboard] = useState(false);
 
-  // Calendar dates array
   const [calendarDates, setCalendarDates] = useState([]);
 
-  // Holiday modal
   const [holidayModal, setHolidayModal] = useState({
     open: false,
     date: "",
@@ -405,9 +414,7 @@ const AdminAttendance = () => {
   const fetchStudents = useCallback(async (batchId) => {
     try {
       setLoadingStudents(true);
-      const res = await axiosInstance.get(
-        `/attendance/batch/${batchId}/students`,
-      );
+      const res = await attendanceService.getBatchStudents(batchId);
       setStudents(res.data?.students || []);
     } catch {
       setError("Failed to load students");
@@ -421,9 +428,7 @@ const AdminAttendance = () => {
     try {
       setLoadingAttendance(true);
       setDateHoliday(null);
-      const res = await axiosInstance.get(`/attendance/batch/${batchId}`, {
-        params: { date },
-      });
+      const res = await attendanceService.getAttendanceByDate(batchId, date);
       const map = {};
       (res.data?.records || []).forEach((r) => {
         const sid = typeof r.student === "object" ? r.student?._id : r.student;
@@ -432,12 +437,8 @@ const AdminAttendance = () => {
       setAttendanceMap(map);
       setDateHoliday(res.data?.holiday || null);
     } catch (err) {
-      if (err?.response?.status === 404) {
-        setAttendanceMap({});
-        setDateHoliday(err?.response?.data?.holiday || null);
-        return;
-      }
-      setError("Failed to load attendance");
+      setAttendanceMap({});
+      setDateHoliday(err?.response?.data?.holiday || null);
     } finally {
       setLoadingAttendance(false);
     }
@@ -447,10 +448,7 @@ const AdminAttendance = () => {
   const fetchDashboard = useCallback(async (batchId) => {
     try {
       setLoadingDashboard(true);
-      const res = await axiosInstance.get(
-        `/attendance/batch/${batchId}/dashboard`,
-        { params: { threshold: THRESHOLD } },
-      );
+      const res = await attendanceService.getBatchDashboard(batchId, THRESHOLD);
       setDashboard(res.data);
     } catch {
       setError("Failed to load dashboard data");
@@ -459,7 +457,7 @@ const AdminAttendance = () => {
     }
   }, []);
 
-  // ── Select batch ──
+  // ── Select batch + load slots + filter dates ──
   const handleSelectBatch = async (batch) => {
     setSelectedBatch(batch);
     setSelectedDate("");
@@ -468,22 +466,36 @@ const AdminAttendance = () => {
     setDashboard(null);
     setSaveSuccess(false);
     setError("");
-    setCalendarDates(computeCalendarDates(batch));
 
     await fetchStudents(batch._id);
 
-    const today = dayjs().format("YYYY-MM-DD");
-    const start = dayjs(batch.startDate).format("YYYY-MM-DD");
-    const end = batch.endDate
-      ? dayjs(batch.endDate).format("YYYY-MM-DD")
-      : today;
-    const defaultDate = today >= start && today <= end ? today : start;
+    let slots = [];
+    try {
+      const res = await axiosInstance.get(`/timetable/batch/${batch._id}`);
+      slots = res.data?.slots || [];
+    } catch (err) {
+      console.warn("Could not load timetable slots for calendar", err);
+    }
 
-    setSelectedDate(defaultDate);
-    await Promise.all([
-      fetchAttendance({ batchId: batch._id, date: defaultDate }),
-      fetchDashboard(batch._id),
-    ]);
+    const filteredDates = computeCalendarDates(batch, slots);
+    setCalendarDates(filteredDates);
+
+    const today = dayjs().format("YYYY-MM-DD");
+    let defaultDate = filteredDates.includes(today)
+      ? today
+      : filteredDates[0] || "";
+
+    if (defaultDate) {
+      setSelectedDate(defaultDate);
+      await Promise.all([
+        fetchAttendance({ batchId: batch._id, date: defaultDate }),
+        fetchDashboard(batch._id),
+      ]);
+    } else if (filteredDates.length === 0) {
+      setError(
+        "No timetable slots found for this batch. Attendance can only be marked on scheduled days.",
+      );
+    }
   };
 
   const handleTabChange = (tab) => {
@@ -511,9 +523,7 @@ const AdminAttendance = () => {
   const markAll = useCallback(
     (status) => {
       const map = {};
-      students.forEach((s) => {
-        map[s._id] = status;
-      });
+      students.forEach((s) => (map[s._id] = status));
       setAttendanceMap(map);
     },
     [students],
@@ -525,21 +535,26 @@ const AdminAttendance = () => {
       setError(`Cannot save attendance on holiday: "${dateHoliday.label}"`);
       return;
     }
+
     try {
       setSaving(true);
       setSaveSuccess(false);
       setError("");
-      await axiosInstance.post(`/attendance/batch/${selectedBatch._id}/mark`, {
+
+      await attendanceService.markAttendance(selectedBatch._id, {
         date: selectedDate,
         records: students.map((s) => ({
           student: s._id,
           status: attendanceMap[s._id] || "absent",
         })),
       });
+
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
       fetchDashboard(selectedBatch._id);
+      fetchAttendance({ batchId: selectedBatch._id, date: selectedDate });
     } catch (err) {
+      console.error("Save error:", err);
       setError(err?.response?.data?.message || "Failed to save attendance");
     } finally {
       setSaving(false);
@@ -573,10 +588,9 @@ const AdminAttendance = () => {
     return { present, online, absent, unmarked, total: students.length };
   }, [students, attendanceMap]);
 
-  // ══════════════════════
+  // ─────────────────────────────────────────────
   // RENDER
-  // ══════════════════════
-
+  // ─────────────────────────────────────────────
   if (loadingCourses) {
     return (
       <div className="p-8 flex items-center justify-center">
@@ -590,7 +604,7 @@ const AdminAttendance = () => {
 
   return (
     <div className="p-5 space-y-5 max-w-[1400px] mx-auto">
-      {/* ═══ HEADER ═══ */}
+      {/* HEADER */}
       <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm p-5">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
           <div className="flex items-center gap-3">
@@ -647,7 +661,7 @@ const AdminAttendance = () => {
         </div>
       </div>
 
-      {/* ═══ ERROR ═══ */}
+      {/* ERROR */}
       {error && (
         <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-4 py-3 flex items-center gap-3 text-sm text-red-700 dark:text-red-300">
           <AlertCircle size={15} className="shrink-0" />
@@ -661,7 +675,7 @@ const AdminAttendance = () => {
         </div>
       )}
 
-      {/* ═══ BATCH PICKER (no batch selected) ═══ */}
+      {/* BATCH PICKER (no batch selected) */}
       {!selectedBatch && (
         <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm p-6">
           <div className="flex items-center gap-2 mb-4">
@@ -740,7 +754,7 @@ const AdminAttendance = () => {
         </div>
       )}
 
-      {/* ═══ MAIN PANEL (batch selected) ═══ */}
+      {/* MAIN PANEL (batch selected) */}
       {selectedBatch && (
         <>
           {/* Batch banner + tabs */}
@@ -795,7 +809,6 @@ const AdminAttendance = () => {
               </div>
             </div>
 
-            {/* Summary strip */}
             {dashboard && (
               <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t border-slate-100 dark:border-slate-700/60">
                 <StatCard
@@ -830,7 +843,7 @@ const AdminAttendance = () => {
             )}
           </div>
 
-          {/* ═══ TAB: MARK ═══ */}
+          {/* TAB: MARK */}
           {activeTab === "mark" && (
             <div className="grid grid-cols-1 xl:grid-cols-[260px_1fr] gap-5">
               {/* Calendar sidebar */}
@@ -1023,7 +1036,6 @@ const AdminAttendance = () => {
                   </div>
                 </div>
 
-                {/* Holiday warning */}
                 {dateHoliday && (
                   <div className="mb-4 rounded-xl border border-rose-200 dark:border-rose-700 bg-rose-50 dark:bg-rose-900/20 px-4 py-3 flex items-center gap-3 text-sm text-rose-700 dark:text-rose-300">
                     <Sun size={15} className="shrink-0" />
@@ -1040,7 +1052,6 @@ const AdminAttendance = () => {
                   </div>
                 )}
 
-                {/* Mini stats */}
                 {students.length > 0 && !dateHoliday && (
                   <div className="grid grid-cols-4 gap-2 mb-5">
                     {[
@@ -1216,7 +1227,7 @@ const AdminAttendance = () => {
             </div>
           )}
 
-          {/* ═══ TAB: REGISTER ═══ */}
+          {/* TAB: REGISTER */}
           {activeTab === "register" && (
             <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm p-5">
               <div className="flex items-center justify-between mb-5">
@@ -1402,7 +1413,7 @@ const AdminAttendance = () => {
             </div>
           )}
 
-          {/* ═══ TAB: STUDENTS ═══ */}
+          {/* TAB: STUDENTS */}
           {activeTab === "students" && (
             <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm p-5">
               <div className="flex items-center justify-between mb-5">
@@ -1495,7 +1506,11 @@ const AdminAttendance = () => {
                             <td className="px-4 py-3.5">
                               <div className="flex items-center gap-3">
                                 <div
-                                  className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${s.isAtRisk ? "bg-red-100 dark:bg-red-900/30" : "bg-[#3F72AF]/10 dark:bg-[#3F72AF]/20"}`}
+                                  className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                                    s.isAtRisk
+                                      ? "bg-red-100 dark:bg-red-900/30"
+                                      : "bg-[#3F72AF]/10 dark:bg-[#3F72AF]/20"
+                                  }`}
                                 >
                                   <span
                                     className={`text-xs font-bold ${s.isAtRisk ? "text-red-600 dark:text-red-400" : "text-[#3F72AF]"}`}
@@ -1570,7 +1585,6 @@ const AdminAttendance = () => {
         </>
       )}
 
-      {/* Holiday modal */}
       <AddHolidayModal
         open={holidayModal.open}
         batchId={selectedBatch?._id}

@@ -1,168 +1,142 @@
-import React from "react";
+import { X } from "lucide-react";
+
+const Field = ({ label, value }) => (
+  <div>
+    <p className="text-xs font-medium text-[#3F72AF] dark:text-slate-400 mb-0.5">
+      {label}
+    </p>
+    <p className="text-sm text-[#112D4E] dark:text-slate-100">{value || "—"}</p>
+  </div>
+);
 
 const ViewTutorModal = ({ open, onClose, tutor }) => {
   if (!open || !tutor) return null;
-
   const emp = tutor.employee || {};
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
-      <div className="bg-white dark:bg-[#112D4E] rounded-xl p-6 w-full max-w-2xl border border-[#DBE2EF] dark:border-[#3F72AF]">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
-            Tutor Details
-          </h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+      {/* Blur backdrop */}
+      <div
+        onClick={onClose}
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+      />
 
-          <button
-            onClick={onClose}
-            className="text-[#3F72AF] hover:text-[#112D4E] dark:text-[#DBE2EF]"
-          >
-            ✕
-          </button>
-        </div>
-
-        <div className="space-y-4 max-h-[70vh] overflow-y-auto">
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            {/* Employee Info */}
-            <div>
-              <label className="text-xs font-medium text-[#3F72AF] dark:text-[#DBE2EF]">
-                Name
-              </label>
-              <p className="text-[#112D4E] dark:text-white">
-                {emp.name || "—"}
-              </p>
+      <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-[#DBE2EF] dark:border-slate-700 bg-white dark:bg-[#101010] shadow-2xl">
+        {/* Header */}
+        <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-[#DBE2EF] dark:border-slate-800 bg-white dark:bg-[#101010]">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-[#3F72AF]/20 dark:bg-[#3F72AF]/30 flex items-center justify-center text-sm font-bold text-[#3F72AF] uppercase">
+              {(emp.name || "T").charAt(0)}
             </div>
-
             <div>
-              <label className="text-xs font-medium text-[#3F72AF] dark:text-[#DBE2EF]">
-                Email
-              </label>
-              <p className="text-[#112D4E] dark:text-white">
+              <h2 className="text-base font-bold text-[#112D4E] dark:text-slate-100">
+                {emp.name || "Tutor"}
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 {emp.email || "—"}
               </p>
             </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-xl hover:bg-[#DBE2EF]/60 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition"
+          >
+            <X size={17} />
+          </button>
+        </div>
 
-            <div>
-              <label className="text-xs font-medium text-[#3F72AF] dark:text-[#DBE2EF]">
-                Phone
-              </label>
-              <p className="text-[#112D4E] dark:text-white">
-                {emp.phone || "—"}
-              </p>
+        <div className="p-6 space-y-5">
+          {/* Employee section */}
+          <div className="rounded-xl border border-[#DBE2EF] dark:border-slate-800 p-4 space-y-4">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              Employee Info
+            </h3>
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Name" value={emp.name} />
+              <Field label="Email" value={emp.email} />
+              <Field label="Phone" value={emp.phone} />
+              <Field label="Department" value={emp.department} />
+              <Field label="Designation" value={emp.designation} />
+              <Field
+                label="Salary"
+                value={
+                  emp.salary ? `₹${Number(emp.salary).toLocaleString()}` : null
+                }
+              />
+              <Field
+                label="Joining Date"
+                value={
+                  emp.joiningDate
+                    ? new Date(emp.joiningDate).toLocaleDateString("en-IN", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      })
+                    : null
+                }
+              />
+              <Field
+                label="Employee Active"
+                value={emp.isActive ? "Yes" : "No"}
+              />
             </div>
+          </div>
 
-            <div>
-              <label className="text-xs font-medium text-[#3F72AF] dark:text-[#DBE2EF]">
-                Salary
-              </label>
-              <p className="text-[#112D4E] dark:text-white">
-                ₹{Number(emp.salary || 0)}
-              </p>
-            </div>
-
-            <div>
-              <label className="text-xs font-medium text-[#3F72AF] dark:text-[#DBE2EF]">
-                Department
-              </label>
-              <p className="text-[#112D4E] dark:text-white">
-                {emp.department || "—"}
-              </p>
-            </div>
-
-            <div>
-              <label className="text-xs font-medium text-[#3F72AF] dark:text-[#DBE2EF]">
-                Designation
-              </label>
-              <p className="text-[#112D4E] dark:text-white">
-                {emp.designation || "—"}
-              </p>
-            </div>
-
-            <div>
-              <label className="text-xs font-medium text-[#3F72AF] dark:text-[#DBE2EF]">
-                Joining Date
-              </label>
-              <p className="text-[#112D4E] dark:text-white">
-                {emp.joiningDate
-                  ? new Date(emp.joiningDate).toLocaleDateString()
-                  : "—"}
-              </p>
-            </div>
-
-            {/* Tutor Info */}
-            <div>
-              <label className="text-xs font-medium text-[#3F72AF] dark:text-[#DBE2EF]">
-                Expertise
-              </label>
-              <p className="text-[#112D4E] dark:text-white">
-                {tutor.expertise || "—"}
-              </p>
-            </div>
-
-            <div>
-              <label className="text-xs font-medium text-[#3F72AF] dark:text-[#DBE2EF]">
-                Experience
-              </label>
-              <p className="text-[#112D4E] dark:text-white">
-                {tutor.experience || 0} years
-              </p>
-            </div>
-
-            <div>
-              <label className="text-xs font-medium text-[#3F72AF] dark:text-[#DBE2EF]">
-                Qualification
-              </label>
-              <p className="text-[#112D4E] dark:text-white">
-                {tutor.qualification || "—"}
-              </p>
-            </div>
-
-            <div>
-              <label className="text-xs font-medium text-[#3F72AF] dark:text-[#DBE2EF]">
-                Is Active
-              </label>
-              <p className="text-[#112D4E] dark:text-white">
-                {tutor.isActive ? "Yes" : "No"}
-              </p>
-            </div>
-
-            <div className="col-span-2">
-              <label className="text-xs font-medium text-[#3F72AF] dark:text-[#DBE2EF]">
-                Bio
-              </label>
-              <p className="text-[#112D4E] dark:text-white">
-                {tutor.bio || "—"}
-              </p>
-            </div>
-
-            <div>
-              <label className="text-xs font-medium text-[#3F72AF] dark:text-[#DBE2EF]">
-                Created At
-              </label>
-              <p className="text-[#112D4E] dark:text-white">
-                {tutor.createdAt
-                  ? new Date(tutor.createdAt).toLocaleString()
-                  : "—"}
-              </p>
-            </div>
-
-            <div>
-              <label className="text-xs font-medium text-[#3F72AF] dark:text-[#DBE2EF]">
-                Updated At
-              </label>
-              <p className="text-[#112D4E] dark:text-white">
-                {tutor.updatedAt
-                  ? new Date(tutor.updatedAt).toLocaleString()
-                  : "—"}
-              </p>
+          {/* Tutor section */}
+          <div className="rounded-xl border border-[#DBE2EF] dark:border-slate-800 p-4 space-y-4">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              Tutor Profile
+            </h3>
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Expertise" value={tutor.expertise} />
+              <Field
+                label="Experience"
+                value={
+                  tutor.experience !== undefined
+                    ? `${tutor.experience} years`
+                    : null
+                }
+              />
+              <Field label="Qualification" value={tutor.qualification} />
+              <div>
+                <p className="text-xs font-medium text-[#3F72AF] dark:text-slate-400 mb-0.5">
+                  Is Active
+                </p>
+                <span
+                  className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold ${tutor.isActive ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" : "bg-slate-100 text-slate-500 dark:bg-slate-700/50 dark:text-slate-400"}`}
+                >
+                  {tutor.isActive ? "Yes" : "No"}
+                </span>
+              </div>
+              {tutor.bio && (
+                <div className="col-span-2">
+                  <Field label="Bio" value={tutor.bio} />
+                </div>
+              )}
+              <Field
+                label="Created"
+                value={
+                  tutor.createdAt
+                    ? new Date(tutor.createdAt).toLocaleString()
+                    : null
+                }
+              />
+              <Field
+                label="Updated"
+                value={
+                  tutor.updatedAt
+                    ? new Date(tutor.updatedAt).toLocaleString()
+                    : null
+                }
+              />
             </div>
           </div>
         </div>
 
-        <div className="flex justify-end gap-3 pt-4 mt-4">
+        <div className="px-6 pb-6 flex justify-end">
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-[#DBE2EF] dark:bg-[#0a1f3a] text-[#112D4E] dark:text-[#DBE2EF] rounded-lg hover:opacity-90"
+            className="px-4 py-2.5 rounded-xl border border-[#DBE2EF] dark:border-slate-700 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-[#DBE2EF]/60 dark:hover:bg-slate-800 transition"
           >
             Close
           </button>

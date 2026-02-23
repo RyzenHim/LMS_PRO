@@ -33,7 +33,7 @@ const attendanceSchema = new mongoose.Schema(
         slot: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Timetable",
-            required: true,
+            // required: true,
         },
 
         records: [attendanceRecordSchema],

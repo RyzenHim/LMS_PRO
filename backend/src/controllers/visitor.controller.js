@@ -89,26 +89,17 @@ const buildVisitorFilter = (req, tabType) => {
     }
     if (tabType === "converted") filter.status = "converted";
 
-    // Explicit query param overrides
     if (status) filter.status = status;
     if (source) filter.source = source;
 
-    // Course filter — validate ObjectId first to prevent CastError
     if (course) {
         if (mongoose.Types.ObjectId.isValid(course)) {
             filter.course = new mongoose.Types.ObjectId(course);
         }
-        // if invalid ObjectId, ignore the filter (don't crash)
     }
 
-    // Date range
     const createdRange = getDateRangeFilter({ created, from, to });
     if (createdRange) filter.createdAt = createdRange;
-
-    // ── SEARCH FIX ──────────────────────────────────────────────────────────
-    // phone is type Number in the schema.
-    // MongoDB CANNOT run $regex on a Number field — it throws a CastError.
-    // Solution: regex only on String fields; if search looks numeric, also match phone exactly.
     if (search) {
         const stringConditions = [
             { name: { $regex: search, $options: "i" } },

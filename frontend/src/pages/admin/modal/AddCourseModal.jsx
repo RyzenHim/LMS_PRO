@@ -8,7 +8,7 @@ const AddCourseModal = ({ open, onClose, onSubmit }) => {
     description: "",
     category: "",
     tutor: "",
-    tutorName: "",
+    // tutorName: "",
     price: "",
     // duration: "",
     level: "beginner",
@@ -17,7 +17,7 @@ const AddCourseModal = ({ open, onClose, onSubmit }) => {
     endDate: "",
     skills: [],
   });
-  const [tutors, setTutors] = useState([]);
+  // const [tutors, setTutors] = useState([]);
   const [skills, setSkills] = useState([]);
 
   useEffect(() => {
@@ -78,7 +78,7 @@ const AddCourseModal = ({ open, onClose, onSubmit }) => {
       title: "",
       description: "",
       category: "",
-      tutor: "",
+      // tutor: "",
       tutorName: "",
       price: "",
       // duration: "",
@@ -144,7 +144,7 @@ const AddCourseModal = ({ open, onClose, onSubmit }) => {
               />
             </div>
 
-            <div>
+            {/* <div>
               <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
                 Tutor
               </label>
@@ -161,7 +161,7 @@ const AddCourseModal = ({ open, onClose, onSubmit }) => {
                   </option>
                 ))}
               </select>
-            </div>
+            </div> */}
 
             <div>
               <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
