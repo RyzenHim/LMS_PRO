@@ -31,7 +31,7 @@ const Login = () => {
       if (!data?.token || !data?.user) {
         setError("Invalid login response from server");
         return;
-      }
+      } 
 
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
