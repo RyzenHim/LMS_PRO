@@ -10,7 +10,7 @@ app.use(express.json());
 app.use(
   cors({
     origin: [
-      "https://proprolms.netlify.app/",
+      "https://proprolms.netlify.app",
       "http://localhost:5173",
       "http://localhost:5174",
     ],
