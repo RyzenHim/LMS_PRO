@@ -195,11 +195,9 @@ exports.addEmployee = async (req, res) => {
             });
         }
 
-        // normalize
         const normalizedEmail = email ? email.toLowerCase().trim() : null;
         const normalizedDesignation = String(designation).toLowerCase().trim();
 
-        // ✅ Check duplicate employee email
         if (normalizedEmail) {
             const existsEmail = await Employee.findOne({
                 email: normalizedEmail,
@@ -213,7 +211,6 @@ exports.addEmployee = async (req, res) => {
             }
         }
 
-        // ✅ Create employee
         const employee = await Employee.create({
             name,
             email: normalizedEmail || undefined,
@@ -228,9 +225,6 @@ exports.addEmployee = async (req, res) => {
             deletedAt: null,
         });
 
-        // =====================================
-        // ✅ Create tutor profile if TEACHER
-        // =====================================
         let createdTutor = null;
 
         if (normalizedDesignation === "teacher") {
@@ -243,7 +237,6 @@ exports.addEmployee = async (req, res) => {
                 createdTutor = await Tutor.create({
                     employee: employee._id,
 
-                    // default values (can be updated later)
                     expertise: "Not Updated",
                     experience: 0,
                     qualification: "",
@@ -256,16 +249,11 @@ exports.addEmployee = async (req, res) => {
             }
         }
 
-        // =====================================
-        // ✅ Create user login
-        // =====================================
         let createdUser = null;
 
         if (normalizedEmail) {
-            // detect role
             let role = detectRoleFromDesignation(employee.designation);
 
-            // 🔥 If designation is teacher => role MUST be tutor
             if (normalizedDesignation === "teacher") {
                 role = "tutor";
             }
@@ -284,7 +272,6 @@ exports.addEmployee = async (req, res) => {
                     role,
                     employee: employee._id,
 
-                    // ✅ link tutor if teacher
                     tutor: createdTutor?._id || null,
                 });
 
@@ -329,7 +316,6 @@ exports.toggleEmployeeStatus = async (req, res) => {
         employee.isActive = !employee.isActive;
         await employee.save();
 
-        // also disable/enable login user
         await User.updateOne(
             { employee: employee._id, isDeleted: false },
             { $set: { isActive: employee.isActive } }

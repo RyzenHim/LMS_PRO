@@ -78,7 +78,6 @@ const buildVisitorFilter = (req, tabType) => {
 
     const filter = {};
 
-    // Tab-level base filters
     filter.isDeleted = tabType === "trash";
 
     if (tabType === "active") filter.status = { $ne: "converted" };

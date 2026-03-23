@@ -19,11 +19,9 @@ const {
     convertToEmployee,
 } = require("../controllers/visitor.controller");
 
-// protect all visitor routes
 router.use(authenticate);
 router.use(allowRoles("admin", "hr"));
 
-// CRUD
 router.post("/add", createVisitor);
 router.get("/allvisitor", getVisitors);
 router.get("/trash/list", getDeletedVisitors);
