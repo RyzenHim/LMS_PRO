@@ -1,68 +1,63 @@
-require('dotenv').config();
-
+require("dotenv").config();
 
 const express = require("express");
 const mongoose = require("mongoose");
-const cors = require("cors")
+const cors = require("cors");
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(express.json());
 app.use(
-    cors({
-        origin: ["http://localhost:5173", "http://localhost:5174"],
-        credentials: true,
-    })
+  cors({
+    origin: ["http://localhost:5173", "http://localhost:5174"],
+    credentials: true,
+  }),
 );
 
-mongoose.connect(process.env.LINK)
-    .then(() => {
-        console.log("Database connected");
-        app.listen(PORT, () => {
-            console.log(`Server started on port ${PORT}`);
-        });
-    })
-    .catch((err) => {
-        console.error("Database connection failed:", err);
+mongoose
+  .connect(process.env.LINK)
+  .then(() => {
+    console.log("Database connected");
+    app.listen(PORT, () => {
+      console.log(`Server started on port ${PORT}`);
     });
+  })
+  .catch((err) => {
+    console.error("Database connection failed:", err);
+  });
 
-const userRouter = require('./src/routes/userRoute');
-app.use('/user', userRouter);
+const userRouter = require("./src/routes/userRoute");
+app.use("/user", userRouter);
 
 const employeeRouter = require("./src/routes/employee.route");
 app.use("/emp", employeeRouter);
 
-
-const studentRouter = require('./src/routes/student.routes')
+const studentRouter = require("./src/routes/student.routes");
 app.use("/students", studentRouter);
 
-const tutorRouter = require('./src/routes/tutor.routes')
+const tutorRouter = require("./src/routes/tutor.routes");
 app.use("/tutors", tutorRouter);
 
-const visitorRouter = require('./src/routes/visitor.routes')
-app.use('/visitor', visitorRouter)
+const visitorRouter = require("./src/routes/visitor.routes");
+app.use("/visitor", visitorRouter);
 
-const courseRouter = require('./src/routes/course.routes')
-app.use('/courses', courseRouter)
+const courseRouter = require("./src/routes/course.routes");
+app.use("/courses", courseRouter);
 
-const skillRouter = require('./src/routes/skill.routes')
-app.use('/skills', skillRouter)
+const skillRouter = require("./src/routes/skill.routes");
+app.use("/skills", skillRouter);
 
 const batchRoutes = require("./src/routes/batch.route");
 app.use("/batch", batchRoutes);
 
-
 const batchStudentMapRoutes = require("./src/routes/batchStudentMap.route");
 app.use("/batch-student-map", batchStudentMapRoutes);
-
 
 const feesRoutes = require("./src/routes/fees.route");
 app.use("/fees", feesRoutes);
 
-
 const timetableRoutes = require("./src/routes/timetable.routes");
 app.use("/timetable", timetableRoutes);
-
 
 const reportRoutes = require("./src/routes/reports.routes");
 app.use("/reports", reportRoutes);
@@ -73,8 +68,7 @@ app.use("/assignments", assignmentRoutes);
 const roomRoutes = require("./src/routes/room.routes");
 app.use("/rooms", roomRoutes);
 
-
-const attendanceRoutes = require("./src/routes/attendance.routes");
+const attendanceRoutes = require("./src/routes/Attendance.routes");
 app.use("/attendance", attendanceRoutes);
 
 const holidayRoutes = require("./src/routes/Holiday.routes");
