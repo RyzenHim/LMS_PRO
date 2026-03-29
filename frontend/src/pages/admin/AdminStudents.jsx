@@ -251,14 +251,14 @@ const AdminStudents = () => {
     <button
       onClick={onClick}
       title={title}
-      className={`inline-flex items-center justify-center rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] bg-white dark:bg-[#0a1f3a] p-2 text-[#112D4E] dark:text-[#DBE2EF] hover:bg-[#DBE2EF] dark:hover:bg-[#3F72AF]/30 transition ${className}`}
+      className={`neu-button lms-card-hover inline-flex items-center justify-center rounded-2xl p-2 text-[var(--lms-text)] ${className}`}
     >
       {children}
     </button>
   );
 
   return (
-    <div className="space-y-6">
+    <div className="lms-page-enter space-y-6">
       {/* ================= HEADER ================= */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -282,7 +282,7 @@ const AdminStudents = () => {
       </div>
 
       {/* ================= TABS ================= */}
-      <div className="flex items-center gap-2 rounded-2xl border border-[#DBE2EF] dark:border-[#3F72AF] bg-white dark:bg-[#112D4E] p-2 shadow-sm w-fit">
+      <div className="neu-panel-soft flex w-fit items-center gap-2 rounded-[24px] p-2">
         <button
           onClick={() => setActiveTab("active")}
           className={`px-4 py-2 rounded-xl text-sm font-semibold transition ${
@@ -307,7 +307,7 @@ const AdminStudents = () => {
       </div>
 
       {/* ================= SEARCH ================= */}
-      <div className="rounded-2xl border border-[#DBE2EF] dark:border-[#3F72AF] bg-white dark:bg-[#112D4E] p-4 shadow-sm">
+      <div className="neu-panel rounded-[28px] p-4">
         <div className="relative">
           <Search
             size={18}
@@ -328,7 +328,7 @@ const AdminStudents = () => {
       </div>
 
       {/* ================= FILTERS ================= */}
-      <div className="rounded-2xl border border-[#DBE2EF] dark:border-[#3F72AF] bg-white dark:bg-[#112D4E] p-4 shadow-sm space-y-3">
+      <div className="neu-panel rounded-[28px] p-4 space-y-3">
         <div className="flex items-center gap-2">
           <Filter size={16} className="text-[#3F72AF] dark:text-[#DBE2EF]" />
           <p className="text-sm font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
@@ -390,7 +390,7 @@ const AdminStudents = () => {
       </div>
 
       {/* ================= TABLE ================= */}
-      <div className="rounded-2xl border border-[#DBE2EF] dark:border-[#3F72AF] bg-white dark:bg-[#112D4E] overflow-hidden shadow-lg">
+      <div className="neu-panel overflow-hidden rounded-[30px]">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-[#DBE2EF] dark:bg-[#3F72AF]">

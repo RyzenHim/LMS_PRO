@@ -160,9 +160,9 @@ const AdminTutors = () => {
   };
 
   return (
-    <div className="space-y-5 p-1">
+    <div className="lms-page-enter space-y-5 p-1">
       {/* Header card */}
-      <div className="bg-white dark:bg-[#101010] rounded-2xl border border-[#DBE2EF] dark:border-slate-800 p-5 shadow-sm">
+      <div className="neu-panel rounded-[30px] p-5">
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-[#3F72AF]/10 dark:bg-[#3F72AF]/20">
             <Users size={20} className="text-[#3F72AF]" />
@@ -202,7 +202,7 @@ const AdminTutors = () => {
       </div>
 
       {/* Search + Filters */}
-      <div className="bg-white dark:bg-[#101010] rounded-2xl border border-[#DBE2EF] dark:border-slate-800 p-4 shadow-sm space-y-3">
+      <div className="neu-panel rounded-[30px] p-4 space-y-3">
         <div className="flex gap-3">
           <div className="flex-1 flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border border-[#DBE2EF] dark:border-slate-700 bg-[#F9F7F7] dark:bg-[#1a1a1a] focus-within:ring-2 focus-within:ring-[#3F72AF]/30 transition">
             <Search
@@ -317,7 +317,7 @@ const AdminTutors = () => {
       </div>
 
       {/* Table */}
-      <div className="bg-white dark:bg-[#101010] rounded-2xl border border-[#DBE2EF] dark:border-slate-800 overflow-hidden shadow-sm">
+      <div className="neu-panel overflow-hidden rounded-[30px]">
         {loading ? (
           <div className="p-10 text-center text-sm text-slate-500 dark:text-slate-400">
             Loading tutors...

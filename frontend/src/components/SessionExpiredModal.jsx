@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { resetSessionExpiredTrigger } from "../utils/authEvents";
 
-const SessionExpiredModal = ({ open }) => {
+const SessionExpiredModal = ({ open, onClose }) => {
   const navigate = useNavigate();
 
   if (!open) return null;
@@ -9,6 +9,7 @@ const SessionExpiredModal = ({ open }) => {
   const handleLoginAgain = () => {
     localStorage.removeItem("token");
     resetSessionExpiredTrigger();
+    onClose?.();
     navigate("/auth/login", { replace: true });
   };
 

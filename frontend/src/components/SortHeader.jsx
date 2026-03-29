@@ -1,17 +1,30 @@
-import React from "react";
+import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 
-const SortHeader = ({ label, field, sortBy, sortOrder, onSort, align = "left" }) => {
+const SortHeader = ({
+  label,
+  field,
+  sortBy,
+  sortOrder,
+  onSort,
+  align = "left",
+}) => {
   const active = sortBy === field;
-  const icon = active ? (sortOrder === "asc" ? "▲" : "▼") : "↕";
+  const Icon = !active ? ArrowUpDown : sortOrder === "asc" ? ArrowUp : ArrowDown;
 
   return (
     <button
       type="button"
       onClick={() => onSort(field)}
-      className={`inline-flex items-center gap-1 text-left w-full ${align === "right" ? "justify-end" : ""}`}
+      className={`inline-flex w-full items-center gap-1.5 text-left text-xs font-semibold uppercase tracking-[0.16em] transition ${
+        align === "right" ? "justify-end" : ""
+      } ${
+        active
+          ? "text-[var(--lms-accent-strong)]"
+          : "text-[var(--lms-text-soft)] hover:text-[var(--lms-text)]"
+      }`}
     >
       <span>{label}</span>
-      <span className="text-xs text-[#3F72AF] dark:text-[#DBE2EF]">{icon}</span>
+      <Icon size={12} />
     </button>
   );
 };

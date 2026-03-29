@@ -13,132 +13,130 @@ import {
   Search,
 } from "lucide-react";
 
+const reports = [
+  {
+    title: "Student Report",
+    desc: "Filter students and export their current enrollment picture.",
+    to: "/admin/reports/students",
+    icon: <GraduationCap size={20} />,
+  },
+  {
+    title: "Batch Report",
+    desc: "Course to batch to students, with cleaner operational visibility.",
+    to: "/admin/reports/batch",
+    icon: <Users size={20} />,
+  },
+  {
+    title: "Course Report",
+    desc: "Course listings, metadata, and batch coverage in one export flow.",
+    to: "/admin/reports/courses",
+    icon: <BookOpen size={20} />,
+  },
+  {
+    title: "Fees Report",
+    desc: "Track collections, dues, and payment health from one table.",
+    to: "/admin/reports/fees",
+    icon: <Wallet size={20} />,
+  },
+  {
+    title: "Tutor Report",
+    desc: "Review tutor coverage, contact details, and exportable records.",
+    to: "/admin/reports/tutors",
+    icon: <UserCheck size={20} />,
+  },
+  {
+    title: "Employee Report",
+    desc: "Summarize employee records in a calmer, more readable report view.",
+    to: "/admin/reports/employees",
+    icon: <Briefcase size={20} />,
+  },
+  {
+    title: "Skill Report",
+    desc: "Audit institution skill coverage and export the latest catalog.",
+    to: "/admin/reports/skills",
+    icon: <Layers3 size={20} />,
+  },
+  {
+    title: "Timetable Report",
+    desc: "Inspect course, batch, and slot allocations with cleaner structure.",
+    to: "/admin/reports/timetable",
+    icon: <CalendarDays size={20} />,
+  },
+  {
+    title: "Visitor Report",
+    desc: "Review lead quality, follow-ups, and conversion performance.",
+    to: "/admin/reports/visitors",
+    icon: <Users size={20} />,
+  },
+];
+
 const AdminReports = () => {
   const [search, setSearch] = useState("");
 
-  const reports = [
-    {
-      title: "Student Report",
-      desc: "Filter students and export list.",
-      to: "/admin/reports/students",
-      icon: <GraduationCap size={20} />,
-    },
-    {
-      title: "Batch Report",
-      desc: "Course → Batch → Students list.",
-      to: "/admin/reports/batch",
-      icon: <Users size={20} />,
-    },
-    {
-      title: "Course Report",
-      desc: "Courses list + batch count export.",
-      to: "/admin/reports/courses",
-      icon: <BookOpen size={20} />,
-    },
-    {
-      title: "Fees Report",
-      desc: "Fees list report and export.",
-      to: "/admin/reports/fees",
-      icon: <Wallet size={20} />,
-    },
-    {
-      title: "Tutor Report",
-      desc: "All tutors list export.",
-      to: "/admin/reports/tutors",
-      icon: <UserCheck size={20} />,
-    },
-    {
-      title: "Employee Report",
-      desc: "Employee list export.",
-      to: "/admin/reports/employees",
-      icon: <Briefcase size={20} />,
-    },
-    {
-      title: "Skill Report",
-      desc: "Skill list export.",
-      to: "/admin/reports/skills",
-      icon: <Layers3 size={20} />,
-    },
-    {
-      title: "Timetable Report",
-      desc: "Course → Batch → Timetable slots export.",
-      to: "/admin/reports/timetable",
-      icon: <CalendarDays size={20} />,
-    },
-    {
-      title: "Visitor Report",
-      desc: "Visitors list + followups + converted export.",
-      to: "/admin/reports/visitors",
-      icon: <Users size={20} />,
-    },
-  ];
-
   const filteredReports = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return reports;
+    const query = search.trim().toLowerCase();
+    if (!query) return reports;
 
     return reports.filter(
-      (r) =>
-        r.title.toLowerCase().includes(q) || r.desc.toLowerCase().includes(q),
+      (report) =>
+        report.title.toLowerCase().includes(query) ||
+        report.desc.toLowerCase().includes(query),
     );
   }, [search]);
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-[#112D4E] dark:text-[#DBE2EF]">
-            Reports
-          </h1>
+    <div className="lms-page-enter space-y-6 p-6">
+      <div className="neu-panel lms-sheen relative overflow-hidden rounded-[36px] px-6 py-7">
+        <div className="lms-glow-orb left-[-4rem] top-[-3rem] h-36 w-36 bg-white/40" />
+        <div
+          className="lms-glow-orb right-[-3rem] top-6 h-40 w-40 bg-[var(--lms-accent-soft)]"
+          style={{ animationDelay: "-2.5s" }}
+        />
 
-          <p className="text-sm text-[#3F72AF] dark:text-[#DBE2EF] mt-1">
-            Choose a report, apply filters, and export as CSV.
-          </p>
-        </div>
+        <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--lms-text-soft)]">
+              Analytics Hub
+            </p>
+            <h1 className="mt-2 text-4xl font-semibold tracking-tight text-[var(--lms-text)]">
+              Reports
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--lms-text-soft)]">
+              Choose a report, refine the data, and export with a cleaner,
+              more premium workflow.
+            </p>
+          </div>
 
-        {/* Search */}
-        <div className="relative w-full lg:w-[380px]">
-          <Search
-            size={18}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-[#3F72AF] dark:text-[#DBE2EF]"
-          />
-
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search reports..."
-            className="
-              w-full pl-10 pr-3 py-2.5 rounded-2xl
-              border border-[#DBE2EF] dark:border-[#3F72AF]
-              bg-white dark:bg-[#112D4E]
-              text-sm outline-none
-              shadow-sm
-              transition-all duration-300
-              focus:ring-2 focus:ring-[#3F72AF]/50
-              hover:shadow-md
-            "
-          />
+          <div className="neu-panel-soft flex w-full items-center gap-3 rounded-[24px] px-4 py-3 lg:w-[400px]">
+            <Search
+              size={18}
+              className="shrink-0 text-[var(--lms-accent-strong)]"
+            />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search reports..."
+              className="w-full bg-transparent text-sm outline-none placeholder:text-[var(--lms-text-soft)]"
+            />
+          </div>
         </div>
       </div>
 
-      {/* Grid */}
       {filteredReports.length === 0 ? (
-        <div className="p-10 rounded-2xl border border-[#DBE2EF] dark:border-[#3F72AF] bg-white dark:bg-[#112D4E] text-center shadow-sm">
-          <p className="text-sm text-[#3F72AF] dark:text-[#DBE2EF]">
-            No reports found for:{" "}
-            <span className="font-semibold">{search}</span>
+        <div className="neu-empty-state">
+          <p className="text-sm">
+            No reports found for <span className="font-semibold">{search}</span>
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
-          {filteredReports.map((r) => (
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+          {filteredReports.map((report) => (
             <ReportCard
-              key={r.to}
-              title={r.title}
-              desc={r.desc}
-              to={r.to}
-              icon={r.icon}
+              key={report.to}
+              title={report.title}
+              desc={report.desc}
+              to={report.to}
+              icon={report.icon}
             />
           ))}
         </div>

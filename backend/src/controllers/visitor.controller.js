@@ -130,6 +130,31 @@ const getSafeSort = (sortBy, sortOrder) => {
     return { [finalSortBy]: sortOrder };
 };
 
+const hydrateVisitorCourses = async (visitors) => {
+    const courseIds = [
+        ...new Set(
+            visitors
+                .map((visitor) => visitor.course)
+                .filter((courseId) => mongoose.Types.ObjectId.isValid(courseId))
+                .map((courseId) => String(courseId))
+        ),
+    ];
+
+    if (!courseIds.length) return visitors;
+
+    const courses = await Course.find(
+        { _id: { $in: courseIds } },
+        "title category level price"
+    ).lean();
+
+    const courseMap = new Map(courses.map((course) => [String(course._id), course]));
+
+    return visitors.map((visitor) => ({
+        ...visitor,
+        course: courseMap.get(String(visitor.course)) || null,
+    }));
+};
+
 // ─── Core list function ──────────────────────────────────────────────────────
 
 const listVisitorsByTab = async (req, res, tabType) => {
@@ -140,15 +165,16 @@ const listVisitorsByTab = async (req, res, tabType) => {
         const [totalVisitors, visitors] = await Promise.all([
             Visitor.countDocuments(filter),
             Visitor.find(filter)
-                .populate("course", "title category level price")
                 .sort(getSafeSort(sortBy, sortOrder))
                 .skip(skip)
                 .limit(limit)
                 .lean(),
         ]);
 
+        const hydratedVisitors = await hydrateVisitorCourses(visitors);
+
         return res.status(200).json({
-            visitors,
+            visitors: hydratedVisitors,
             totalVisitors,
             page,
             limit,

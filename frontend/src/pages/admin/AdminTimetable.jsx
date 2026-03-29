@@ -4,15 +4,18 @@ import {
   Plus,
   Pencil,
   Trash2,
-  X,
   CalendarClock,
   Loader2,
   ArrowRight,
+  Sparkles,
+  Clock3,
+  LayoutGrid,
 } from "lucide-react";
 import axiosInstance from "../../api/axios";
 import { timetableService } from "../../services/timetableService";
 import AddTimetableSlotModal from "./modal/timeTaable/AddTimetableSlotModal";
 import EditTimetableSlotModal from "./modal/timeTaable/EditTimetableSlotModal";
+import PageLoader from "../../components/ui/PageLoader";
 
 const DAYS = [
   { key: "mon", label: "Mon" },
@@ -58,33 +61,22 @@ const getRoomLabel = (slot) => {
 
 const AdminTimetable = () => {
   const navigate = useNavigate();
-
   const [courses, setCourses] = useState([]);
   const [batches, setBatches] = useState([]);
-
   const [selectedCourse, setSelectedCourse] = useState("");
   const [selectedBatch, setSelectedBatch] = useState("");
-
   const [slots, setSlots] = useState([]);
-
   const [loading, setLoading] = useState(true);
   const [batchLoading, setBatchLoading] = useState(false);
   const [tableLoading, setTableLoading] = useState(false);
-
   const [openAddModal, setOpenAddModal] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
-
   const [prefillDay, setPrefillDay] = useState("");
   const [prefillStart, setPrefillStart] = useState(null);
-
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [slotPopup, setSlotPopup] = useState({ open: false, x: 0, y: 0 });
-
   const popupRef = useRef(null);
 
-  // ============================
-  // INIT: Fetch Courses
-  // ============================
   useEffect(() => {
     const fetchCourses = async () => {
       try {
@@ -99,9 +91,6 @@ const AdminTimetable = () => {
     fetchCourses();
   }, []);
 
-  // ============================
-  // Fetch batches when course changes
-  // ============================
   useEffect(() => {
     const fetchBatchesByCourse = async () => {
       if (!selectedCourse) {
@@ -109,17 +98,11 @@ const AdminTimetable = () => {
         setSelectedBatch("");
         return;
       }
-
       try {
         setBatchLoading(true);
-        const res = await axiosInstance.get(
-          `/batch/by-course/${selectedCourse}`,
-        );
-
+        const res = await axiosInstance.get(`/batch/by-course/${selectedCourse}`);
         const rows = Array.isArray(res.data?.batches) ? res.data.batches : [];
         setBatches(rows);
-
-        // reset invalid selection
         if (!rows.find((b) => b._id === selectedBatch)) {
           setSelectedBatch("");
         }
@@ -131,17 +114,12 @@ const AdminTimetable = () => {
         setBatchLoading(false);
       }
     };
-
     fetchBatchesByCourse();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCourse]);
 
-  // ============================
-  // Fetch timetable
-  // ============================
   const fetchTimetable = async () => {
     if (!selectedBatch) return;
-
     setTableLoading(true);
     try {
       const res = await timetableService.getBatchTimetable(selectedBatch);
@@ -163,38 +141,24 @@ const AdminTimetable = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedBatch]);
 
-  // ============================
-  // ✅ FIX: Auto set course when batch changes
-  // (If backend returns populated course in batch)
-  // ============================
   useEffect(() => {
     if (!selectedBatch) return;
-
-    const b = batches.find((x) => x._id === selectedBatch);
-    const courseId = b?.course?._id || b?.course;
-
+    const batch = batches.find((x) => x._id === selectedBatch);
+    const courseId = batch?.course?._id || batch?.course;
     if (courseId && courseId !== selectedCourse) {
       setSelectedCourse(courseId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedBatch]);
 
-  // ============================
-  // Day slots map
-  // ============================
   const daySlots = useMemo(() => {
     const map = {};
     for (const d of DAYS) map[d.key] = [];
-
     for (const s of slots) {
       if (!map[s.day]) map[s.day] = [];
       map[s.day].push(s);
     }
-
-    for (const d of DAYS) {
-      map[d.key].sort((a, b) => a.startMinutes - b.startMinutes);
-    }
-
+    for (const d of DAYS) map[d.key].sort((a, b) => a.startMinutes - b.startMinutes);
     return map;
   }, [slots]);
 
@@ -208,19 +172,14 @@ const AdminTimetable = () => {
     const dayStart = START_HOUR * 60;
     const start = clamp(slot.startMinutes, dayStart, END_HOUR * 60);
     const end = clamp(slot.endMinutes, dayStart, END_HOUR * 60);
-
     return {
       top: ((start - dayStart) / 60) * SLOT_HEIGHT,
       height: Math.max(((end - start) / 60) * SLOT_HEIGHT, 28),
     };
   };
 
-  // ============================
-  // Close popup on outside click
-  // ============================
   useEffect(() => {
     if (!slotPopup.open) return;
-
     const onMouseDown = (e) => {
       if (!popupRef.current) return;
       if (!popupRef.current.contains(e.target)) {
@@ -228,27 +187,19 @@ const AdminTimetable = () => {
         setSelectedSlot(null);
       }
     };
-
     window.addEventListener("mousedown", onMouseDown);
     return () => window.removeEventListener("mousedown", onMouseDown);
   }, [slotPopup.open]);
 
-  // ============================
-  // Handlers
-  // ============================
   const handleDayClick = (dayKey, e) => {
     if (!selectedBatch) return;
-
     setSlotPopup({ open: false, x: 0, y: 0 });
     setSelectedSlot(null);
-
     const rect = e.currentTarget.getBoundingClientRect();
     const y = e.clientY - rect.top;
-
     const minutesFromStart = (y / SLOT_HEIGHT) * 60;
     const startMinutes =
       START_HOUR * 60 + Math.round(minutesFromStart / 30) * 30;
-
     setPrefillDay(dayKey);
     setPrefillStart(startMinutes);
     setOpenAddModal(true);
@@ -262,16 +213,12 @@ const AdminTimetable = () => {
 
   const handleDeleteSlot = async () => {
     if (!selectedSlot?._id) return;
-
     if (!window.confirm("Delete this timetable slot?")) return;
-
     try {
       setTableLoading(true);
       await timetableService.deleteSlot(selectedSlot._id);
-
       setSlotPopup({ open: false, x: 0, y: 0 });
       setSelectedSlot(null);
-
       await fetchTimetable();
     } catch (err) {
       alert(err?.response?.data?.message || "Failed to delete slot");
@@ -280,201 +227,226 @@ const AdminTimetable = () => {
     }
   };
 
-  // ============================
-  // UI
-  // ============================
   if (loading) {
     return (
-      <div className="p-8 text-center text-white/70">
-        Loading timetable setup...
+      <div className="lms-page-enter">
+        <PageLoader label="Loading" detail="Preparing timetable workspace" />
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="rounded-3xl border border-white/10 bg-[#101010] shadow-2xl p-6">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-white">Timetable</h1>
-            <p className="text-sm text-white/50 mt-1">
-              Select course → select batch → add slots. Click inside any day to
-              quick-add in 30-minute steps.
+    <div className="lms-page-enter space-y-6">
+      <section className="neu-panel lms-card-hover lms-sheen rounded-[34px] p-6">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-2 rounded-full bg-[var(--lms-accent-soft)]/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--lms-accent-strong)]">
+              <Sparkles size={14} />
+              Schedule Studio
+            </div>
+            <h1 className="text-3xl font-semibold text-[var(--lms-text)]">
+              Timetable
+            </h1>
+            <p className="max-w-2xl text-sm text-[var(--lms-text-soft)]">
+              Select a course, choose a batch, and place slots directly on the
+              grid with a calmer neumorphic planning surface.
             </p>
           </div>
 
           <button
             onClick={() => setOpenAddModal(true)}
             disabled={!selectedBatch}
-            className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-semibold transition
-              ${
-                selectedBatch
-                  ? "bg-white text-black hover:bg-white/80"
-                  : "bg-white/10 text-white/40 cursor-not-allowed"
-              }`}
+            className="neu-button neu-button-primary rounded-[24px] px-5 py-3 text-sm font-semibold disabled:opacity-50"
           >
             <Plus size={16} />
             Add Slot
           </button>
         </div>
-      </div>
 
-      {/* Filters */}
-      <div className="rounded-3xl border border-white/10 bg-[#101010] shadow-xl p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="text-sm font-medium text-white/70">Course</label>
-          <select
-            value={selectedCourse}
-            onChange={(e) => setSelectedCourse(e.target.value)}
-            className="mt-2 w-full px-4 py-2.5 rounded-2xl border border-white/10 bg-[#141414] text-sm text-white outline-none"
-          >
-            <option value="">-- Select Course --</option>
-            {courses.map((c) => (
-              <option key={c._id} value={c._id}>
-                {c.title}
-              </option>
-            ))}
-          </select>
+        <div className="mt-6 grid gap-4 md:grid-cols-3">
+          {[
+            { label: "Courses", value: courses.length, icon: LayoutGrid },
+            { label: "Batches", value: batches.length, icon: CalendarClock },
+            { label: "Visible Slots", value: slots.length, icon: Clock3 },
+          ].map((item) => {
+            const Icon = item.icon;
+            return (
+              <div key={item.label} className="neu-panel-soft rounded-[28px] p-4">
+                <div className="flex items-center gap-3">
+                  <div className="neu-inset flex h-12 w-12 items-center justify-center rounded-[18px]">
+                    <Icon size={18} className="text-[var(--lms-accent-strong)]" />
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.18em] text-[var(--lms-text-soft)]">
+                      {item.label}
+                    </p>
+                    <p className="mt-1 text-2xl font-semibold text-[var(--lms-text)]">
+                      {item.value}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
+      </section>
 
-        <div>
-          <label className="text-sm font-medium text-white/70">Batch</label>
-          <select
-            value={selectedBatch}
-            onChange={(e) => setSelectedBatch(e.target.value)}
-            disabled={!selectedCourse || batchLoading}
-            className="mt-2 w-full px-4 py-2.5 rounded-2xl border border-white/10 bg-[#141414] text-sm text-white outline-none disabled:opacity-60"
-          >
-            <option value="">
-              {!selectedCourse
-                ? "-- Select course first --"
-                : batchLoading
-                  ? "Loading batches..."
-                  : "-- Select Batch --"}
-            </option>
-
-            {batches.map((b) => (
-              <option key={b._id} value={b._id}>
-                {b.name || "Batch"}
+      <section className="neu-panel rounded-[32px] p-5">
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <label className="mb-2 block text-sm font-medium text-[var(--lms-text)]">
+              Course
+            </label>
+            <select
+              value={selectedCourse}
+              onChange={(e) => setSelectedCourse(e.target.value)}
+              className="neu-input w-full rounded-[22px] px-4 py-3 text-sm"
+            >
+              <option value="">Select Course</option>
+              {courses.map((c) => (
+                <option key={c._id} value={c._id}>
+                  {c.title}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-2 block text-sm font-medium text-[var(--lms-text)]">
+              Batch
+            </label>
+            <select
+              value={selectedBatch}
+              onChange={(e) => setSelectedBatch(e.target.value)}
+              disabled={!selectedCourse || batchLoading}
+              className="neu-input w-full rounded-[22px] px-4 py-3 text-sm disabled:opacity-60"
+            >
+              <option value="">
+                {!selectedCourse
+                  ? "Select course first"
+                  : batchLoading
+                    ? "Loading batches..."
+                    : "Select Batch"}
               </option>
-            ))}
-          </select>
+              {batches.map((b) => (
+                <option key={b._id} value={b._id}>
+                  {b.name || "Batch"}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
-      </div>
+      </section>
 
-      {/* No batches warning */}
       {selectedCourse && !batchLoading && batches.length === 0 ? (
-        <div className="rounded-3xl border border-amber-500/20 bg-amber-500/10 p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-          <p className="text-sm text-amber-200">
-            No batches found for this course. Create a batch first before adding
-            timetable slots.
-          </p>
-
-          <button
-            onClick={() => navigate("/admin/batches")}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-2xl bg-amber-500 text-black text-sm font-semibold hover:bg-amber-400 transition"
-          >
-            Go To Batches
-            <ArrowRight size={15} />
-          </button>
+        <div className="neu-panel rounded-[28px] p-5">
+          <div className="lms-status-warning flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <p className="text-sm">
+              No batches found for this course. Create a batch first before
+              adding timetable slots.
+            </p>
+            <button
+              onClick={() => navigate("/admin/batches")}
+              className="neu-button rounded-[18px] px-4 py-2 text-sm font-semibold"
+            >
+              Go To Batches
+              <ArrowRight size={15} />
+            </button>
+          </div>
         </div>
       ) : null}
 
-      {/* Empty state */}
       {!selectedBatch ? (
-        <div className="rounded-3xl border border-white/10 p-12 text-center text-white/60 bg-[#101010] shadow-xl">
-          Select a course and batch to view timetable.
+        <div className="neu-panel rounded-[34px] p-10 text-center">
+          <div className="neu-inset rounded-[28px] px-6 py-16">
+            <p className="text-base font-medium text-[var(--lms-text)]">
+              Select a course and batch to view timetable.
+            </p>
+            <p className="mt-2 text-sm text-[var(--lms-text-soft)]">
+              Click any day column once a batch is selected to quick-add slots in
+              30-minute steps.
+            </p>
+          </div>
         </div>
       ) : (
-        <div className="relative">
-          {/* Loading overlay */}
-          {tableLoading && (
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-30 rounded-2xl">
-              <div className="px-4 py-2 rounded-2xl bg-[#141414] border border-white/10 text-sm shadow-2xl flex items-center gap-2 text-white">
+        <section className="neu-panel relative overflow-hidden rounded-[34px] p-4">
+          {tableLoading ? (
+            <div className="lms-modal-backdrop absolute inset-0 z-20 flex items-center justify-center rounded-[30px]">
+              <div className="neu-panel-soft flex items-center gap-3 rounded-[22px] px-5 py-4 text-sm font-medium text-[var(--lms-text)]">
                 <Loader2 size={16} className="animate-spin" />
-                Loading...
+                Loading timetable...
               </div>
             </div>
-          )}
+          ) : null}
 
-          {/* Table */}
-          <div className="overflow-x-auto border border-white/10 rounded-3xl bg-[#101010] shadow-2xl">
-            <div className="min-w-[1100px]">
-              {/* Header row */}
-              <div className="grid grid-cols-8 sticky top-0 bg-[#101010] border-b border-white/10 z-20">
-                <div className="p-3 text-xs font-semibold text-white/60">
+          <div className="overflow-x-auto">
+            <div className="min-w-[1120px]">
+              <div className="grid grid-cols-8 gap-3">
+                <div className="neu-panel-soft rounded-[24px] p-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--lms-text-soft)]">
                   Time
                 </div>
-
                 {DAYS.map((d) => (
                   <div
                     key={d.key}
-                    className="p-3 text-sm font-semibold text-white border-l border-white/10"
+                    className="neu-panel-soft rounded-[24px] p-3 text-sm font-semibold text-[var(--lms-text)]"
                   >
                     {d.label}
                   </div>
                 ))}
               </div>
 
-              <div className="grid grid-cols-8">
-                {/* Time column */}
-                <div className="border-r border-white/10 bg-[#0c0c0c]">
+              <div className="mt-3 grid grid-cols-8 gap-3">
+                <div className="space-y-3">
                   {hours.map((h) => (
                     <div
                       key={h}
-                      className="h-[56px] border-b border-white/10 px-3 py-2 text-[11px] text-white/50"
+                      className="neu-panel-soft flex h-[56px] items-start rounded-[20px] px-3 py-2 text-[11px] font-medium text-[var(--lms-text-soft)]"
                     >
                       {h === 12 ? "12 PM" : h > 12 ? `${h - 12} PM` : `${h} AM`}
                     </div>
                   ))}
                 </div>
 
-                {/* Days columns */}
                 {DAYS.map((d) => (
                   <div
                     key={d.key}
                     onClick={(e) => handleDayClick(d.key, e)}
-                    className="relative border-r border-white/10 cursor-pointer"
+                    className="neu-panel-soft relative cursor-pointer rounded-[26px] p-2"
                     style={{
-                      height: `${(END_HOUR - START_HOUR + 1) * SLOT_HEIGHT}px`,
+                      height: `${(END_HOUR - START_HOUR + 1) * SLOT_HEIGHT + 8}px`,
                     }}
                   >
-                    {hours.map((h) => (
-                      <div
-                        key={h}
-                        className="h-[56px] border-b border-white/10"
-                      />
-                    ))}
+                    <div className="absolute inset-2 overflow-hidden rounded-[22px]">
+                      {hours.map((h) => (
+                        <div
+                          key={h}
+                          className="border-b border-white/40 last:border-b-0"
+                          style={{ height: `${SLOT_HEIGHT}px` }}
+                        />
+                      ))}
+                    </div>
 
-                    {/* Slots */}
                     {daySlots[d.key]?.map((s) => {
                       const style = getSlotStyle(s);
                       const roomLabel = getRoomLabel(s);
-
                       return (
                         <button
                           key={s._id}
                           type="button"
                           onClick={(e) => handleSlotClick(s, e)}
-                          className="absolute left-2 right-2 rounded-2xl p-2 text-[11px] shadow-lg border border-white/10 bg-[#141414] hover:bg-[#1b1b1b] transition"
+                          className="neu-button absolute left-3 right-3 rounded-[20px] px-3 py-2 text-left text-[11px] transition hover:-translate-y-0.5"
                           style={style}
                         >
-                          <p className="font-semibold text-white">
-                            {minutesToTime(s.startMinutes)} -{" "}
-                            {minutesToTime(s.endMinutes)}
+                          <p className="font-semibold text-[var(--lms-text)]">
+                            {minutesToTime(s.startMinutes)} - {minutesToTime(s.endMinutes)}
                           </p>
-
-                          <p className="text-white/60 mt-1 truncate">
+                          <p className="mt-1 truncate text-[var(--lms-text-soft)]">
                             {getTutorName(s)}
                           </p>
-
-                          <p className="text-white/50 truncate">
+                          <p className="truncate text-[var(--lms-text-soft)]">
                             {getCourseTitle(s)}
                           </p>
-
                           {roomLabel ? (
-                            <p className="text-white/50 truncate">
+                            <p className="truncate text-[var(--lms-accent-strong)]/80">
                               Room: {roomLabel}
                             </p>
                           ) : null}
@@ -487,30 +459,31 @@ const AdminTimetable = () => {
             </div>
           </div>
 
-          <p className="text-xs text-white/40 mt-2">
-            Tip: Click inside any day column to quick-add a slot in 30-minute
-            steps.
+          <p className="mt-4 text-xs text-[var(--lms-text-soft)]">
+            Tip: click inside a day column to quick-add a slot aligned to the
+            nearest 30-minute step.
           </p>
 
-          {/* Slot popup */}
-          {slotPopup.open && selectedSlot && (
+          {slotPopup.open && selectedSlot ? (
             <div
               ref={popupRef}
-              className="fixed z-[9999] w-[340px] rounded-3xl border border-white/10 bg-[#101010] shadow-2xl"
+              className="neu-panel fixed z-[9999] w-[340px] rounded-[30px] p-5"
               style={{
                 left: Math.min(slotPopup.x, window.innerWidth - 360),
-                top: Math.min(slotPopup.y, window.innerHeight - 240),
+                top: Math.min(slotPopup.y, window.innerHeight - 260),
               }}
             >
-              <div className="p-4 border-b border-white/10 flex items-start justify-between gap-3">
+              <div className="flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3">
-                  <CalendarClock size={18} className="text-white/60 mt-1" />
+                  <div className="neu-inset flex h-11 w-11 items-center justify-center rounded-[18px]">
+                    <CalendarClock size={18} className="text-[var(--lms-accent-strong)]" />
+                  </div>
                   <div>
-                    <p className="text-sm font-semibold text-white">
+                    <p className="text-sm font-semibold text-[var(--lms-text)]">
                       {minutesToTime(selectedSlot.startMinutes)} -{" "}
                       {minutesToTime(selectedSlot.endMinutes)}
                     </p>
-                    <p className="text-xs text-white/50 mt-1">
+                    <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[var(--lms-text-soft)]">
                       {selectedSlot.day?.toUpperCase()}
                     </p>
                   </div>
@@ -522,74 +495,69 @@ const AdminTimetable = () => {
                     setSlotPopup({ open: false, x: 0, y: 0 });
                     setSelectedSlot(null);
                   }}
-                  className="p-2 rounded-2xl border border-white/10 hover:bg-white/5 transition"
+                  className="neu-button h-10 w-10 rounded-[16px]"
                 >
-                  <X size={16} className="text-white/70" />
+                  x
                 </button>
               </div>
 
-              <div className="p-4 space-y-3 text-sm">
-                <p className="text-white/70">
+              <div className="mt-4 space-y-3 text-sm text-[var(--lms-text-soft)]">
+                <p>
                   Tutor:{" "}
-                  <span className="font-semibold text-white">
+                  <span className="font-semibold text-[var(--lms-text)]">
                     {getTutorName(selectedSlot)}
                   </span>
                 </p>
-
-                <p className="text-white/70">
+                <p>
                   Course:{" "}
-                  <span className="font-semibold text-white">
+                  <span className="font-semibold text-[var(--lms-text)]">
                     {getCourseTitle(selectedSlot)}
                   </span>
                 </p>
-
                 {selectedSlot.subject ? (
-                  <p className="text-white/70">
+                  <p>
                     Subject:{" "}
-                    <span className="font-semibold text-white">
+                    <span className="font-semibold text-[var(--lms-text)]">
                       {selectedSlot.subject}
                     </span>
                   </p>
                 ) : null}
-
                 {getRoomLabel(selectedSlot) ? (
-                  <p className="text-white/70">
+                  <p>
                     Room:{" "}
-                    <span className="font-semibold text-white">
+                    <span className="font-semibold text-[var(--lms-text)]">
                       {getRoomLabel(selectedSlot)}
                     </span>
                   </p>
                 ) : null}
+              </div>
 
-                <div className="flex gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOpenEditModal(true);
-                      setSlotPopup({ open: false, x: 0, y: 0 });
-                    }}
-                    className="flex-1 px-3 py-2 rounded-2xl bg-white text-black hover:bg-white/80 text-sm font-semibold flex items-center justify-center gap-2 transition"
-                  >
-                    <Pencil size={15} />
-                    Edit
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleDeleteSlot}
-                    className="flex-1 px-3 py-2 rounded-2xl border border-red-500/30 text-red-300 hover:bg-red-500/10 text-sm font-semibold flex items-center justify-center gap-2 transition"
-                  >
-                    <Trash2 size={15} />
-                    Delete
-                  </button>
-                </div>
+              <div className="mt-5 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenEditModal(true);
+                    setSlotPopup({ open: false, x: 0, y: 0 });
+                  }}
+                  className="neu-button neu-button-primary flex-1 rounded-[18px] px-4 py-3 text-sm font-semibold"
+                >
+                  <Pencil size={15} />
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteSlot}
+                  className="neu-button-danger flex-1 rounded-[18px] px-4 py-3 text-sm font-semibold"
+                >
+                  <Trash2 size={15} />
+                  Delete
+                </button>
               </div>
             </div>
-          )}
-        </div>
+          ) : null}
+        </section>
       )}
 
-      {/* Add Slot Modal */}
       <AddTimetableSlotModal
         open={openAddModal}
         onClose={() => {
@@ -608,8 +576,6 @@ const AdminTimetable = () => {
           setPrefillStart(null);
         }}
       />
-
-      {/* Edit Slot Modal */}
       <EditTimetableSlotModal
         open={openEditModal}
         onClose={() => {

@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import SessionExpiredModal from "./components/SessionExpiredModal";
 import { AUTH_EVENTS } from "./utils/authEvents";
 
 const App = () => {
   const [sessionExpired, setSessionExpired] = useState(false);
+  const location = useLocation();
 
   useEffect(() => {
     const prefersDark = window.matchMedia(
@@ -23,9 +24,18 @@ const App = () => {
     };
   }, []);
 
+  useEffect(() => {
+    if (location.pathname.startsWith("/auth")) {
+      setSessionExpired(false);
+    }
+  }, [location.pathname]);
+
   return (
     <div className="lms-app-shell">
-      <SessionExpiredModal open={sessionExpired} />
+      <SessionExpiredModal
+        open={sessionExpired}
+        onClose={() => setSessionExpired(false)}
+      />
       <Outlet />
     </div>
   );

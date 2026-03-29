@@ -1,137 +1,83 @@
 import React from "react";
-import { X } from "lucide-react";
+import ModalShell from "../../../../components/ui/ModalShell";
 
 const ViewFeesModal = ({ open, onClose, fees }) => {
   if (!open || !fees) return null;
 
   const formatDate = (d) => {
-    if (!d) return "—";
+    if (!d) return "-";
     return new Date(d).toLocaleDateString();
   };
 
+  const card = "neu-panel-soft rounded-[22px] p-4";
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-xl bg-white dark:bg-[#112D4E] rounded-2xl shadow-xl border border-[#DBE2EF] dark:border-[#3F72AF] overflow-hidden">
-        {/* Header */}
-        <div className="flex justify-between items-center px-6 py-4 border-b border-[#DBE2EF] dark:border-[#3F72AF]">
-          <div>
-            <h2 className="text-lg font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
-              Fees Details
-            </h2>
-            <p className="text-xs text-[#3F72AF] dark:text-[#DBE2EF]">
-              Student fees and due info
-            </p>
+    <ModalShell
+      open={open}
+      onClose={onClose}
+      title="Fees Details"
+      subtitle="Student fees, payment mode, and due information."
+      maxWidth="max-w-2xl"
+    >
+      <div className="space-y-4 text-sm">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className={card}>
+            <p className="text-xs uppercase tracking-[0.16em] text-[var(--lms-text-soft)]">Student</p>
+            <p className="mt-2 font-medium text-[var(--lms-text)]">{fees.student?.name || "-"}</p>
+            <p className="text-xs text-[var(--lms-text-soft)]">{fees.student?.email || "-"} · {fees.student?.phone || "-"}</p>
           </div>
-
-          <button
-            onClick={onClose}
-            className="text-[#3F72AF] hover:text-[#112D4E] dark:text-[#DBE2EF] dark:hover:text-white"
-          >
-            <X size={18} />
-          </button>
+          <div className={card}>
+            <p className="text-xs uppercase tracking-[0.16em] text-[var(--lms-text-soft)]">Course</p>
+            <p className="mt-2 font-medium text-[var(--lms-text)]">{fees.course?.title || "-"}</p>
+            <p className="text-xs text-[var(--lms-text-soft)]">Price: Rs {fees.coursePrice || fees.course?.price || 0}</p>
+          </div>
         </div>
 
-        {/* Body */}
-        <div className="p-6 space-y-4 text-sm">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-4 rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF]">
-              <p className="text-xs text-[#3F72AF] dark:text-[#DBE2EF]">
-                Student
-              </p>
-              <p className="font-medium text-[#112D4E] dark:text-[#DBE2EF]">
-                {fees.student?.name || "—"}
-              </p>
-              <p className="text-xs text-[#3F72AF] dark:text-[#DBE2EF]">
-                {fees.student?.email || "—"} • {fees.student?.phone || "—"}
-              </p>
-            </div>
-
-            <div className="p-4 rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF]">
-              <p className="text-xs text-[#3F72AF] dark:text-[#DBE2EF]">
-                Course
-              </p>
-              <p className="font-medium text-[#112D4E] dark:text-[#DBE2EF]">
-                {fees.course?.title || "—"}
-              </p>
-              <p className="text-xs text-[#3F72AF] dark:text-[#DBE2EF]">
-                Price: ₹{fees.coursePrice || fees.course?.price || 0}
-              </p>
-            </div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className={card}>
+            <p className="text-xs uppercase tracking-[0.16em] text-[var(--lms-text-soft)]">Paid</p>
+            <p className="mt-2 font-semibold text-[var(--lms-text)]">Rs {fees.amountPaid || 0}</p>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-4 rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF]">
-              <p className="text-xs text-[#3F72AF] dark:text-[#DBE2EF]">Paid</p>
-              <p className="font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
-                ₹{fees.amountPaid || 0}
-              </p>
-            </div>
-
-            <div className="p-4 rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF]">
-              <p className="text-xs text-[#3F72AF] dark:text-[#DBE2EF]">
-                Remaining
-              </p>
-              <p className="font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
-                ₹{fees.remainingAmount || 0}
-              </p>
-            </div>
-
-            <div className="p-4 rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF]">
-              <p className="text-xs text-[#3F72AF] dark:text-[#DBE2EF]">
-                Due Date
-              </p>
-              <p className="font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
-                {formatDate(fees.dueDate)}
-              </p>
-            </div>
+          <div className={card}>
+            <p className="text-xs uppercase tracking-[0.16em] text-[var(--lms-text-soft)]">Remaining</p>
+            <p className="mt-2 font-semibold text-[var(--lms-text)]">Rs {fees.remainingAmount || 0}</p>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-4 rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF]">
-              <p className="text-xs text-[#3F72AF] dark:text-[#DBE2EF]">
-                Payment Type
-              </p>
-              <p className="font-medium text-[#112D4E] dark:text-[#DBE2EF] capitalize">
-                {fees.paymentType || "—"}
-              </p>
-            </div>
-
-            <div className="p-4 rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF]">
-              <p className="text-xs text-[#3F72AF] dark:text-[#DBE2EF]">
-                Payment Mode
-              </p>
-              <p className="font-medium text-[#112D4E] dark:text-[#DBE2EF] capitalize">
-                {fees.paymentMode || "—"}
-              </p>
-            </div>
+          <div className={card}>
+            <p className="text-xs uppercase tracking-[0.16em] text-[var(--lms-text-soft)]">Due Date</p>
+            <p className="mt-2 font-semibold text-[var(--lms-text)]">{formatDate(fees.dueDate)}</p>
           </div>
-
-          <div className="p-4 rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF]">
-            <p className="text-xs text-[#3F72AF] dark:text-[#DBE2EF]">Status</p>
-            <p className="font-medium text-[#112D4E] dark:text-[#DBE2EF] capitalize">
-              {fees.status || "—"}
-            </p>
-          </div>
-
-          {fees.note && (
-            <div className="p-4 rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF]">
-              <p className="text-xs text-[#3F72AF] dark:text-[#DBE2EF]">Note</p>
-              <p className="text-[#112D4E] dark:text-[#DBE2EF]">{fees.note}</p>
-            </div>
-          )}
         </div>
 
-        {/* Footer */}
-        <div className="px-6 py-4 border-t border-[#DBE2EF] dark:border-[#3F72AF] flex justify-end">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-lg border border-[#DBE2EF] dark:border-[#3F72AF] text-[#3F72AF] dark:text-[#DBE2EF]"
-          >
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className={card}>
+            <p className="text-xs uppercase tracking-[0.16em] text-[var(--lms-text-soft)]">Payment Type</p>
+            <p className="mt-2 font-medium capitalize text-[var(--lms-text)]">{fees.paymentType || "-"}</p>
+          </div>
+          <div className={card}>
+            <p className="text-xs uppercase tracking-[0.16em] text-[var(--lms-text-soft)]">Payment Mode</p>
+            <p className="mt-2 font-medium capitalize text-[var(--lms-text)]">{fees.paymentMode || "-"}</p>
+          </div>
+        </div>
+
+        <div className={card}>
+          <p className="text-xs uppercase tracking-[0.16em] text-[var(--lms-text-soft)]">Status</p>
+          <p className="mt-2 font-medium capitalize text-[var(--lms-text)]">{fees.status || "-"}</p>
+        </div>
+
+        {fees.note ? (
+          <div className={card}>
+            <p className="text-xs uppercase tracking-[0.16em] text-[var(--lms-text-soft)]">Note</p>
+            <p className="mt-2 text-[var(--lms-text)]">{fees.note}</p>
+          </div>
+        ) : null}
+
+        <div className="flex justify-end pt-2">
+          <button onClick={onClose} className="neu-button rounded-[20px] px-4 py-3 text-sm font-semibold">
             Close
           </button>
         </div>
       </div>
-    </div>
+    </ModalShell>
   );
 };
 

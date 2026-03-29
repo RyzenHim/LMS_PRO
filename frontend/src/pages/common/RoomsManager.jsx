@@ -5,124 +5,43 @@ import {
   Pencil,
   Trash2,
   RefreshCcw,
-  X,
   Building2,
   MapPin,
   Layers,
   Search,
+  LayoutGrid,
 } from "lucide-react";
+import ModalShell from "../../components/ui/ModalShell";
+import PageLoader from "../../components/ui/PageLoader";
 
-// ===============================
-// Reusable UI Components
-// ===============================
-const Modal = ({ open, title, children, onClose }) => {
-  if (!open) return null;
-
-  return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
-      <div className="w-full max-w-3xl rounded-3xl bg-white shadow-2xl border border-slate-200 dark:bg-[#0B1220] dark:border-slate-800 overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-            {title}
-          </h2>
-
-          <button
-            onClick={onClose}
-            className="rounded-xl p-2 hover:bg-slate-200 dark:hover:bg-slate-800 transition"
-          >
-            <X className="h-5 w-5 text-slate-700 dark:text-slate-200" />
-          </button>
-        </div>
-
-        {/* Body */}
-        <div className="p-6">{children}</div>
-      </div>
+const RoomField = ({ label, icon: Icon, ...props }) => (
+  <label className="block">
+    <p className="mb-2 text-sm font-medium text-[var(--lms-text)]">{label}</p>
+    <div className="neu-inset flex items-center gap-3 rounded-[22px] px-4 py-3">
+      {Icon ? (
+        <Icon size={16} className="text-[var(--lms-accent-strong)]/70" />
+      ) : null}
+      <input
+        {...props}
+        className="w-full bg-transparent text-sm text-[var(--lms-text)] outline-none placeholder:text-[var(--lms-text-soft)]"
+      />
     </div>
-  );
-};
-
-const Input = ({ label, icon: Icon, ...props }) => {
-  return (
-    <label className="block">
-      <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-        {label}
-      </p>
-
-      <div className="relative mt-2">
-        {Icon && (
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-            <Icon size={18} />
-          </span>
-        )}
-
-        <input
-          {...props}
-          className={`w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none transition
-          focus:border-amber-500 focus:ring-2 focus:ring-amber-200
-          dark:border-slate-700 dark:bg-[#070B14] dark:text-white dark:focus:border-amber-400 dark:focus:ring-amber-400/20
-          ${Icon ? "pl-10" : ""}`}
-        />
-      </div>
-    </label>
-  );
-};
-
-const PrimaryButton = ({ children, ...props }) => (
-  <button
-    {...props}
-    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-amber-700 active:scale-[0.98] transition disabled:opacity-60"
-  >
-    {children}
-  </button>
+  </label>
 );
 
-const SecondaryButton = ({ children, ...props }) => (
-  <button
-    {...props}
-    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 hover:bg-slate-50 active:scale-[0.98] transition
-    dark:border-slate-700 dark:bg-[#070B14] dark:text-white dark:hover:bg-slate-900"
-  >
-    {children}
-  </button>
-);
-
-const DangerButton = ({ children, ...props }) => (
-  <button
-    {...props}
-    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-red-700 active:scale-[0.98] transition disabled:opacity-60"
-  >
-    {children}
-  </button>
-);
-
-// ===============================
-// Main Component
-// ===============================
 const RoomsManager = () => {
   const [loading, setLoading] = useState(true);
   const [rooms, setRooms] = useState([]);
-
   const [search, setSearch] = useState("");
-
-  // modals
   const [openCreate, setOpenCreate] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
-
   const [activeRoom, setActiveRoom] = useState(null);
-
-  // create/edit form
   const [form, setForm] = useState({
     location: "",
     buildingName: "",
     totalFloors: 1,
-    floors: [
-      {
-        floorNumber: 1,
-        rooms: [{ name: "Room 1", isAvailable: true }],
-      },
-    ],
+    floors: [{ floorNumber: 1, rooms: [{ name: "Room 1", isAvailable: true }] }],
   });
 
   const resetForm = () => {
@@ -130,25 +49,14 @@ const RoomsManager = () => {
       location: "",
       buildingName: "",
       totalFloors: 1,
-      floors: [
-        {
-          floorNumber: 1,
-          rooms: [{ name: "Room 1", isAvailable: true }],
-        },
-      ],
+      floors: [{ floorNumber: 1, rooms: [{ name: "Room 1", isAvailable: true }] }],
     });
   };
 
-  // ===============================
-  // API
-  // ===============================
   const fetchRooms = async () => {
     try {
       setLoading(true);
-
-      // ✅ FIXED ROUTE
       const res = await axiosInstance.get("/rooms/all");
-
       setRooms(res.data?.rooms || []);
     } catch (err) {
       console.error("fetchRooms error:", err);
@@ -161,60 +69,41 @@ const RoomsManager = () => {
     fetchRooms();
   }, []);
 
-  // ===============================
-  // Helpers
-  // ===============================
   const filteredRooms = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return rooms;
-
-    return rooms.filter((r) => {
-      return (
+    return rooms.filter(
+      (r) =>
         r.location?.toLowerCase().includes(q) ||
-        r.buildingName?.toLowerCase().includes(q)
-      );
-    });
+        r.buildingName?.toLowerCase().includes(q),
+    );
   }, [rooms, search]);
 
   const syncFloorsWithTotalFloors = (total) => {
     const totalFloors = Math.max(1, Number(total) || 1);
-
     const nextFloors = [];
-
-    for (let i = 1; i <= totalFloors; i++) {
+    for (let i = 1; i <= totalFloors; i += 1) {
       const existingFloor = form.floors.find((f) => f.floorNumber === i);
-
       nextFloors.push(
         existingFloor || {
           floorNumber: i,
-          rooms: [{ name: `Room 1`, isAvailable: true }],
+          rooms: [{ name: "Room 1", isAvailable: true }],
         },
       );
     }
-
-    setForm((prev) => ({
-      ...prev,
-      totalFloors,
-      floors: nextFloors,
-    }));
+    setForm((prev) => ({ ...prev, totalFloors, floors: nextFloors }));
   };
 
   const addRoomToFloor = (floorNumber) => {
     setForm((prev) => {
       const floors = prev.floors.map((f) => {
         if (f.floorNumber !== floorNumber) return f;
-
         const nextIndex = (f.rooms?.length || 0) + 1;
-
         return {
           ...f,
-          rooms: [
-            ...(f.rooms || []),
-            { name: `Room ${nextIndex}`, isAvailable: true },
-          ],
+          rooms: [...(f.rooms || []), { name: `Room ${nextIndex}`, isAvailable: true }],
         };
       });
-
       return { ...prev, floors };
     });
   };
@@ -223,18 +112,13 @@ const RoomsManager = () => {
     setForm((prev) => {
       const floors = prev.floors.map((f) => {
         if (f.floorNumber !== floorNumber) return f;
-
         const nextRooms = [...(f.rooms || [])];
         nextRooms.splice(roomIndex, 1);
-
         return {
           ...f,
-          rooms: nextRooms.length
-            ? nextRooms
-            : [{ name: "Room 1", isAvailable: true }],
+          rooms: nextRooms.length ? nextRooms : [{ name: "Room 1", isAvailable: true }],
         };
       });
-
       return { ...prev, floors };
     });
   };
@@ -243,24 +127,17 @@ const RoomsManager = () => {
     setForm((prev) => {
       const floors = prev.floors.map((f) => {
         if (f.floorNumber !== floorNumber) return f;
-
-        const rooms = [...(f.rooms || [])];
-        rooms[roomIndex] = { ...rooms[roomIndex], name: value };
-
-        return { ...f, rooms };
+        const nextRooms = [...(f.rooms || [])];
+        nextRooms[roomIndex] = { ...nextRooms[roomIndex], name: value };
+        return { ...f, rooms: nextRooms };
       });
-
       return { ...prev, floors };
     });
   };
 
-  const calcTotalRooms = (floors) => {
-    return (floors || []).reduce((sum, f) => sum + (f.rooms?.length || 0), 0);
-  };
+  const calcTotalRooms = (floors) =>
+    (floors || []).reduce((sum, f) => sum + (f.rooms?.length || 0), 0);
 
-  // ===============================
-  // CRUD Handlers
-  // ===============================
   const handleOpenCreate = () => {
     resetForm();
     setOpenCreate(true);
@@ -269,17 +146,12 @@ const RoomsManager = () => {
   const handleCreate = async () => {
     try {
       if (!form.location.trim() || !form.buildingName.trim()) return;
-
-      const payload = {
+      await axiosInstance.post("/rooms", {
         location: form.location.trim(),
         buildingName: form.buildingName.trim(),
         totalFloors: Number(form.totalFloors),
         floors: form.floors,
-      };
-
-      // ✅ FIXED ROUTE
-      await axiosInstance.post("/rooms", payload);
-
+      });
       setOpenCreate(false);
       await fetchRooms();
     } catch (err) {
@@ -289,34 +161,26 @@ const RoomsManager = () => {
 
   const handleOpenEdit = (room) => {
     setActiveRoom(room);
-
     setForm({
       location: room.location || "",
       buildingName: room.buildingName || "",
       totalFloors: room.totalFloors || 1,
       floors: room.floors || [],
     });
-
     setOpenEdit(true);
   };
 
   const handleUpdate = async () => {
     try {
       if (!activeRoom?._id) return;
-
-      const payload = {
+      await axiosInstance.put(`/rooms/${activeRoom._id}`, {
         location: form.location.trim(),
         buildingName: form.buildingName.trim(),
         totalFloors: Number(form.totalFloors),
         floors: form.floors,
-      };
-
-      // ✅ FIXED ROUTE
-      await axiosInstance.put(`/rooms/${activeRoom._id}`, payload);
-
+      });
       setOpenEdit(false);
       setActiveRoom(null);
-
       await fetchRooms();
     } catch (err) {
       console.error("handleUpdate error:", err);
@@ -331,385 +195,305 @@ const RoomsManager = () => {
   const handleDelete = async () => {
     try {
       if (!activeRoom?._id) return;
-
-      // ✅ FIXED ROUTE
       await axiosInstance.delete(`/rooms/${activeRoom._id}`);
-
       setOpenDelete(false);
       setActiveRoom(null);
-
       await fetchRooms();
     } catch (err) {
       console.error("handleDelete error:", err);
     }
   };
 
-  // ===============================
-  // UI
-  // ===============================
   return (
-    <div className="p-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-            Rooms Setup
-          </h1>
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-            Manage buildings, floors, and rooms with a clean premium layout.
-          </p>
+    <div className="lms-page-enter space-y-6">
+      <section className="neu-panel lms-card-hover lms-sheen rounded-[34px] p-6">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-2 rounded-full bg-[var(--lms-accent-soft)]/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--lms-accent-strong)]">
+              <LayoutGrid size={14} />
+              Infrastructure
+            </div>
+            <h1 className="text-3xl font-semibold text-[var(--lms-text)]">
+              Rooms Setup
+            </h1>
+            <p className="max-w-2xl text-sm text-[var(--lms-text-soft)]">
+              Manage buildings, floors, and rooms with a brighter hierarchical
+              layout and softer modal editing flow.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={fetchRooms}
+              className="neu-button rounded-[22px] px-4 py-3 text-sm font-semibold"
+            >
+              <RefreshCcw size={16} />
+              Refresh
+            </button>
+            <button
+              onClick={handleOpenCreate}
+              className="neu-button neu-button-primary rounded-[22px] px-5 py-3 text-sm font-semibold"
+            >
+              <Plus size={16} />
+              Add Setup
+            </button>
+          </div>
         </div>
+      </section>
 
-        <div className="flex gap-2">
-          <SecondaryButton onClick={fetchRooms}>
-            <RefreshCcw className="h-4 w-4" />
-            Refresh
-          </SecondaryButton>
-
-          <PrimaryButton onClick={handleOpenCreate}>
-            <Plus className="h-4 w-4" />
-            Add Setup
-          </PrimaryButton>
-        </div>
-      </div>
-
-      {/* Search */}
-      <div className="mt-6">
-        <div className="relative">
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-            <Search size={18} />
-          </span>
-
+      <section className="neu-panel rounded-[32px] p-4">
+        <div className="neu-inset flex items-center gap-3 rounded-[24px] px-4 py-3">
+          <Search className="text-[var(--lms-accent-strong)]/70" size={18} />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by location or building..."
-            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 pl-11 text-sm text-slate-900 outline-none transition
-            focus:border-amber-500 focus:ring-2 focus:ring-amber-200
-            dark:border-slate-700 dark:bg-[#070B14] dark:text-white dark:focus:border-amber-400 dark:focus:ring-amber-400/20"
+            className="w-full bg-transparent text-sm text-[var(--lms-text)] outline-none placeholder:text-[var(--lms-text-soft)]"
           />
         </div>
-      </div>
+      </section>
 
-      {/* Table */}
-      <div className="mt-6 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-[#070B14]">
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead className="bg-slate-50 dark:bg-slate-900">
-              <tr>
-                <th className="px-5 py-4 text-left font-bold text-slate-700 dark:text-slate-200">
-                  Location
-                </th>
-                <th className="px-5 py-4 text-left font-bold text-slate-700 dark:text-slate-200">
-                  Building
-                </th>
-                <th className="px-5 py-4 text-left font-bold text-slate-700 dark:text-slate-200">
-                  Floors
-                </th>
-                <th className="px-5 py-4 text-left font-bold text-slate-700 dark:text-slate-200">
-                  Total Rooms
-                </th>
-                <th className="px-5 py-4 text-right font-bold text-slate-700 dark:text-slate-200">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {loading ? (
+      <section className="neu-panel rounded-[34px] p-4">
+        {loading ? (
+          <PageLoader label="Loading" detail="Fetching room configurations" compact />
+        ) : filteredRooms.length === 0 ? (
+          <div className="neu-inset rounded-[28px] px-6 py-12 text-center">
+            <p className="text-base font-medium text-[var(--lms-text)]">
+              No room setups found
+            </p>
+            <p className="mt-2 text-sm text-[var(--lms-text-soft)]">
+              Create a building setup to start assigning space.
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="neu-table min-w-full text-sm">
+              <thead>
                 <tr>
-                  <td
-                    colSpan={5}
-                    className="px-5 py-10 text-center text-slate-500 dark:text-slate-300"
-                  >
-                    Loading room setups...
-                  </td>
+                  <th className="px-5 py-4 text-left">Location</th>
+                  <th className="px-5 py-4 text-left">Building</th>
+                  <th className="px-5 py-4 text-left">Floors</th>
+                  <th className="px-5 py-4 text-left">Total Rooms</th>
+                  <th className="px-5 py-4 text-right">Actions</th>
                 </tr>
-              ) : filteredRooms.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={5}
-                    className="px-5 py-10 text-center text-slate-500 dark:text-slate-300"
-                  >
-                    No room setups found.
-                  </td>
-                </tr>
-              ) : (
-                filteredRooms.map((room, idx) => (
-                  <tr
-                    key={room._id}
-                    className={`border-t border-slate-100 dark:border-slate-800 transition
-                    ${idx % 2 === 0 ? "bg-white dark:bg-[#070B14]" : "bg-slate-50/60 dark:bg-slate-900/40"}
-                    hover:bg-amber-50 dark:hover:bg-amber-400/10`}
-                  >
-                    <td className="px-5 py-4 font-semibold text-slate-900 dark:text-white">
+              </thead>
+              <tbody>
+                {filteredRooms.map((room) => (
+                  <tr key={room._id}>
+                    <td className="px-5 py-4 font-medium text-[var(--lms-text)]">
                       <div className="flex items-center gap-2">
-                        <MapPin size={16} className="text-amber-600" />
+                        <MapPin size={16} className="text-[var(--lms-accent-strong)]" />
                         {room.location}
                       </div>
                     </td>
-
-                    <td className="px-5 py-4 text-slate-800 dark:text-slate-200">
+                    <td className="px-5 py-4 text-[var(--lms-text)]">
                       <div className="flex items-center gap-2">
-                        <Building2 size={16} className="text-slate-500" />
+                        <Building2 size={16} className="text-[var(--lms-text-soft)]" />
                         {room.buildingName}
                       </div>
                     </td>
-
-                    <td className="px-5 py-4 text-slate-700 dark:text-slate-200">
-                      <div className="flex items-center gap-2">
-                        <Layers size={16} className="text-slate-500" />
-                        {room.totalFloors}
-                      </div>
+                    <td className="px-5 py-4 text-[var(--lms-text-soft)]">
+                      {room.totalFloors}
                     </td>
-
-                    <td className="px-5 py-4 text-slate-700 dark:text-slate-200">
+                    <td className="px-5 py-4 text-[var(--lms-text-soft)]">
                       {room.totalRooms ?? calcTotalRooms(room.floors)}
                     </td>
-
                     <td className="px-5 py-4">
                       <div className="flex justify-end gap-2">
-                        <SecondaryButton onClick={() => handleOpenEdit(room)}>
-                          <Pencil className="h-4 w-4" />
+                        <button
+                          onClick={() => handleOpenEdit(room)}
+                          className="neu-button rounded-[16px] px-4 py-2 text-sm font-semibold"
+                        >
+                          <Pencil size={15} />
                           Edit
-                        </SecondaryButton>
-
-                        <DangerButton onClick={() => handleOpenDelete(room)}>
-                          <Trash2 className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleOpenDelete(room)}
+                          className="neu-button-danger rounded-[16px] px-4 py-2 text-sm font-semibold"
+                        >
+                          <Trash2 size={15} />
                           Delete
-                        </DangerButton>
+                        </button>
                       </div>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
 
-      {/* ============================
-          CREATE MODAL
-      ============================ */}
-      <Modal
+      <RoomModal
         open={openCreate}
         title="Create Room Setup"
+        subtitle="Define the location, building hierarchy, and individual rooms."
+        form={form}
+        setForm={setForm}
         onClose={() => setOpenCreate(false)}
-      >
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Input
-            label="Location"
-            icon={MapPin}
-            value={form.location}
-            onChange={(e) =>
-              setForm((p) => ({ ...p, location: e.target.value }))
-            }
-          />
-          <Input
-            label="Building Name"
-            icon={Building2}
-            value={form.buildingName}
-            onChange={(e) =>
-              setForm((p) => ({ ...p, buildingName: e.target.value }))
-            }
-          />
-        </div>
-
-        <div className="mt-4">
-          <Input
-            label="Total Floors"
-            icon={Layers}
-            type="number"
-            min={1}
-            value={form.totalFloors}
-            onChange={(e) => syncFloorsWithTotalFloors(e.target.value)}
-          />
-        </div>
-
-        {/* Floors */}
-        <div className="mt-6 space-y-6">
-          {form.floors.map((floor) => (
-            <div
-              key={floor.floorNumber}
-              className="rounded-3xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-900/40"
-            >
-              <div className="flex items-center justify-between">
-                <h3 className="font-bold text-slate-900 dark:text-white">
-                  Floor {floor.floorNumber}
-                </h3>
-
-                <button
-                  onClick={() => addRoomToFloor(floor.floorNumber)}
-                  className="rounded-2xl bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-black transition
-                  dark:bg-white dark:text-black"
-                >
-                  + Add Room
-                </button>
-              </div>
-
-              <div className="mt-4 space-y-3">
-                {(floor.rooms || []).map((room, idx) => (
-                  <div key={idx} className="flex gap-2">
-                    <input
-                      value={room.name}
-                      onChange={(e) =>
-                        updateRoomName(floor.floorNumber, idx, e.target.value)
-                      }
-                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none
-                      focus:border-amber-500 focus:ring-2 focus:ring-amber-200
-                      dark:border-slate-700 dark:bg-[#070B14] dark:text-white dark:focus:border-amber-400 dark:focus:ring-amber-400/20"
-                      placeholder="Room Name"
-                    />
-
-                    <button
-                      onClick={() =>
-                        removeRoomFromFloor(floor.floorNumber, idx)
-                      }
-                      className="rounded-2xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700 transition"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Actions */}
-        <div className="mt-7 flex justify-end gap-2">
-          <SecondaryButton onClick={() => setOpenCreate(false)}>
-            Cancel
-          </SecondaryButton>
-
-          <PrimaryButton onClick={handleCreate}>Create Setup</PrimaryButton>
-        </div>
-      </Modal>
-
-      {/* ============================
-          EDIT MODAL
-      ============================ */}
-      <Modal
+        onSubmit={handleCreate}
+        syncFloorsWithTotalFloors={syncFloorsWithTotalFloors}
+        addRoomToFloor={addRoomToFloor}
+        removeRoomFromFloor={removeRoomFromFloor}
+        updateRoomName={updateRoomName}
+        submitLabel="Create Setup"
+      />
+      <RoomModal
         open={openEdit}
         title="Edit Room Setup"
+        subtitle="Refine the building structure and room listing."
+        form={form}
+        setForm={setForm}
         onClose={() => setOpenEdit(false)}
-      >
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Input
-            label="Location"
-            icon={MapPin}
-            value={form.location}
-            onChange={(e) =>
-              setForm((p) => ({ ...p, location: e.target.value }))
-            }
-          />
-          <Input
-            label="Building Name"
-            icon={Building2}
-            value={form.buildingName}
-            onChange={(e) =>
-              setForm((p) => ({ ...p, buildingName: e.target.value }))
-            }
-          />
-        </div>
+        onSubmit={handleUpdate}
+        syncFloorsWithTotalFloors={syncFloorsWithTotalFloors}
+        addRoomToFloor={addRoomToFloor}
+        removeRoomFromFloor={removeRoomFromFloor}
+        updateRoomName={updateRoomName}
+        submitLabel="Save Changes"
+      />
 
-        <div className="mt-4">
-          <Input
-            label="Total Floors"
-            icon={Layers}
-            type="number"
-            min={1}
-            value={form.totalFloors}
-            onChange={(e) => syncFloorsWithTotalFloors(e.target.value)}
-          />
-        </div>
-
-        {/* Floors */}
-        <div className="mt-6 space-y-6">
-          {form.floors.map((floor) => (
-            <div
-              key={floor.floorNumber}
-              className="rounded-3xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-900/40"
-            >
-              <div className="flex items-center justify-between">
-                <h3 className="font-bold text-slate-900 dark:text-white">
-                  Floor {floor.floorNumber}
-                </h3>
-
-                <button
-                  onClick={() => addRoomToFloor(floor.floorNumber)}
-                  className="rounded-2xl bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-black transition
-                  dark:bg-white dark:text-black"
-                >
-                  + Add Room
-                </button>
-              </div>
-
-              <div className="mt-4 space-y-3">
-                {(floor.rooms || []).map((room, idx) => (
-                  <div key={idx} className="flex gap-2">
-                    <input
-                      value={room.name}
-                      onChange={(e) =>
-                        updateRoomName(floor.floorNumber, idx, e.target.value)
-                      }
-                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none
-                      focus:border-amber-500 focus:ring-2 focus:ring-amber-200
-                      dark:border-slate-700 dark:bg-[#070B14] dark:text-white dark:focus:border-amber-400 dark:focus:ring-amber-400/20"
-                      placeholder="Room Name"
-                    />
-
-                    <button
-                      onClick={() =>
-                        removeRoomFromFloor(floor.floorNumber, idx)
-                      }
-                      className="rounded-2xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700 transition"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Actions */}
-        <div className="mt-7 flex justify-end gap-2">
-          <SecondaryButton onClick={() => setOpenEdit(false)}>
-            Cancel
-          </SecondaryButton>
-
-          <PrimaryButton onClick={handleUpdate}>Save Changes</PrimaryButton>
-        </div>
-      </Modal>
-
-      {/* ============================
-          DELETE MODAL
-      ============================ */}
-      <Modal
+      <ModalShell
         open={openDelete}
-        title="Delete Room Setup"
         onClose={() => setOpenDelete(false)}
+        title="Delete Room Setup"
+        subtitle="This action removes the saved building structure."
+        maxWidth="max-w-lg"
       >
-        <p className="text-sm text-slate-600 dark:text-slate-300">
-          Are you sure you want to delete{" "}
-          <span className="font-bold text-slate-900 dark:text-white">
-            {activeRoom?.buildingName}
-          </span>
-          ?
-        </p>
-
-        <div className="mt-7 flex justify-end gap-2">
-          <SecondaryButton onClick={() => setOpenDelete(false)}>
-            Cancel
-          </SecondaryButton>
-
-          <DangerButton onClick={handleDelete}>Delete</DangerButton>
+        <div className="space-y-5">
+          <p className="text-sm text-[var(--lms-text-soft)]">
+            Are you sure you want to delete{" "}
+            <span className="font-semibold text-[var(--lms-text)]">
+              {activeRoom?.buildingName}
+            </span>
+            ?
+          </p>
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => setOpenDelete(false)}
+              className="neu-button rounded-[20px] px-4 py-3 text-sm font-semibold"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleDelete}
+              className="neu-button-danger rounded-[20px] px-5 py-3 text-sm font-semibold"
+            >
+              Delete
+            </button>
+          </div>
         </div>
-      </Modal>
+      </ModalShell>
     </div>
   );
 };
+
+const RoomModal = ({
+  open,
+  title,
+  subtitle,
+  form,
+  setForm,
+  onClose,
+  onSubmit,
+  syncFloorsWithTotalFloors,
+  addRoomToFloor,
+  removeRoomFromFloor,
+  updateRoomName,
+  submitLabel,
+}) => (
+  <ModalShell
+    open={open}
+    onClose={onClose}
+    title={title}
+    subtitle={subtitle}
+    maxWidth="max-w-4xl"
+  >
+    <div className="space-y-6">
+      <div className="grid gap-4 md:grid-cols-2">
+        <RoomField
+          label="Location"
+          icon={MapPin}
+          value={form.location}
+          onChange={(e) => setForm((p) => ({ ...p, location: e.target.value }))}
+        />
+        <RoomField
+          label="Building Name"
+          icon={Building2}
+          value={form.buildingName}
+          onChange={(e) =>
+            setForm((p) => ({ ...p, buildingName: e.target.value }))
+          }
+        />
+      </div>
+
+      <RoomField
+        label="Total Floors"
+        icon={Layers}
+        type="number"
+        min={1}
+        value={form.totalFloors}
+        onChange={(e) => syncFloorsWithTotalFloors(e.target.value)}
+      />
+
+      <div className="space-y-4">
+        {form.floors.map((floor) => (
+          <div key={floor.floorNumber} className="neu-panel-soft rounded-[28px] p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <h3 className="text-lg font-semibold text-[var(--lms-text)]">
+                Floor {floor.floorNumber}
+              </h3>
+              <button
+                onClick={() => addRoomToFloor(floor.floorNumber)}
+                className="neu-button rounded-[18px] px-4 py-2 text-sm font-semibold"
+              >
+                <Plus size={15} />
+                Add Room
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              {(floor.rooms || []).map((room, idx) => (
+                <div key={`${floor.floorNumber}-${idx}`} className="flex gap-3">
+                  <div className="neu-inset flex-1 rounded-[20px] px-4 py-3">
+                    <input
+                      value={room.name}
+                      onChange={(e) =>
+                        updateRoomName(floor.floorNumber, idx, e.target.value)
+                      }
+                      className="w-full bg-transparent text-sm text-[var(--lms-text)] outline-none placeholder:text-[var(--lms-text-soft)]"
+                      placeholder="Room Name"
+                    />
+                  </div>
+                  <button
+                    onClick={() => removeRoomFromFloor(floor.floorNumber, idx)}
+                    className="neu-button-danger rounded-[18px] px-4 py-3 text-sm font-semibold"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex justify-end gap-3">
+        <button
+          onClick={onClose}
+          className="neu-button rounded-[20px] px-4 py-3 text-sm font-semibold"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={onSubmit}
+          className="neu-button neu-button-primary rounded-[20px] px-5 py-3 text-sm font-semibold"
+        >
+          {submitLabel}
+        </button>
+      </div>
+    </div>
+  </ModalShell>
+);
 
 export default RoomsManager;

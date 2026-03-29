@@ -1,51 +1,56 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Search, Plus, Eye, Edit, Trash2, RotateCcw } from "lucide-react";
+import {
+  Search,
+  Plus,
+  Eye,
+  Edit,
+  Trash2,
+  RotateCcw,
+  BriefcaseBusiness,
+  ShieldCheck,
+  Sparkles,
+} from "lucide-react";
 
 import AddEmployeeModal from "./modal/AddEmployeeModal";
 import { employeeService } from "../../services/employeeService";
 import Admin_EditEmployeeModal from "./modal/employee/Admin_EditEmployeeModal";
 import ConfirmDeleteModal from "./modal/ConfirmDeleteModal";
 import ViewEmployeeModal from "./modal/ViewEmployeeModal";
-
 import Pagination from "../../components/Pagination";
 import SortHeader from "../../components/SortHeader";
+import PageLoader from "../../components/ui/PageLoader";
+
+const FILTER_OPTIONS = [
+  { value: "department", label: "Department" },
+  { value: "designation", label: "Designation" },
+  { value: "isActive", label: "Is Active" },
+  { value: "email", label: "Email" },
+];
 
 const AdminEmployees = () => {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
-
   const [allEmp, setAllEmp] = useState([]);
   const [deletedEmployees, setDeletedEmployees] = useState([]);
-
   const [page, setPage] = useState(1);
   const [trashPage, setTrashPage] = useState(1);
-
   const [totalPages, setTotalPages] = useState(1);
   const [trashTotalPages, setTrashTotalPages] = useState(1);
-
-  // counts
   const [totalActive, setTotalActive] = useState(0);
   const [totalTrash, setTotalTrash] = useState(0);
-
   const [sortBy, setSortBy] = useState("createdAt");
   const [sortOrder, setSortOrder] = useState("desc");
-
   const [filters, setFilters] = useState({});
   const [filterField, setFilterField] = useState("department");
   const [filterValue, setFilterValue] = useState("");
-
   const [activeTab, setActiveTab] = useState("active");
-
   const [openAdd, setOpenAdd] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [openView, setOpenView] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
-
   const [selectedEmp, setSelectedEmp] = useState(null);
+  const filtersKey = useMemo(() => JSON.stringify(filters), [filters]);
 
-  // =========================
-  // SORT
-  // =========================
   const handleSort = (field) => {
     if (sortBy === field) {
       setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
@@ -53,25 +58,16 @@ const AdminEmployees = () => {
       setSortBy(field);
       setSortOrder("asc");
     }
-
     setPage(1);
     setTrashPage(1);
   };
 
-  // =========================
-  // FILTERS
-  // =========================
   const addFilter = () => {
     if (!filterField || !filterValue) return;
-
     const value =
       filterField === "isActive" ? String(filterValue) : filterValue.trim();
 
-    setFilters((prev) => ({
-      ...prev,
-      [filterField]: value,
-    }));
-
+    setFilters((prev) => ({ ...prev, [filterField]: value }));
     setFilterValue("");
     setPage(1);
     setTrashPage(1);
@@ -83,7 +79,6 @@ const AdminEmployees = () => {
       delete next[field];
       return next;
     });
-
     setPage(1);
     setTrashPage(1);
   };
@@ -94,9 +89,6 @@ const AdminEmployees = () => {
     setTrashPage(1);
   };
 
-  // =========================
-  // API
-  // =========================
   const fetchEmployees = async () => {
     setLoading(true);
     try {
@@ -108,7 +100,6 @@ const AdminEmployees = () => {
         sortOrder,
         ...filters,
       });
-
       setAllEmp(res.data.allEmployes || []);
       setTotalPages(res.data.totalPages || 1);
       setTotalActive(res.data.totalEmployes || 0);
@@ -130,7 +121,6 @@ const AdminEmployees = () => {
         sortOrder,
         ...filters,
       });
-
       setDeletedEmployees(res.data.allEmployes || []);
       setTrashTotalPages(res.data.totalPages || 1);
       setTotalTrash(res.data.totalEmployes || 0);
@@ -141,15 +131,9 @@ const AdminEmployees = () => {
     }
   };
 
-  // =========================
-  // FETCH ON CHANGE (FIXED)
-  // =========================
   useEffect(() => {
-    if (activeTab === "active") {
-      fetchEmployees();
-    } else {
-      fetchDeletedEmployees();
-    }
+    if (activeTab === "active") fetchEmployees();
+    else fetchDeletedEmployees();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     activeTab,
@@ -158,18 +142,14 @@ const AdminEmployees = () => {
     search,
     sortBy,
     sortOrder,
-    JSON.stringify(filters),
+    filtersKey,
   ]);
 
-  // reset pages when tab changes
   useEffect(() => {
     setPage(1);
     setTrashPage(1);
   }, [activeTab]);
 
-  // =========================
-  // CRUD
-  // =========================
   const handleEdit = (emp) => {
     setSelectedEmp(emp);
     setOpenEdit(true);
@@ -183,11 +163,8 @@ const AdminEmployees = () => {
   const handleUpdateEmployee = async (data) => {
     try {
       await employeeService.update(selectedEmp._id, data);
-
-      // refresh current tab
       if (activeTab === "active") await fetchEmployees();
       else await fetchDeletedEmployees();
-
       setOpenEdit(false);
       setSelectedEmp(null);
     } catch (error) {
@@ -214,10 +191,8 @@ const AdminEmployees = () => {
   const handleDelete = async () => {
     try {
       await employeeService.softDelete(selectedEmp._id);
-
       await fetchEmployees();
       await fetchDeletedEmployees();
-
       setOpenDelete(false);
       setSelectedEmp(null);
     } catch (error) {
@@ -229,7 +204,6 @@ const AdminEmployees = () => {
   const handleRestore = async (id) => {
     try {
       await employeeService.restore(id);
-
       await fetchEmployees();
       await fetchDeletedEmployees();
     } catch (error) {
@@ -240,19 +214,15 @@ const AdminEmployees = () => {
 
   const handleAddEmployee = async (data) => {
     try {
-      const empData = {
+      await employeeService.create({
         name: data.name?.trim(),
-        email: data.email?.trim() || "", // ✅ safe
+        email: data.email?.trim() || "",
         phone: data.phone?.trim() || "",
         department: data.department?.trim(),
         designation: data.designation,
         salary: Number(data.salary || 0),
-      };
-
-      await employeeService.create(empData);
-
+      });
       await fetchEmployees();
-
       setOpenAdd(false);
     } catch (error) {
       console.error("Add employee failed", error);
@@ -261,148 +231,193 @@ const AdminEmployees = () => {
   };
 
   const filteredEmployees = activeTab === "active" ? allEmp : deletedEmployees;
-
   const activeCount = useMemo(() => totalActive, [totalActive]);
   const trashCount = useMemo(() => totalTrash, [totalTrash]);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
-            Employees
-          </h1>
-          <p className="text-sm text-[#3F72AF] dark:text-[#DBE2EF]">
-            Manage admin, HR, and teachers
-          </p>
-        </div>
+    <div className="lms-page-enter space-y-6">
+      <section className="neu-panel lms-card-hover lms-sheen rounded-[34px] p-6">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-2 rounded-full bg-[var(--lms-accent-soft)]/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--lms-accent-strong)]">
+              <Sparkles size={14} />
+              Workforce
+            </div>
+            <h1 className="text-3xl font-semibold text-[var(--lms-text)]">
+              Employees
+            </h1>
+            <p className="max-w-2xl text-sm text-[var(--lms-text-soft)]">
+              Manage HR, admin, and teaching staff with a softer, more tactile
+              workspace for search, filters, and review.
+            </p>
+          </div>
 
-        {activeTab === "active" && (
-          <button
-            onClick={() => setOpenAdd(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#3F72AF] text-white hover:bg-[#112D4E] dark:bg-[#3F72AF] dark:hover:bg-[#DBE2EF] dark:hover:text-[#112D4E] transition-colors shadow-md"
-          >
-            <Plus size={18} />
-            Add Employee
-          </button>
-        )}
-      </div>
-
-      {/* Tabs */}
-      <div className="flex gap-4 border-b border-[#DBE2EF] dark:border-[#3F72AF]">
-        <button
-          onClick={() => setActiveTab("active")}
-          className={`pb-2 px-2 transition-colors ${
-            activeTab === "active"
-              ? "border-b-2 border-[#3F72AF] font-medium text-[#3F72AF] dark:text-[#DBE2EF] dark:border-[#DBE2EF]"
-              : "text-[#3F72AF] dark:text-[#DBE2EF]"
-          }`}
-        >
-          Active ({activeCount})
-        </button>
-
-        <button
-          onClick={() => setActiveTab("trash")}
-          className={`pb-2 px-2 transition-colors ${
-            activeTab === "trash"
-              ? "border-b-2 border-red-600 font-medium text-red-600 dark:text-red-400 dark:border-red-400"
-              : "text-[#3F72AF] dark:text-[#DBE2EF]"
-          }`}
-        >
-          Trash ({trashCount})
-        </button>
-      </div>
-
-      {/* Search */}
-      <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-4 shadow-sm">
-        <div className="flex items-center gap-3">
-          <Search className="text-[#3F72AF] dark:text-[#DBE2EF]" size={18} />
-          <input
-            type="text"
-            placeholder="Search by name, email, department, designation..."
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-              setTrashPage(1);
-            }}
-            className="w-full outline-none text-sm bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF] px-2 py-2 rounded-md"
-          />
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-4 flex flex-wrap items-center gap-3 shadow-sm">
-        <select
-          value={filterField}
-          onChange={(e) => setFilterField(e.target.value)}
-          className="text-sm border rounded-lg px-2 py-2 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
-        >
-          <option value="department">Department</option>
-          <option value="designation">Designation</option>
-          <option value="isActive">Is Active</option>
-          <option value="email">Email</option>
-        </select>
-
-        {filterField === "isActive" ? (
-          <select
-            value={filterValue}
-            onChange={(e) => setFilterValue(e.target.value)}
-            className="text-sm border rounded-lg px-2 py-2 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
-          >
-            <option value="">Select</option>
-            <option value="true">Active</option>
-            <option value="false">Inactive</option>
-          </select>
-        ) : (
-          <input
-            value={filterValue}
-            onChange={(e) => setFilterValue(e.target.value)}
-            placeholder="Filter value"
-            className="text-sm border rounded-lg px-2 py-2 bg-[#F9F7F7] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
-          />
-        )}
-
-        <button
-          onClick={addFilter}
-          className="px-3 py-2 rounded-lg bg-[#3F72AF] text-white text-sm"
-        >
-          Add Filter
-        </button>
-
-        <button
-          onClick={clearFilters}
-          className="px-3 py-2 rounded-lg border text-sm dark:text-[#DBE2EF]"
-        >
-          Clear
-        </button>
-
-        <div className="flex flex-wrap gap-2">
-          {Object.keys(filters).map((key) => (
+          {activeTab === "active" ? (
             <button
-              key={key}
-              onClick={() => removeFilter(key)}
-              className="px-2 py-1 text-xs rounded-lg bg-[#DBE2EF] dark:bg-[#0a1f3a] dark:text-[#DBE2EF]"
+              onClick={() => setOpenAdd(true)}
+              className="neu-button neu-button-primary rounded-[24px] px-5 py-3 text-sm font-semibold"
             >
-              {key}: {String(filters[key])} ×
+              <Plus size={18} />
+              Add Employee
+            </button>
+          ) : null}
+        </div>
+
+        <div className="mt-6 grid gap-4 md:grid-cols-3">
+          {[
+            { icon: BriefcaseBusiness, label: "Active Team", value: activeCount },
+            { icon: Trash2, label: "Trash", value: trashCount },
+            {
+              icon: ShieldCheck,
+              label: "Applied Filters",
+              value: Object.keys(filters).length,
+            },
+          ].map((item) => {
+            const Icon = item.icon;
+            return (
+              <div key={item.label} className="neu-panel-soft rounded-[28px] p-4">
+                <div className="flex items-center gap-3">
+                  <div className="neu-inset flex h-12 w-12 items-center justify-center rounded-[18px]">
+                    <Icon size={18} className="text-[var(--lms-accent-strong)]" />
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.18em] text-[var(--lms-text-soft)]">
+                      {item.label}
+                    </p>
+                    <p className="mt-1 text-2xl font-semibold text-[var(--lms-text)]">
+                      {item.value}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="neu-panel rounded-[32px] p-4">
+        <div className="flex flex-wrap gap-3">
+          {[
+            { key: "active", label: `Active (${activeCount})` },
+            { key: "trash", label: `Trash (${trashCount})` },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`rounded-[22px] px-4 py-2.5 text-sm font-semibold ${
+                activeTab === tab.key
+                  ? tab.key === "trash"
+                    ? "neu-button-danger"
+                    : "neu-button neu-button-primary"
+                  : "neu-button"
+              }`}
+            >
+              {tab.label}
             </button>
           ))}
         </div>
-      </div>
+      </section>
 
-      {/* Table */}
-      <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] shadow-lg overflow-hidden">
+      <section className="grid gap-4 xl:grid-cols-[1.4fr,1fr]">
+        <div className="neu-panel rounded-[32px] p-4">
+          <div className="neu-inset flex items-center gap-3 rounded-[24px] px-4 py-3">
+            <Search className="text-[var(--lms-accent-strong)]/70" size={18} />
+            <input
+              type="text"
+              placeholder="Search by name, email, department, designation..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+                setTrashPage(1);
+              }}
+              className="w-full bg-transparent text-sm text-[var(--lms-text)] outline-none placeholder:text-[var(--lms-text-soft)]"
+            />
+          </div>
+        </div>
+
+        <div className="neu-panel rounded-[32px] p-4">
+          <div className="grid gap-3 sm:grid-cols-[0.9fr,1fr,auto,auto]">
+            <select
+              value={filterField}
+              onChange={(e) => setFilterField(e.target.value)}
+              className="neu-input rounded-[20px] px-4 py-3 text-sm"
+            >
+              {FILTER_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+
+            {filterField === "isActive" ? (
+              <select
+                value={filterValue}
+                onChange={(e) => setFilterValue(e.target.value)}
+                className="neu-input rounded-[20px] px-4 py-3 text-sm"
+              >
+                <option value="">Select</option>
+                <option value="true">Active</option>
+                <option value="false">Inactive</option>
+              </select>
+            ) : (
+              <input
+                value={filterValue}
+                onChange={(e) => setFilterValue(e.target.value)}
+                placeholder="Filter value"
+                className="neu-input rounded-[20px] px-4 py-3 text-sm"
+              />
+            )}
+
+            <button
+              onClick={addFilter}
+              className="neu-button neu-button-primary rounded-[20px] px-4 py-3 text-sm font-semibold"
+            >
+              Add Filter
+            </button>
+
+            <button
+              onClick={clearFilters}
+              className="neu-button rounded-[20px] px-4 py-3 text-sm font-semibold"
+            >
+              Clear
+            </button>
+          </div>
+
+          {Object.keys(filters).length ? (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {Object.keys(filters).map((key) => (
+                <button
+                  key={key}
+                  onClick={() => removeFilter(key)}
+                  className="neu-badge rounded-full px-3 py-2 text-xs font-semibold text-[var(--lms-text)]"
+                >
+                  {key}: {String(filters[key])}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      </section>
+
+      <section className="neu-panel rounded-[34px] p-4">
         {loading ? (
-          <div className="p-6 text-center text-gray-500">
-            Loading employees...
+          <PageLoader label="Loading" detail="Preparing employee records" compact />
+        ) : filteredEmployees.length === 0 ? (
+          <div className="neu-inset rounded-[28px] px-6 py-12 text-center">
+            <p className="text-base font-medium text-[var(--lms-text)]">
+              No employees found
+            </p>
+            <p className="mt-2 text-sm text-[var(--lms-text-soft)]">
+              Try adjusting the search query or filters.
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-[#DBE2EF] dark:bg-[#3F72AF] border-b border-[#DBE2EF] dark:border-[#3F72AF]">
+            <table className="neu-table min-w-full text-sm">
+              <thead>
                 <tr>
-                  <th className="px-4 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                  <th className="px-4 py-4 text-left">
                     <SortHeader
                       label="Name"
                       field="name"
@@ -411,8 +426,7 @@ const AdminEmployees = () => {
                       onSort={handleSort}
                     />
                   </th>
-
-                  <th className="px-4 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                  <th className="px-4 py-4 text-left">
                     <SortHeader
                       label="Email"
                       field="email"
@@ -421,8 +435,7 @@ const AdminEmployees = () => {
                       onSort={handleSort}
                     />
                   </th>
-
-                  <th className="px-4 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                  <th className="px-4 py-4 text-left">
                     <SortHeader
                       label="Department"
                       field="department"
@@ -431,8 +444,7 @@ const AdminEmployees = () => {
                       onSort={handleSort}
                     />
                   </th>
-
-                  <th className="px-4 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
+                  <th className="px-4 py-4 text-left">
                     <SortHeader
                       label="Designation"
                       field="designation"
@@ -441,106 +453,86 @@ const AdminEmployees = () => {
                       onSort={handleSort}
                     />
                   </th>
-
-                  <th className="px-4 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
-                    Salary
-                  </th>
-
-                  <th className="px-4 py-3 text-left text-[#112D4E] dark:text-[#DBE2EF]">
-                    Status
-                  </th>
-
-                  <th className="px-4 py-3 text-right text-[#112D4E] dark:text-[#DBE2EF]">
-                    Actions
-                  </th>
+                  <th className="px-4 py-4 text-left">Salary</th>
+                  <th className="px-4 py-4 text-left">Status</th>
+                  <th className="px-4 py-4 text-right">Actions</th>
                 </tr>
               </thead>
-
               <tbody>
                 {filteredEmployees.map((emp) => (
-                  <tr
-                    key={emp._id}
-                    className="border-b border-[#DBE2EF] dark:border-[#3F72AF] last:border-none hover:bg-[#DBE2EF] dark:hover:bg-[#0a1f3a] transition-colors"
-                  >
-                    <td className="px-4 py-3 font-medium text-[#112D4E] dark:text-[#DBE2EF]">
+                  <tr key={emp._id}>
+                    <td className="px-4 py-4 font-medium text-[var(--lms-text)]">
                       {emp.name}
                     </td>
-
-                    <td className="px-4 py-3 text-[#3F72AF] dark:text-[#DBE2EF]">
-                      {emp.email || "—"}
+                    <td className="px-4 py-4 text-[var(--lms-text-soft)]">
+                      {emp.email || "-"}
                     </td>
-
-                    <td className="px-4 py-3 text-[#112D4E] dark:text-[#DBE2EF]">
-                      {emp.department || "—"}
+                    <td className="px-4 py-4 text-[var(--lms-text)]">
+                      {emp.department || "-"}
                     </td>
-
-                    <td className="px-4 py-3">
-                      <span className="px-2 py-1 text-xs rounded-md bg-[#DBE2EF] dark:bg-[#0a1f3a] text-[#112D4E] dark:text-[#DBE2EF] border border-[#3F72AF]">
-                        {emp.designation || "—"}
+                    <td className="px-4 py-4">
+                      <span className="neu-badge rounded-full px-3 py-1.5 text-xs font-semibold text-[var(--lms-text)]">
+                        {emp.designation || "-"}
                       </span>
                     </td>
-
-                    <td className="px-4 py-3 text-[#112D4E] dark:text-[#DBE2EF]">
-                      ₹{Number(emp.salary || 0)}
+                    <td className="px-4 py-4 text-[var(--lms-text)]">
+                      Rs {Number(emp.salary || 0).toLocaleString("en-IN")}
                     </td>
-
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-4">
                       <span
-                        className={`px-2 py-1 text-xs rounded-md ${
+                        className={`inline-flex rounded-full px-3 py-1.5 text-xs font-semibold ${
                           emp.isActive
-                            ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
-                            : "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-rose-100 text-rose-700"
                         }`}
                       >
                         {emp.isActive ? "Active" : "Inactive"}
                       </span>
                     </td>
-
-                    <td className="px-4 py-3 text-right space-x-2">
-                      {activeTab === "active" ? (
-                        <>
+                    <td className="px-4 py-4">
+                      <div className="flex justify-end gap-2">
+                        {activeTab === "active" ? (
+                          <>
+                            <button
+                              onClick={() => handleView(emp)}
+                              className="neu-button h-10 w-10 rounded-[16px]"
+                              title="View"
+                            >
+                              <Eye size={16} className="mx-auto" />
+                            </button>
+                            <button
+                              onClick={() => handleEdit(emp)}
+                              className="neu-button h-10 w-10 rounded-[16px]"
+                              title="Edit"
+                            >
+                              <Edit size={16} className="mx-auto" />
+                            </button>
+                            <button
+                              onClick={() => handleToggleStatus(emp._id)}
+                              className="neu-button rounded-[16px] px-3 py-2 text-xs font-semibold"
+                              title="Toggle Status"
+                            >
+                              {emp.isActive ? "Disable" : "Enable"}
+                            </button>
+                            <button
+                              onClick={() => handleDeleteClick(emp)}
+                              className="neu-button-danger rounded-[16px] px-3 py-2 text-xs font-semibold"
+                              title="Delete"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </>
+                        ) : (
                           <button
-                            onClick={() => handleView(emp)}
-                            className="text-[#3F72AF] hover:text-[#112D4E] dark:text-[#DBE2EF] dark:hover:text-white text-sm transition-colors"
-                            title="View"
+                            onClick={() => handleRestore(emp._id)}
+                            className="neu-button rounded-[16px] px-4 py-2 text-sm font-semibold text-emerald-700"
+                            title="Restore"
                           >
-                            <Eye size={16} className="inline" />
+                            <RotateCcw size={16} />
+                            Restore
                           </button>
-
-                          <button
-                            onClick={() => handleEdit(emp)}
-                            className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-sm transition-colors"
-                            title="Edit"
-                          >
-                            <Edit size={16} className="inline" />
-                          </button>
-
-                          <button
-                            onClick={() => handleToggleStatus(emp._id)}
-                            className="text-yellow-600 hover:text-yellow-700 dark:text-yellow-400 dark:hover:text-yellow-300 text-sm transition-colors"
-                            title="Toggle Status"
-                          >
-                            {emp.isActive ? "Disable" : "Enable"}
-                          </button>
-
-                          <button
-                            onClick={() => handleDeleteClick(emp)}
-                            className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-sm transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 size={16} className="inline" />
-                          </button>
-                        </>
-                      ) : (
-                        <button
-                          onClick={() => handleRestore(emp._id)}
-                          className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 text-sm inline-flex items-center gap-1 transition-colors"
-                          title="Restore"
-                        >
-                          <RotateCcw size={16} />
-                          Restore
-                        </button>
-                      )}
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -548,15 +540,8 @@ const AdminEmployees = () => {
             </table>
           </div>
         )}
+      </section>
 
-        {!loading && filteredEmployees.length === 0 && (
-          <div className="p-6 text-center text-[#3F72AF] dark:text-[#DBE2EF]">
-            No employees found
-          </div>
-        )}
-      </div>
-
-      {/* Pagination */}
       <Pagination
         page={activeTab === "active" ? page : trashPage}
         totalPages={activeTab === "active" ? totalPages : trashTotalPages}
@@ -565,13 +550,11 @@ const AdminEmployees = () => {
         }
       />
 
-      {/* Modals */}
       <AddEmployeeModal
         open={openAdd}
         onClose={() => setOpenAdd(false)}
         onSubmit={handleAddEmployee}
       />
-
       <Admin_EditEmployeeModal
         open={openEdit}
         employee={selectedEmp}
@@ -581,7 +564,6 @@ const AdminEmployees = () => {
         }}
         onSubmit={handleUpdateEmployee}
       />
-
       <ViewEmployeeModal
         open={openView}
         employee={selectedEmp}
@@ -590,7 +572,6 @@ const AdminEmployees = () => {
           setSelectedEmp(null);
         }}
       />
-
       <ConfirmDeleteModal
         open={openDelete}
         onClose={() => {

@@ -1,63 +1,48 @@
 import { useEffect, useState } from "react";
-import { Search, Plus, Edit, Trash2, RotateCcw } from "lucide-react";
+import {
+  Search,
+  Plus,
+  Edit,
+  Trash2,
+  RotateCcw,
+  Sparkles,
+  Layers3,
+  CheckCircle2,
+} from "lucide-react";
 
 import { skillService } from "../../services/skillService";
 import ConfirmDeleteModal from "./modal/ConfirmDeleteModal";
 import Pagination from "../../components/Pagination";
+import ModalShell from "../../components/ui/ModalShell";
+import PageLoader from "../../components/ui/PageLoader";
 
-//#101010
+const fieldClass =
+  "neu-input mt-2 w-full rounded-[22px] px-4 py-3 text-sm text-[var(--lms-text)] placeholder:text-[var(--lms-text-soft)]";
 
 const AdminSkills = () => {
-  // ── Data ──────────────────────────────────────────
   const [skills, setSkills] = useState([]);
   const [loading, setLoading] = useState(false);
-
-  // ── Tabs ──────────────────────────────────────────
   const [activeTab, setActiveTab] = useState("active");
-
-  // ── Search ────────────────────────────────────────
   const [search, setSearch] = useState("");
-
-  // ── Sort ──────────────────────────────────────────
   const [sortBy, setSortBy] = useState("name");
   const [sortOrder, setSortOrder] = useState("asc");
-
-  // ── Filters ───────────────────────────────────────
-  const [filterIsActive, setFilterIsActive] = useState(""); // "" | "true" | "false"
+  const [filterIsActive, setFilterIsActive] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
-
-  // ── Pagination ────────────────────────────────────
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-
-  // ── Modals ────────────────────────────────────────
   const [openAdd, setOpenAdd] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [selectedSkill, setSelectedSkill] = useState(null);
-
-  // ── Form ──────────────────────────────────────────
   const [form, setForm] = useState({ name: "", description: "", category: "" });
 
-  // ─────────────────────────────────────────────────
-  // FETCH
-  // ─────────────────────────────────────────────────
   const fetchSkills = async () => {
     setLoading(true);
     try {
-      const params = {
-        page,
-        limit: 10,
-        search,
-        sortBy,
-        sortOrder,
-      };
-
-      // Only send isActive filter on active tab
+      const params = { page, limit: 10, search, sortBy, sortOrder };
       if (activeTab === "active" && filterIsActive !== "") {
         params.isActive = filterIsActive;
       }
-
       if (filterCategory.trim()) {
         params.category = filterCategory.trim();
       }
@@ -65,7 +50,6 @@ const AdminSkills = () => {
       const fn =
         activeTab === "active" ? skillService.getAll : skillService.getDeleted;
       const res = await fn(params);
-
       const data = res?.data ?? res;
       setSkills(data?.skills ?? []);
       setTotalPages(data?.totalPages ?? 1);
@@ -76,9 +60,9 @@ const AdminSkills = () => {
     }
   };
 
-  // Re-fetch whenever any of these change
   useEffect(() => {
     fetchSkills();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     activeTab,
     page,
@@ -89,27 +73,19 @@ const AdminSkills = () => {
     filterCategory,
   ]);
 
-  // Reset to page 1 when tab changes
   useEffect(() => {
     setPage(1);
   }, [activeTab]);
 
-  // ─────────────────────────────────────────────────
-  // SORT
-  // ─────────────────────────────────────────────────
   const handleSort = (field) => {
-    if (sortBy === field) {
-      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-    } else {
+    if (sortBy === field) setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    else {
       setSortBy(field);
       setSortOrder("asc");
     }
     setPage(1);
   };
 
-  // ─────────────────────────────────────────────────
-  // ADD
-  // ─────────────────────────────────────────────────
   const handleAdd = async (e) => {
     e.preventDefault();
     try {
@@ -122,9 +98,6 @@ const AdminSkills = () => {
     }
   };
 
-  // ─────────────────────────────────────────────────
-  // EDIT
-  // ─────────────────────────────────────────────────
   const handleEditOpen = (skill) => {
     setSelectedSkill(skill);
     setForm({
@@ -147,9 +120,6 @@ const AdminSkills = () => {
     }
   };
 
-  // ─────────────────────────────────────────────────
-  // DELETE (soft)
-  // ─────────────────────────────────────────────────
   const handleDelete = async () => {
     try {
       await skillService.softDelete(selectedSkill._id);
@@ -161,9 +131,6 @@ const AdminSkills = () => {
     }
   };
 
-  // ─────────────────────────────────────────────────
-  // RESTORE
-  // ─────────────────────────────────────────────────
   const handleRestore = async (id) => {
     try {
       await skillService.restore(id);
@@ -173,9 +140,6 @@ const AdminSkills = () => {
     }
   };
 
-  // ─────────────────────────────────────────────────
-  // TOGGLE STATUS
-  // ─────────────────────────────────────────────────
   const handleToggleStatus = async (id) => {
     try {
       await skillService.toggleStatus(id);
@@ -185,289 +149,257 @@ const AdminSkills = () => {
     }
   };
 
-  // ─────────────────────────────────────────────────
-  // SORT ARROW HELPER
-  // ─────────────────────────────────────────────────
-  const SortArrow = ({ field }) => {
-    if (sortBy !== field)
-      return <span className="ml-1 text-xs opacity-30">↕</span>;
-    return (
-      <span className="ml-1 text-xs">{sortOrder === "asc" ? "↑" : "↓"}</span>
-    );
-  };
+  const activeSkillCount = skills.filter((skill) => skill.isActive).length;
 
-  // ─────────────────────────────────────────────────
-  // SHARED INPUT STYLES (matching your other modals)
-  // ─────────────────────────────────────────────────
-  const inputCls =
-    "w-full px-3 py-2.5 rounded-xl border border-[#DBE2EF] dark:border-slate-700 bg-white/70 dark:bg-slate-800/70 text-slate-800 dark:text-[#DBE2EF] placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-[#3F72AF]/40 transition text-sm";
-
-  const selectCls =
-    "w-full px-3 py-2.5 rounded-xl border border-[#DBE2EF] dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-[#DBE2EF] outline-none focus:ring-2 focus:ring-[#3F72AF]/40 transition text-sm";
-
-  // ─────────────────────────────────────────────────
-  // RENDER
-  // ─────────────────────────────────────────────────
   return (
-    <div className="space-y-5 p-1">
-      {/* ── Header ── */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-[#212121] dark:text-[#DBE2EF]">
-            Skills
-          </h1>
-          <p className="text-sm text-[#3F72AF] dark:text-slate-400 mt-0.5">
-            Manage skills for courses
-          </p>
+    <div className="lms-page-enter space-y-6">
+      <section className="neu-panel lms-card-hover lms-sheen rounded-[34px] p-6">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-2 rounded-full bg-[var(--lms-accent-soft)]/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--lms-accent-strong)]">
+              <Sparkles size={14} />
+              Skill Library
+            </div>
+            <h1 className="text-3xl font-semibold text-[var(--lms-text)]">
+              Skills
+            </h1>
+            <p className="max-w-2xl text-sm text-[var(--lms-text-soft)]">
+              Curate reusable skills with clearer hierarchy, softer depth, and a
+              more premium editing flow.
+            </p>
+          </div>
+
+          {activeTab === "active" ? (
+            <button
+              onClick={() => {
+                setForm({ name: "", description: "", category: "" });
+                setOpenAdd(true);
+              }}
+              className="neu-button neu-button-primary rounded-[24px] px-5 py-3 text-sm font-semibold"
+            >
+              <Plus size={16} />
+              Add Skill
+            </button>
+          ) : null}
         </div>
 
-        {activeTab === "active" && (
-          <button
-            onClick={() => {
-              setForm({ name: "", description: "", category: "" });
-              setOpenAdd(true);
-            }}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#3F72AF] hover:bg-[#212121] text-white text-sm font-semibold transition shadow-sm"
-          >
-            <Plus size={16} />
-            Add Skill
-          </button>
-        )}
-      </div>
+        <div className="mt-6 grid gap-4 md:grid-cols-3">
+          {[
+            { label: "Visible Records", value: skills.length, icon: Layers3 },
+            {
+              label: "Active Skills",
+              value: activeSkillCount,
+              icon: CheckCircle2,
+            },
+            {
+              label: "Category Filters",
+              value: filterCategory ? 1 : 0,
+              icon: Search,
+            },
+          ].map((item) => {
+            const Icon = item.icon;
+            return (
+              <div key={item.label} className="neu-panel-soft rounded-[28px] p-4">
+                <div className="flex items-center gap-3">
+                  <div className="neu-inset flex h-12 w-12 items-center justify-center rounded-[18px]">
+                    <Icon size={18} className="text-[var(--lms-accent-strong)]" />
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.18em] text-[var(--lms-text-soft)]">
+                      {item.label}
+                    </p>
+                    <p className="mt-1 text-2xl font-semibold text-[var(--lms-text)]">
+                      {item.value}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
 
-      {/* ── Tabs ── */}
-      <div className="flex gap-2 border-b border-[#DBE2EF] dark:border-slate-700 pb-0">
-        <button
-          onClick={() => setActiveTab("active")}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition -mb-px ${
-            activeTab === "active"
-              ? "border-[#3F72AF] text-[#3F72AF] dark:text-[#DBE2EF] dark:border-[#DBE2EF]"
-              : "border-transparent text-slate-500 dark:text-slate-400 hover:text-[#3F72AF] dark:hover:text-[#DBE2EF]"
-          }`}
-        >
-          Active
-        </button>
-        <button
-          onClick={() => setActiveTab("trash")}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition -mb-px ${
-            activeTab === "trash"
-              ? "border-red-500 text-red-500 dark:text-red-400 dark:border-red-400"
-              : "border-transparent text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400"
-          }`}
-        >
-          Trash
-        </button>
-      </div>
+      <section className="neu-panel rounded-[32px] p-4">
+        <div className="flex flex-wrap gap-3">
+          {[
+            { key: "active", label: "Active" },
+            { key: "trash", label: "Trash" },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`rounded-[22px] px-4 py-2.5 text-sm font-semibold ${
+                activeTab === tab.key
+                  ? tab.key === "trash"
+                    ? "neu-button-danger"
+                    : "neu-button neu-button-primary"
+                  : "neu-button"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </section>
 
-      {/* ── Search bar ── */}
-      <div className="bg-white dark:bg-[#212121] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF]/50 p-3 flex items-center gap-3 shadow-sm">
-        <Search
-          size={16}
-          className="text-[#3F72AF] dark:text-slate-400 shrink-0"
-        />
-        <input
-          type="text"
-          placeholder="Search by name, category or description..."
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setPage(1);
-          }}
-          className="w-full outline-none text-sm bg-transparent text-[#212121] dark:text-[#DBE2EF] placeholder:text-slate-400 dark:placeholder:text-slate-500"
-        />
-        {search && (
-          <button
-            onClick={() => {
-              setSearch("");
-              setPage(1);
-            }}
-            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs shrink-0"
-          >
-            ✕
-          </button>
-        )}
-      </div>
+      <section className="grid gap-4 xl:grid-cols-[1.25fr,1fr]">
+        <div className="neu-panel rounded-[32px] p-4">
+          <div className="neu-inset flex items-center gap-3 rounded-[24px] px-4 py-3">
+            <Search className="text-[var(--lms-accent-strong)]/70" size={16} />
+            <input
+              type="text"
+              placeholder="Search by name, category or description..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+              className="w-full bg-transparent text-sm text-[var(--lms-text)] outline-none placeholder:text-[var(--lms-text-soft)]"
+            />
+          </div>
+        </div>
 
-      {/* ── Filters ── */}
-      <div className="bg-white dark:bg-[#212121] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF]/50 p-4 shadow-sm">
-        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">
-          Filters
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {/* isActive filter — only useful on Active tab */}
-          {activeTab === "active" && (
-            <div>
-              <label className="block text-xs font-medium text-[#212121] dark:text-[#DBE2EF] mb-1">
-                Status
-              </label>
+        <div className="neu-panel rounded-[32px] p-4">
+          <div className="grid gap-3 md:grid-cols-2">
+            {activeTab === "active" ? (
               <select
                 value={filterIsActive}
                 onChange={(e) => {
                   setFilterIsActive(e.target.value);
                   setPage(1);
                 }}
-                className={selectCls}
+                className="neu-input rounded-[20px] px-4 py-3 text-sm"
               >
-                <option value="">All (Active & Inactive)</option>
+                <option value="">All Status</option>
                 <option value="true">Active only</option>
                 <option value="false">Inactive only</option>
               </select>
-            </div>
-          )}
+            ) : (
+              <div className="neu-inset rounded-[20px] px-4 py-3 text-sm text-[var(--lms-text-soft)]">
+                Trash view ignores active status filter.
+              </div>
+            )}
 
-          {/* Category filter */}
-          <div>
-            <label className="block text-xs font-medium text-[#212121] dark:text-[#DBE2EF] mb-1">
-              Category
-            </label>
             <input
               type="text"
-              placeholder="e.g. Frontend, Backend..."
+              placeholder="Filter by category"
               value={filterCategory}
               onChange={(e) => {
                 setFilterCategory(e.target.value);
                 setPage(1);
               }}
-              className={inputCls}
+              className="neu-input rounded-[20px] px-4 py-3 text-sm"
             />
           </div>
+
+          {filterIsActive !== "" || filterCategory ? (
+            <button
+              onClick={() => {
+                setFilterIsActive("");
+                setFilterCategory("");
+                setPage(1);
+              }}
+              className="mt-4 neu-button rounded-[18px] px-4 py-2 text-xs font-semibold"
+            >
+              Clear filters
+            </button>
+          ) : null}
         </div>
+      </section>
 
-        {/* Clear filters button */}
-        {(filterIsActive !== "" || filterCategory) && (
-          <button
-            onClick={() => {
-              setFilterIsActive("");
-              setFilterCategory("");
-              setPage(1);
-            }}
-            className="mt-3 text-xs text-red-500 hover:text-red-600 dark:text-red-400 underline"
-          >
-            Clear filters
-          </button>
-        )}
-      </div>
-
-      {/* ── Table ── */}
-      <div className="bg-white dark:bg-[#212121] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF]/50 overflow-hidden shadow-sm">
+      <section className="neu-panel rounded-[34px] p-4">
         {loading ? (
-          <div className="p-8 text-center text-sm text-slate-500 dark:text-slate-400">
-            Loading skills...
-          </div>
+          <PageLoader label="Loading" detail="Collecting skill records" compact />
         ) : skills.length === 0 ? (
-          <div className="p-8 text-center text-sm text-slate-500 dark:text-slate-400">
-            No skills found
+          <div className="neu-inset rounded-[28px] px-6 py-12 text-center">
+            <p className="text-base font-medium text-[var(--lms-text)]">
+              No skills found
+            </p>
+            <p className="mt-2 text-sm text-[var(--lms-text-soft)]">
+              Add a new skill or broaden your filters.
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-[#DBE2EF]/60 dark:bg-slate-800/60 border-b border-[#DBE2EF] dark:border-slate-700">
+            <table className="neu-table min-w-full text-sm">
+              <thead>
                 <tr>
-                  <th className="px-5 py-3 text-left">
+                  <th className="px-5 py-4 text-left">
                     <button
                       onClick={() => handleSort("name")}
-                      className="font-semibold text-xs uppercase tracking-wider text-[#212121] dark:text-[#DBE2EF] flex items-center"
+                      className="inline-flex items-center gap-2 font-semibold text-[var(--lms-text)]"
                     >
-                      Name <SortArrow field="name" />
+                      Name
+                      <span className="text-xs text-[var(--lms-text-soft)]">
+                        {sortBy === "name" ? (sortOrder === "asc" ? "↑" : "↓") : "↕"}
+                      </span>
                     </button>
                   </th>
-                  <th className="px-5 py-3 text-left font-semibold text-xs uppercase tracking-wider text-[#212121] dark:text-[#DBE2EF]">
-                    Category
-                  </th>
-                  <th className="px-5 py-3 text-left font-semibold text-xs uppercase tracking-wider text-[#212121] dark:text-[#DBE2EF]">
-                    Description
-                  </th>
-                  {activeTab === "active" && (
-                    <th className="px-5 py-3 text-left font-semibold text-xs uppercase tracking-wider text-[#212121] dark:text-[#DBE2EF]">
-                      Status
-                    </th>
-                  )}
-                  <th className="px-5 py-3 text-left font-semibold text-xs uppercase tracking-wider text-[#212121] dark:text-[#DBE2EF]">
-                    Actions
-                  </th>
+                  <th className="px-5 py-4 text-left">Category</th>
+                  <th className="px-5 py-4 text-left">Description</th>
+                  {activeTab === "active" ? (
+                    <th className="px-5 py-4 text-left">Status</th>
+                  ) : null}
+                  <th className="px-5 py-4 text-left">Actions</th>
                 </tr>
               </thead>
-
-              <tbody className="divide-y divide-[#DBE2EF] dark:divide-slate-700/50">
+              <tbody>
                 {skills.map((skill) => (
-                  <tr
-                    key={skill._id}
-                    className="hover:bg-[#F9F7F7] dark:hover:bg-slate-800/40 transition-colors"
-                  >
-                    {/* Name */}
-                    <td className="px-5 py-3.5 font-medium text-[#212121] dark:text-[#DBE2EF] capitalize">
+                  <tr key={skill._id}>
+                    <td className="px-5 py-4 font-medium capitalize text-[var(--lms-text)]">
                       {skill.name}
                     </td>
-
-                    {/* Category */}
-                    <td className="px-5 py-3.5 text-[#3F72AF] dark:text-slate-300">
-                      {skill.category || "—"}
-                    </td>
-
-                    {/* Description */}
-                    <td className="px-5 py-3.5 text-slate-500 dark:text-slate-400 max-w-[240px]">
-                      <span className="line-clamp-1">
-                        {skill.description || "—"}
+                    <td className="px-5 py-4">
+                      <span className="neu-badge rounded-full px-3 py-1.5 text-xs font-semibold text-[var(--lms-text)]">
+                        {skill.category || "-"}
                       </span>
                     </td>
-
-                    {/* Status pill — active tab only */}
-                    {activeTab === "active" && (
-                      <td className="px-5 py-3.5">
+                    <td className="px-5 py-4 text-[var(--lms-text-soft)]">
+                      <span className="line-clamp-2">{skill.description || "-"}</span>
+                    </td>
+                    {activeTab === "active" ? (
+                      <td className="px-5 py-4">
                         <span
-                          className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold ${
+                          className={`inline-flex rounded-full px-3 py-1.5 text-xs font-semibold ${
                             skill.isActive
-                              ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
-                              : "bg-slate-100 text-slate-500 dark:bg-slate-700/60 dark:text-slate-400"
+                              ? "bg-emerald-100 text-emerald-700"
+                              : "bg-slate-200 text-slate-600"
                           }`}
                         >
                           {skill.isActive ? "Active" : "Inactive"}
                         </span>
                       </td>
-                    )}
-
-                    {/* Actions */}
-                    <td className="px-5 py-3.5">
+                    ) : null}
+                    <td className="px-5 py-4">
                       {activeTab === "trash" ? (
                         <button
                           onClick={() => handleRestore(skill._id)}
-                          className="flex items-center gap-1.5 text-sm font-medium text-green-600 dark:text-green-400 hover:underline"
+                          className="neu-button rounded-[16px] px-4 py-2 text-sm font-semibold text-emerald-700"
                         >
                           <RotateCcw size={14} />
                           Restore
                         </button>
                       ) : (
-                        <div className="flex items-center gap-3">
-                          {/* Edit */}
+                        <div className="flex items-center gap-2">
                           <button
                             onClick={() => handleEditOpen(skill)}
-                            className="text-[#3F72AF] dark:text-slate-300 hover:text-[#212121] dark:hover:text-white transition"
+                            className="neu-button h-10 w-10 rounded-[16px]"
                             title="Edit"
                           >
-                            <Edit size={15} />
+                            <Edit size={15} className="mx-auto" />
                           </button>
-
-                          {/* Toggle Active/Inactive */}
                           <button
                             onClick={() => handleToggleStatus(skill._id)}
-                            className={`text-xs font-medium transition ${
-                              skill.isActive
-                                ? "text-amber-600 dark:text-amber-400 hover:text-amber-700"
-                                : "text-green-600 dark:text-green-400 hover:text-green-700"
-                            }`}
-                            title={skill.isActive ? "Deactivate" : "Activate"}
+                            className="neu-button rounded-[16px] px-3 py-2 text-xs font-semibold"
                           >
                             {skill.isActive ? "Disable" : "Enable"}
                           </button>
-
-                          {/* Delete */}
                           <button
                             onClick={() => {
                               setSelectedSkill(skill);
                               setOpenDelete(true);
                             }}
-                            className="text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 transition"
-                            title="Delete"
+                            className="neu-button-danger rounded-[16px] px-3 py-2 text-xs font-semibold"
                           >
                             <Trash2 size={15} />
                           </button>
@@ -480,45 +412,33 @@ const AdminSkills = () => {
             </table>
           </div>
         )}
-      </div>
+      </section>
 
-      {/* ── Pagination ── */}
-      {!loading && (
-        <Pagination
-          page={page}
-          totalPages={totalPages}
-          onPageChange={setPage}
-        />
-      )}
+      {!loading ? (
+        <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+      ) : null}
 
-      {/* ── Add Modal ── */}
-      {openAdd && (
-        <SimpleModal
-          title="Add Skill"
-          form={form}
-          setForm={setForm}
-          onSubmit={handleAdd}
-          onClose={() => setOpenAdd(false)}
-          submitLabel="Add Skill"
-        />
-      )}
-
-      {/* ── Edit Modal ── */}
-      {openEdit && (
-        <SimpleModal
-          title="Edit Skill"
-          form={form}
-          setForm={setForm}
-          onSubmit={handleUpdate}
-          onClose={() => {
-            setOpenEdit(false);
-            setSelectedSkill(null);
-          }}
-          submitLabel="Update Skill"
-        />
-      )}
-
-      {/* ── Delete Confirm Modal ── */}
+      <SkillModal
+        open={openAdd}
+        title="Add Skill"
+        form={form}
+        setForm={setForm}
+        onSubmit={handleAdd}
+        onClose={() => setOpenAdd(false)}
+        submitLabel="Add Skill"
+      />
+      <SkillModal
+        open={openEdit}
+        title="Edit Skill"
+        form={form}
+        setForm={setForm}
+        onSubmit={handleUpdate}
+        onClose={() => {
+          setOpenEdit(false);
+          setSelectedSkill(null);
+        }}
+        submitLabel="Update Skill"
+      />
       <ConfirmDeleteModal
         open={openDelete}
         onClose={() => {
@@ -532,111 +452,80 @@ const AdminSkills = () => {
   );
 };
 
-// ─────────────────────────────────────────────────────
-// SIMPLE MODAL — reused for Add and Edit
-// Same styling as your AddVisitorModal / EditVisitorModal
-// ─────────────────────────────────────────────────────
-const SimpleModal = ({
+const SkillModal = ({
+  open,
   title,
   form,
   setForm,
   onSubmit,
   onClose,
   submitLabel,
-}) => {
-  // Close on ESC
-  useEffect(() => {
-    const handleEsc = (e) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handleEsc);
-    return () => window.removeEventListener("keydown", handleEsc);
-  }, [onClose]);
-
-  const inputCls =
-    "mt-1.5 w-full px-3 py-2.5 rounded-xl border border-[#DBE2EF] dark:border-slate-700 bg-white/70 dark:bg-slate-800/70 text-slate-800 dark:text-[#DBE2EF] placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-[#3F72AF]/40 transition text-sm";
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-      {/* Backdrop */}
-      <div
-        onClick={onClose}
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-      />
-
-      {/* Modal box */}
-      <div className="relative w-full max-w-md rounded-2xl border border-[#DBE2EF] dark:border-slate-700 bg-white dark:bg-[#212121] shadow-2xl">
-        {/* Header */}
-        <div className="px-6 py-5 border-b border-[#DBE2EF] dark:border-slate-700">
-          <h2 className="text-base font-bold text-[#212121] dark:text-[#DBE2EF]">
-            {title}
-          </h2>
-        </div>
-
-        {/* Form */}
-        <form onSubmit={onSubmit} className="p-6 space-y-4">
-          <div>
-            <label className="text-sm font-medium text-[#212121] dark:text-[#DBE2EF]">
-              Name <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="e.g. React, Node.js"
-              required
-              className={inputCls}
-            />
-          </div>
-
-          <div>
-            <label className="text-sm font-medium text-[#212121] dark:text-[#DBE2EF]">
-              Category
-            </label>
-            <input
-              type="text"
-              value={form.category}
-              onChange={(e) => setForm({ ...form, category: e.target.value })}
-              placeholder="e.g. Frontend, Backend"
-              className={inputCls}
-            />
-          </div>
-
-          <div>
-            <label className="text-sm font-medium text-[#212121] dark:text-[#DBE2EF]">
-              Description
-            </label>
-            <textarea
-              value={form.description}
-              onChange={(e) =>
-                setForm({ ...form, description: e.target.value })
-              }
-              placeholder="Short description..."
-              rows={3}
-              className={`${inputCls} resize-none`}
-            />
-          </div>
-
-          {/* Buttons */}
-          <div className="flex justify-end gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2.5 rounded-xl border border-[#DBE2EF] dark:border-slate-700 text-sm font-semibold text-[#212121] dark:text-[#DBE2EF] hover:bg-[#DBE2EF]/60 dark:hover:bg-slate-800 transition"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-5 py-2.5 rounded-xl bg-[#3F72AF] hover:bg-[#2f5d95] text-white text-sm font-semibold transition"
-            >
-              {submitLabel}
-            </button>
-          </div>
-        </form>
+}) => (
+  <ModalShell
+    open={open}
+    onClose={onClose}
+    title={title}
+    subtitle="Keep the structure crisp and reusable for course mapping."
+    maxWidth="max-w-xl"
+  >
+    <form onSubmit={onSubmit} className="space-y-4">
+      <div>
+        <label className="text-sm font-medium text-[var(--lms-text)]">
+          Name
+        </label>
+        <input
+          type="text"
+          value={form.name}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
+          placeholder="React, Node.js, UI Systems"
+          required
+          className={fieldClass}
+        />
       </div>
-    </div>
-  );
-};
+
+      <div>
+        <label className="text-sm font-medium text-[var(--lms-text)]">
+          Category
+        </label>
+        <input
+          type="text"
+          value={form.category}
+          onChange={(e) => setForm({ ...form, category: e.target.value })}
+          placeholder="Frontend, Backend, Operations"
+          className={fieldClass}
+        />
+      </div>
+
+      <div>
+        <label className="text-sm font-medium text-[var(--lms-text)]">
+          Description
+        </label>
+        <textarea
+          value={form.description}
+          onChange={(e) => setForm({ ...form, description: e.target.value })}
+          placeholder="Short description of when this skill is used."
+          rows={4}
+          className={`${fieldClass} resize-none`}
+        />
+      </div>
+
+      <div className="flex justify-end gap-3 pt-2">
+        <button
+          type="button"
+          onClick={onClose}
+          className="neu-button rounded-[20px] px-4 py-3 text-sm font-semibold"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          className="neu-button neu-button-primary rounded-[20px] px-5 py-3 text-sm font-semibold"
+        >
+          {submitLabel}
+        </button>
+      </div>
+    </form>
+  </ModalShell>
+);
 
 export default AdminSkills;

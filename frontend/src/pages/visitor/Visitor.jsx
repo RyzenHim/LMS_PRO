@@ -411,8 +411,8 @@ const Visitors = () => {
   // ─── Initial full-page skeleton ───────────────────
   if (loading) {
     return (
-      <div className="p-5 space-y-4 max-w-[1400px] mx-auto">
-        <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm p-6">
+      <div className="lms-page-enter mx-auto max-w-[1400px] space-y-4 p-5">
+        <div className="neu-panel rounded-[30px] p-6">
           <div className="h-6 w-24 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse mb-1.5" />
           <div className="h-3.5 w-52 bg-slate-100 dark:bg-slate-800 rounded-lg animate-pulse mb-5" />
           <div className="flex gap-2">
@@ -424,7 +424,7 @@ const Visitors = () => {
             ))}
           </div>
         </div>
-        <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
+        <div className="neu-panel overflow-hidden rounded-[30px]">
           <table className="w-full">
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700/40">
               {Array.from({ length: 8 }).map((_, i) => (
@@ -438,9 +438,9 @@ const Visitors = () => {
   }
 
   return (
-    <div className="p-5 space-y-4 max-w-[1400px] mx-auto">
+    <div className="lms-page-enter mx-auto max-w-[1400px] space-y-4 p-5">
       {/* ══ HEADER ══ */}
-      <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm p-5">
+      <div className="neu-panel rounded-[30px] p-5">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-[#3F72AF]/10 dark:bg-[#3F72AF]/15 shrink-0">
@@ -719,7 +719,7 @@ const Visitors = () => {
 
       {/* ══ ERROR ══ */}
       {error && (
-        <div className="rounded-xl border border-red-200 dark:border-red-800/50 bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-700 dark:text-red-300 flex items-center gap-3">
+      <div className="lms-status-error flex items-center gap-3">
           <AlertCircle size={15} className="shrink-0" />
           <span className="flex-1">{error}</span>
           <button
@@ -732,7 +732,7 @@ const Visitors = () => {
       )}
 
       {/* ══ TABLE ══ */}
-      <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
+      <div className="neu-panel overflow-hidden rounded-[30px]">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
