@@ -1,20 +1,19 @@
 import { useEffect, useState } from "react";
 import { User, Mail, Shield, Calendar, Save } from "lucide-react";
 import axiosInstance from "../../api/axios";
+import PageLoader from "../../components/ui/PageLoader";
 
 const ProfilePage = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [success, setSuccess] = useState("");
-
   const [form, setForm] = useState({
     name: "",
     currentPassword: "",
     password: "",
     confirmPassword: "",
   });
-
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
@@ -41,9 +40,7 @@ const ProfilePage = () => {
   const validate = () => {
     const next = {};
 
-    if (!form.name.trim()) {
-      next.name = "Name is required";
-    }
+    if (!form.name.trim()) next.name = "Name is required";
 
     const changingPassword =
       form.currentPassword || form.password || form.confirmPassword;
@@ -74,15 +71,11 @@ const ProfilePage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSuccess("");
-
     if (!validate()) return;
 
     try {
       setUpdating(true);
-
-      const payload = {
-        name: form.name.trim(),
-      };
+      const payload = { name: form.name.trim() };
 
       if (form.password) {
         payload.currentPassword = form.currentPassword;
@@ -93,14 +86,13 @@ const ProfilePage = () => {
       const updatedUser = res.data?.user || res.data;
       setUser(updatedUser);
       localStorage.setItem("user", JSON.stringify(updatedUser));
-
       setForm((prev) => ({
         ...prev,
         currentPassword: "",
         password: "",
         confirmPassword: "",
       }));
-      setSuccess("Profile updated successfully");
+      setSuccess("Profile updated successfully.");
     } catch (error) {
       const message = error?.response?.data?.message || "Update failed";
       setErrors((prev) => ({ ...prev, currentPassword: message }));
@@ -111,161 +103,125 @@ const ProfilePage = () => {
 
   if (loading) {
     return (
-      <div className="p-6 text-center text-[#3F72AF] dark:text-[#DBE2EF]">
-        Loading profile...
-      </div>
+      <PageLoader label="Loading" detail="Preparing your profile settings" />
     );
   }
 
   if (!user) {
-    return (
-      <div className="p-6 text-center text-red-500">
-        Unable to load profile data.
-      </div>
-    );
+    return <div className="lms-status-error">Unable to load profile data.</div>;
   }
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
+        <h1 className="text-2xl font-semibold text-[var(--lms-text)]">
           My Profile
         </h1>
-        <p className="text-sm text-[#3F72AF] dark:text-[#DBE2EF]">
+        <p className="text-sm text-[var(--lms-text-soft)]">
           Update your name and password. Email is read-only.
         </p>
       </div>
 
-      {success && (
-        <div className="p-3 rounded-lg bg-green-100 border border-green-300 text-green-700 text-sm">
-          {success}
-        </div>
-      )}
+      {success ? <div className="lms-status-success">{success}</div> : null}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-6 shadow-sm">
-          <div className="w-16 h-16 rounded-full bg-[#DBE2EF] dark:bg-[#0a1f3a] flex items-center justify-center">
-            <User className="text-[#3F72AF] dark:text-[#DBE2EF]" />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="neu-panel rounded-[32px] p-6">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--lms-accent-soft)]">
+            <User className="text-[var(--lms-accent-strong)]" />
           </div>
 
           <div className="mt-4 space-y-3 text-sm">
-            <div className="flex items-center gap-2">
-              <Mail size={16} className="text-[#3F72AF] dark:text-[#DBE2EF]" />
-              <span className="text-[#112D4E] dark:text-[#DBE2EF]">
-                {user.email || "-"}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Shield
-                size={16}
-                className="text-[#3F72AF] dark:text-[#DBE2EF]"
-              />
-              <span className="capitalize text-[#112D4E] dark:text-[#DBE2EF]">
-                {user.role || "-"}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Calendar
-                size={16}
-                className="text-[#3F72AF] dark:text-[#DBE2EF]"
-              />
-              <span className="text-[#112D4E] dark:text-[#DBE2EF]">
-                Joined{" "}
-                {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "-"}
-              </span>
-            </div>
+            {[
+              { icon: Mail, value: user.email || "-" },
+              { icon: Shield, value: user.role || "-", capitalize: true },
+              {
+                icon: Calendar,
+                value: `Joined ${
+                  user.createdAt
+                    ? new Date(user.createdAt).toLocaleDateString()
+                    : "-"
+                }`,
+              },
+            ].map((item, index) => {
+              const Icon = item.icon;
+
+              return (
+                <div key={index} className="neu-inset flex items-center gap-2 rounded-[22px] p-3">
+                  <Icon size={16} className="text-[var(--lms-accent-strong)]" />
+                  <span
+                    className={`text-[var(--lms-text)] ${item.capitalize ? "capitalize" : ""}`}
+                  >
+                    {item.value}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
 
         <form
           onSubmit={handleSubmit}
-          className="lg:col-span-2 bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-6 shadow-sm space-y-4"
+          className="neu-panel space-y-4 rounded-[32px] p-6 lg:col-span-2"
         >
           <div>
-            <label className="block text-sm mb-1 text-[#112D4E] dark:text-[#DBE2EF]">
+            <label className="mb-1 block text-sm text-[var(--lms-text)]">
               Name
             </label>
             <input
               name="name"
               value={form.name}
               onChange={handleChange}
-              className="w-full px-3 py-2 rounded-lg border border-[#DBE2EF] dark:border-[#3F72AF] bg-[#F9F7F7] dark:bg-[#0a1f3a] text-[#112D4E] dark:text-[#DBE2EF]"
+              className="neu-input w-full rounded-[22px] px-3 py-2.5"
             />
-            {errors.name && (
-              <p className="text-xs text-red-500 mt-1">{errors.name}</p>
-            )}
+            {errors.name ? (
+              <p className="mt-1 text-xs text-red-500">{errors.name}</p>
+            ) : null}
           </div>
 
           <div>
-            <label className="block text-sm mb-1 text-[#112D4E] dark:text-[#DBE2EF]">
+            <label className="mb-1 block text-sm text-[var(--lms-text)]">
               Email
             </label>
             <input
               value={user.email || ""}
               disabled
-              className="w-full px-3 py-2 rounded-lg border border-[#DBE2EF] dark:border-[#3F72AF] bg-[#DBE2EF] dark:bg-[#0a1f3a] text-[#112D4E] dark:text-[#DBE2EF] cursor-not-allowed"
+              className="neu-input w-full cursor-not-allowed rounded-[22px] px-3 py-2.5 opacity-75"
             />
           </div>
 
-          <div className="pt-2 border-t border-[#DBE2EF] dark:border-[#3F72AF]">
-            <p className="text-sm mb-3 text-[#112D4E] dark:text-[#DBE2EF]">
+          <div className="border-t border-white/10 pt-2">
+            <p className="mb-3 text-sm text-[var(--lms-text)]">
               Change Password (optional)
             </p>
           </div>
 
-          <div>
-            <label className="block text-sm mb-1 text-[#112D4E] dark:text-[#DBE2EF]">
-              Current Password
-            </label>
-            <input
-              type="password"
-              name="currentPassword"
-              value={form.currentPassword}
-              onChange={handleChange}
-              className="w-full px-3 py-2 rounded-lg border border-[#DBE2EF] dark:border-[#3F72AF] bg-[#F9F7F7] dark:bg-[#0a1f3a] text-[#112D4E] dark:text-[#DBE2EF]"
-            />
-            {errors.currentPassword && (
-              <p className="text-xs text-red-500 mt-1">{errors.currentPassword}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm mb-1 text-[#112D4E] dark:text-[#DBE2EF]">
-              New Password
-            </label>
-            <input
-              type="password"
-              name="password"
-              value={form.password}
-              onChange={handleChange}
-              className="w-full px-3 py-2 rounded-lg border border-[#DBE2EF] dark:border-[#3F72AF] bg-[#F9F7F7] dark:bg-[#0a1f3a] text-[#112D4E] dark:text-[#DBE2EF]"
-            />
-            {errors.password && (
-              <p className="text-xs text-red-500 mt-1">{errors.password}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm mb-1 text-[#112D4E] dark:text-[#DBE2EF]">
-              Confirm Password
-            </label>
-            <input
-              type="password"
-              name="confirmPassword"
-              value={form.confirmPassword}
-              onChange={handleChange}
-              className="w-full px-3 py-2 rounded-lg border border-[#DBE2EF] dark:border-[#3F72AF] bg-[#F9F7F7] dark:bg-[#0a1f3a] text-[#112D4E] dark:text-[#DBE2EF]"
-            />
-            {errors.confirmPassword && (
-              <p className="text-xs text-red-500 mt-1">{errors.confirmPassword}</p>
-            )}
-          </div>
+          {[
+            ["Current Password", "currentPassword"],
+            ["New Password", "password"],
+            ["Confirm Password", "confirmPassword"],
+          ].map(([label, name]) => (
+            <div key={name}>
+              <label className="mb-1 block text-sm text-[var(--lms-text)]">
+                {label}
+              </label>
+              <input
+                type="password"
+                name={name}
+                value={form[name]}
+                onChange={handleChange}
+                className="neu-input w-full rounded-[22px] px-3 py-2.5"
+              />
+              {errors[name] ? (
+                <p className="mt-1 text-xs text-red-500">{errors[name]}</p>
+              ) : null}
+            </div>
+          ))}
 
           <div className="pt-2">
             <button
               type="submit"
               disabled={updating}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#3F72AF] hover:bg-[#112D4E] text-white text-sm font-medium disabled:opacity-70"
+              className="neu-button neu-button-primary inline-flex items-center gap-2 rounded-[22px] px-5 py-3 text-sm font-medium disabled:opacity-70"
             >
               <Save size={16} />
               {updating ? "Saving..." : "Save Changes"}

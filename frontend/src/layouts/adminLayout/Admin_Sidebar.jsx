@@ -15,7 +15,6 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
-  ClipboardCheck,
   CalendarCheck2,
 } from "lucide-react";
 
@@ -43,108 +42,88 @@ const AdminSidebar = ({
 
   return (
     <>
-      {/* Mobile overlay */}
-      {mobileOpen && (
+      {mobileOpen ? (
         <button
           onClick={onCloseMobile}
-          className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm lg:hidden"
+          className="lms-modal-backdrop fixed inset-0 z-[60] lg:hidden"
           aria-label="Close sidebar overlay"
         />
-      )}
+      ) : null}
 
       <aside
-        className={`
-          fixed left-0 top-0 z-[70] h-dvh text-white shadow-2xl
-          transition-all duration-300 ease-in-out
-
-          bg-[#141414] dark:bg-[#101010]
-          border-r border-white/10
-
-          ${collapsed ? "lg:w-20" : "lg:w-64"}
-
-          w-64
-          ${mobileOpen ? "translate-x-0" : "-translate-x-full"}
-          lg:translate-x-0
-        `}
+        className={`fixed left-0 top-0 z-[70] h-dvh border-r border-white/10 transition-all duration-300 ease-in-out ${
+          collapsed ? "lg:w-24" : "lg:w-[18rem]"
+        } ${mobileOpen ? "translate-x-0" : "-translate-x-full"} w-[18rem] lg:translate-x-0`}
       >
-        {/* Header */}
-        <div className="h-16 flex items-center justify-between px-4 border-b border-white/10">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-white/10 flex items-center justify-center font-bold tracking-wide text-white">
-              L
+        <div className="neu-panel flex h-full flex-col rounded-r-[34px] rounded-l-none px-3 py-4">
+          <div className="flex h-16 items-center justify-between border-b border-white/10 px-3">
+            <div className="flex items-center gap-3 overflow-hidden">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--lms-accent-soft)] text-sm font-semibold text-[var(--lms-accent-strong)] shadow-[inset_1px_1px_0_rgba(255,255,255,0.28)]">
+                LMS
+              </div>
+
+              {!collapsed ? (
+                <div className="leading-tight">
+                  <p className="text-sm font-semibold text-[var(--lms-text)]">
+                    LMS Admin
+                  </p>
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--lms-text-soft)]">
+                    Control Center
+                  </p>
+                </div>
+              ) : null}
             </div>
 
-            {!collapsed && (
-              <div className="leading-tight">
-                <p className="text-sm font-semibold text-white">LMS Admin</p>
-                <p className="text-[11px] text-white/60">Control Center</p>
-              </div>
-            )}
+            <button
+              onClick={onToggleCollapse}
+              className="neu-button hidden h-10 w-10 rounded-2xl lg:inline-flex lg:items-center lg:justify-center"
+              title={collapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+            >
+              {collapsed ? (
+                <ChevronRight size={18} className="text-[var(--lms-text)]" />
+              ) : (
+                <ChevronLeft size={18} className="text-[var(--lms-text)]" />
+              )}
+            </button>
+
+            <button
+              onClick={onCloseMobile}
+              className="neu-button inline-flex h-10 w-10 items-center justify-center rounded-2xl lg:hidden"
+              title="Close Sidebar"
+            >
+              <X size={18} className="text-[var(--lms-text)]" />
+            </button>
           </div>
 
-          {/* Desktop collapse button */}
-          <button
-            onClick={onToggleCollapse}
-            className="hidden lg:inline-flex p-2 rounded-xl hover:bg-white/10 transition"
-            title={collapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-          >
-            {collapsed ? (
-              <ChevronRight size={18} className="text-white/80" />
-            ) : (
-              <ChevronLeft size={18} className="text-white/80" />
-            )}
-          </button>
+          <nav className="mt-4 flex-1 space-y-2 overflow-y-auto px-1 pb-4">
+            {menu.map((item) => {
+              const Icon = item.icon;
 
-          {/* Mobile close button */}
-          <button
-            onClick={onCloseMobile}
-            className="lg:hidden p-2 rounded-xl hover:bg-white/10 transition"
-            title="Close Sidebar"
-          >
-            <X size={18} className="text-white/80" />
-          </button>
-        </div>
-
-        {/* Menu */}
-        <nav className="mt-3 space-y-1 px-2">
-          {menu.map((item, index) => {
-            const Icon = item.icon;
-
-            return (
-              <NavLink
-                key={index}
-                to={item.path}
-                title={collapsed ? item.name : ""}
-                onClick={onCloseMobile}
-                className={({ isActive }) =>
-                  `
-                  group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm
-                  transition-all duration-200
-                  ${collapsed ? "lg:justify-center lg:px-0" : "justify-start"}
-
-                  ${
-                    isActive
-                      ? "bg-white/10 text-white border border-white/10 shadow-[0_0_0_1px_rgba(255,255,255,0.08)]"
-                      : "text-white/70 hover:text-white hover:bg-white/5"
+              return (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  title={collapsed ? item.name : ""}
+                  onClick={onCloseMobile}
+                  className={({ isActive }) =>
+                    `group flex items-center gap-3 rounded-[24px] px-4 py-3 text-sm transition-all duration-200 ${
+                      collapsed ? "lg:justify-center lg:px-0" : "justify-start"
+                    } ${
+                      isActive
+                        ? "neu-button neu-button-primary text-white"
+                        : "neu-button text-[var(--lms-text-soft)] hover:text-[var(--lms-text)]"
+                    }`
                   }
-                `
-                }
-              >
-                <Icon
-                  size={18}
-                  className={`
-                    shrink-0 transition
-                    ${collapsed ? "lg:mx-auto" : ""}
-                  `}
-                />
-
-                {!collapsed && (
-                  <span className="truncate font-medium">{item.name}</span>
-                )}
-              </NavLink>
-            );
-          })}
-        </nav>
+                >
+                  <Icon size={18} className={collapsed ? "lg:mx-auto" : ""} />
+                  {!collapsed ? (
+                    <span className="truncate font-medium">{item.name}</span>
+                  ) : null}
+                </NavLink>
+              );
+            })}
+          </nav>
+        </div>
       </aside>
     </>
   );

@@ -1,15 +1,11 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { loginApi } from "../../services/authService";
+import PageLoader from "../../components/ui/PageLoader";
 
 const Login = () => {
   const navigate = useNavigate();
-
-  const [form, setForm] = useState({
-    email: "",
-    password: "",
-  });
-
+  const [form, setForm] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -29,7 +25,7 @@ const Login = () => {
       const data = await loginApi(form);
 
       if (!data?.token || !data?.user) {
-        setError("Invalid login response from server");
+        setError("Invalid login response from server.");
         return;
       }
 
@@ -38,84 +34,78 @@ const Login = () => {
 
       navigate(data.redirectTo || "/", { replace: true });
     } catch (err) {
-      const msg = err?.message || "Login Failed";
-      setError(msg);
+      setError(err?.message || "Login failed.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-1">
-        <h1 className="text-3xl font-semibold text-gray-900 dark:text-white tracking-tight">
-          Sign in
-        </h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          Enter your credentials to continue
-        </p>
+    <div className="space-y-7">
+      <div className="space-y-3">
+        <span className="neu-badge inline-flex rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em]">
+          Secure Sign In
+        </span>
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight text-[var(--lms-text)]">
+            Welcome back
+          </h1>
+          <p className="mt-2 text-sm leading-relaxed text-[var(--lms-text-soft)]">
+            Enter your credentials to access the LMS workspace.
+          </p>
+        </div>
       </div>
 
-      {error && (
-        <div className="p-3 rounded-lg bg-red-100 text-red-700 border border-red-300 text-sm">
-          {error}
-        </div>
-      )}
+      {error ? <div className="lms-status-error">{error}</div> : null}
 
       <form onSubmit={handleSubmit} className="space-y-5">
-        <div className="space-y-1">
-          <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
+        <div className="space-y-2">
+          <label
+            htmlFor="email"
+            className="text-sm font-medium text-[var(--lms-text-soft)]"
+          >
             Email address
           </label>
           <input
+            id="email"
             name="email"
+            type="email"
             value={form.email}
             onChange={handleChange}
-            type="email"
             placeholder="you@company.com"
-            className="
-              w-full px-4 py-3 rounded-xl border
-              border-gray-200 dark:border-gray-700
-              bg-white dark:bg-slate-800
-              text-gray-900 dark:text-white
-              shadow-sm
-              focus:outline-none focus:ring-2 focus:ring-indigo-500
-            "
+            className="neu-input w-full rounded-[22px] px-4 py-3.5"
             required
           />
         </div>
 
-        <div className="space-y-1">
-          <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
+        <div className="space-y-2">
+          <label
+            htmlFor="password"
+            className="text-sm font-medium text-[var(--lms-text-soft)]"
+          >
             Password
           </label>
           <input
+            id="password"
             name="password"
+            type="password"
             value={form.password}
             onChange={handleChange}
-            type="password"
-            placeholder="••••••••"
-            className="
-              w-full px-4 py-3 rounded-xl border
-              border-gray-200 dark:border-gray-700
-              bg-white dark:bg-slate-800
-              text-gray-900 dark:text-white
-              shadow-sm
-              focus:outline-none focus:ring-2 focus:ring-indigo-500
-            "
+            placeholder="Enter your password"
+            className="neu-input w-full rounded-[22px] px-4 py-3.5"
             required
           />
         </div>
 
-        <div className="flex justify-between items-center text-sm">
-          <label className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-            <input type="checkbox" className="rounded" />
+        <div className="flex items-center justify-between gap-3 text-sm">
+          <label className="flex items-center gap-2 text-[var(--lms-text-soft)]">
+            <input type="checkbox" className="accent-[var(--lms-accent-strong)]" />
             Remember me
           </label>
 
           <Link
             to="/auth/forgot-password"
-            className="text-indigo-600 hover:underline"
+            className="font-medium text-[var(--lms-accent-strong)] hover:opacity-80"
           >
             Forgot password?
           </Link>
@@ -124,28 +114,21 @@ const Login = () => {
         <button
           type="submit"
           disabled={loading}
-          className="
-            w-full py-3 rounded-xl
-            bg-indigo-600 hover:bg-indigo-700
-            text-white font-medium
-            shadow-lg shadow-indigo-600/30
-            transition
-            disabled:opacity-60 disabled:cursor-not-allowed
-          "
+          className="neu-button neu-button-primary w-full rounded-[24px] px-5 py-3.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-70"
         >
           {loading ? "Logging in..." : "Login"}
         </button>
       </form>
 
-      {/* <p className="text-sm text-center text-gray-600 dark:text-gray-400">
-        New here?{" "}
-        <Link
-          to="/auth/signup"
-          className="text-indigo-600 hover:underline font-medium"
-        >
-          Send enquiry
-        </Link>
-      </p> */}
+      {loading ? (
+        <div className="neu-panel-soft rounded-[28px] px-5 py-4">
+          <PageLoader
+            compact
+            label="Authorizing"
+            detail="Validating your session and preparing your dashboard"
+          />
+        </div>
+      ) : null}
     </div>
   );
 };

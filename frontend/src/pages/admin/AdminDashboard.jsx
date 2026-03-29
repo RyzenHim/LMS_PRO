@@ -115,7 +115,7 @@ const SectionSkeleton = ({ rows = 4 }) => (
 /* =========================
    UI Building Blocks
 ========================= */
-const StatCard = ({ title, value, icon: Icon, tone = "blue", suffix = "" }) => {
+const StatCard = ({ title, value, icon, tone = "blue", suffix = "" }) => {
   const tones = {
     blue: "from-blue-500/10 to-indigo-500/10 text-blue-600 dark:text-blue-300",
     green:
@@ -128,6 +128,7 @@ const StatCard = ({ title, value, icon: Icon, tone = "blue", suffix = "" }) => {
   };
 
   const animated = useCountUp(Number(value || 0));
+  const iconNode = icon ? React.createElement(icon, { size: 20 }) : null;
 
   return (
     <div className="group relative overflow-hidden rounded-2xl border border-white/50 dark:border-slate-700/70 bg-white/75 dark:bg-slate-900/60 backdrop-blur-xl shadow-sm hover:shadow-lg transition">
@@ -150,20 +151,27 @@ const StatCard = ({ title, value, icon: Icon, tone = "blue", suffix = "" }) => {
         <div
           className={`h-12 w-12 rounded-2xl bg-gradient-to-br ${tones[tone]} flex items-center justify-center border border-white/60 dark:border-slate-700`}
         >
-          <Icon size={20} />
+          {iconNode}
         </div>
       </div>
     </div>
   );
 };
 
-const SectionCard = ({ title, icon: Icon, children, right }) => {
+const SectionCard = ({ title, icon, children, right }) => {
+  const iconNode = icon
+    ? React.createElement(icon, {
+        size: 18,
+        className: "text-slate-700 dark:text-slate-200",
+      })
+    : null;
+
   return (
     <div className="rounded-2xl border border-white/50 dark:border-slate-700/70 bg-white/75 dark:bg-slate-900/60 backdrop-blur-xl shadow-sm">
       <div className="px-5 py-4 border-b border-slate-200/70 dark:border-slate-700/70 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <div className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center border border-slate-200 dark:border-slate-700">
-            <Icon size={18} className="text-slate-700 dark:text-slate-200" />
+            {iconNode}
           </div>
           <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
             {title}

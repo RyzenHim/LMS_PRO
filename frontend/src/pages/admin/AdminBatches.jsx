@@ -8,7 +8,6 @@ import {
   RotateCcw,
   Users,
   UserCog,
-  Building2,
 } from "lucide-react";
 
 import { batchService } from "../../services/batchService";
@@ -18,7 +17,6 @@ import EditBatchModal from "./modal/batch/EditBatchModal";
 import ViewBatchModal from "./modal/batch/ViewBatchModal";
 import ConfirmDeleteModal from "./modal/batch/ConfirmDeleteModal";
 import ManageBatchStudentsModal from "./modal/ManageBatchStudentsModal";
-import AssignBatchRoomModal from "./modal/batch/AssignBatchRoomModal";
 
 import Pagination from "../../components/Pagination";
 import SortHeader from "../../components/SortHeader";
@@ -41,7 +39,7 @@ const AdminBatches = () => {
   const [sortBy, setSortBy] = useState("createdAt");
   const [sortOrder, setSortOrder] = useState("desc");
 
-  const [filters, setFilters] = useState({});
+  const filters = {};
   const [activeTab, setActiveTab] = useState("active");
 
   const [openAdd, setOpenAdd] = useState(false);
@@ -49,7 +47,6 @@ const AdminBatches = () => {
   const [openView, setOpenView] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [openManageStudents, setOpenManageStudents] = useState(false);
-  const [openAssignRoom, setOpenAssignRoom] = useState(false);
 
   const [selectedBatch, setSelectedBatch] = useState(null);
 
@@ -229,18 +226,6 @@ const AdminBatches = () => {
       console.error("Toggle status failed", error);
       alert(error.response?.data?.message || "Failed to toggle status");
     }
-  };
-
-  // ==========================
-  // Room Assign
-  // ==========================
-  const handleOpenAssignRoom = (batch) => {
-    setSelectedBatch(batch);
-    setOpenAssignRoom(true);
-  };
-
-  const handleRoomAssigned = async () => {
-    await fetchBatches();
   };
 
   const filteredBatches = activeTab === "active" ? batches : deletedBatches;

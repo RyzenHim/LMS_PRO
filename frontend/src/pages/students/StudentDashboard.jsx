@@ -8,6 +8,7 @@ import {
   Clock,
   GraduationCap,
 } from "lucide-react";
+import PageLoader from "../../components/ui/PageLoader";
 
 const dayKeyMap = {
   0: "sun",
@@ -29,10 +30,9 @@ const dayLabelMap = {
   sun: "Sunday",
 };
 
-const minutesToTime = (m) => {
-  const h = Math.floor(m / 60);
-  const min = m % 60;
-
+const minutesToTime = (minutes) => {
+  const h = Math.floor(minutes / 60);
+  const min = minutes % 60;
   const hour12 = h % 12 === 0 ? 12 : h % 12;
   const ampm = h >= 12 ? "PM" : "AM";
 
@@ -43,16 +43,11 @@ const StudentDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [tableLoading, setTableLoading] = useState(false);
   const [error, setError] = useState("");
-
   const [student, setStudent] = useState(null);
   const [mappings, setMappings] = useState([]);
   const [batchId, setBatchId] = useState("");
-
   const [slots, setSlots] = useState([]);
 
-  // =========================
-  // 1) Load student profile
-  // =========================
   useEffect(() => {
     const fetchMe = async () => {
       try {
@@ -60,17 +55,13 @@ const StudentDashboard = () => {
         setError("");
 
         const res = await axiosInstance.get("/students/me");
-
         const studentDoc = res.data?.student;
         const maps = res.data?.mappings || [];
+        const activeMap = maps?.[0];
 
         setStudent(studentDoc);
         setMappings(maps);
-
-        const activeMap = maps?.[0];
-        const bId = activeMap?.batch?._id || "";
-
-        setBatchId(bId);
+        setBatchId(activeMap?.batch?._id || "");
       } catch (err) {
         console.error("Dashboard fetchMe error:", err);
         setError("Failed to load dashboard.");
@@ -82,9 +73,6 @@ const StudentDashboard = () => {
     fetchMe();
   }, []);
 
-  // =========================
-  // 2) Load timetable slots
-  // =========================
   useEffect(() => {
     const fetchSlots = async () => {
       if (!batchId) {
@@ -106,201 +94,132 @@ const StudentDashboard = () => {
     fetchSlots();
   }, [batchId]);
 
-  // =========================
-  // Derived Data
-  // =========================
   const activeMap = mappings?.[0];
-
   const studentName = student?.visitor?.name || "Student";
   const studentEmail = student?.visitor?.email || "—";
   const studentPhone = student?.visitor?.phone || "—";
-
   const courseTitle = student?.visitor?.course?.title || "—";
   const courseCategory = student?.visitor?.course?.category || "";
   const courseLevel = student?.visitor?.course?.level || "";
   const coursePrice = student?.visitor?.course?.price ?? null;
-
   const batchName = activeMap?.batch?.name || "Not Assigned";
   const tutorName =
     activeMap?.tutor?.employee?.name || activeMap?.tutor?.name || "—";
-
   const todayKey = dayKeyMap[new Date().getDay()];
 
   const todaySlots = useMemo(() => {
     return (slots || [])
-      .filter((s) => s.day === todayKey)
+      .filter((slot) => slot.day === todayKey)
       .sort((a, b) => a.startMinutes - b.startMinutes);
   }, [slots, todayKey]);
 
-  const weeklyClassCount = useMemo(() => {
-    return (slots || []).length;
-  }, [slots]);
-
+  const weeklyClassCount = useMemo(() => (slots || []).length, [slots]);
   const upcomingToday = todaySlots?.[0];
 
   if (loading) {
     return (
-      <div className="p-6 text-center text-[#3F72AF] dark:text-[#DBE2EF]">
-        Loading dashboard...
-      </div>
+      <PageLoader
+        label="Loading"
+        detail="Preparing your student dashboard"
+      />
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* HEADER */}
-      <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-6 shadow-lg">
-        <h1 className="text-2xl font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
+      <div className="neu-panel rounded-[32px] p-6">
+        <h1 className="text-2xl font-semibold text-[var(--lms-text)]">
           Student Dashboard
         </h1>
-
-        <p className="mt-2 text-sm text-[#3F72AF] dark:text-[#DBE2EF]">
-          Welcome, <span className="font-medium">{studentName}</span>
+        <p className="mt-2 text-sm text-[var(--lms-text-soft)]">
+          Welcome, <span className="font-medium text-[var(--lms-text)]">{studentName}</span>
         </p>
-
-        {error && (
-          <div className="mt-4 p-3 rounded-lg border border-red-200 bg-red-50 text-red-700 text-sm">
-            {error}
-          </div>
-        )}
+        {error ? <div className="lms-status-error mt-4">{error}</div> : null}
       </div>
 
-      {/* TOP STATS */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-5 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-[#DBE2EF] dark:bg-[#0a1f3a]">
-              <GraduationCap className="text-[#3F72AF]" size={20} />
-            </div>
-            <div>
-              <p className="text-xs text-[#3F72AF] dark:text-[#DBE2EF]">
-                Batch
-              </p>
-              <p className="text-sm font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
-                {batchName}
-              </p>
-            </div>
-          </div>
-        </div>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {[
+          { title: "Batch", value: batchName, icon: GraduationCap },
+          { title: "Course", value: courseTitle, icon: BookOpen },
+          { title: "Tutor", value: tutorName, icon: Users },
+          {
+            title: "Weekly Classes",
+            value: tableLoading ? "Loading..." : weeklyClassCount,
+            icon: CalendarDays,
+          },
+        ].map((item) => {
+          const Icon = item.icon;
 
-        <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-5 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-[#DBE2EF] dark:bg-[#0a1f3a]">
-              <BookOpen className="text-[#3F72AF]" size={20} />
+          return (
+            <div key={item.title} className="neu-panel-soft rounded-[28px] p-5">
+              <div className="flex items-center gap-3">
+                <div className="neu-inset rounded-2xl p-3">
+                  <Icon className="text-[var(--lms-accent-strong)]" size={20} />
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-[0.16em] text-[var(--lms-text-soft)]">
+                    {item.title}
+                  </p>
+                  <p className="text-sm font-semibold text-[var(--lms-text)]">
+                    {item.value}
+                  </p>
+                </div>
+              </div>
             </div>
-            <div>
-              <p className="text-xs text-[#3F72AF] dark:text-[#DBE2EF]">
-                Course
-              </p>
-              <p className="text-sm font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
-                {courseTitle}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-5 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-[#DBE2EF] dark:bg-[#0a1f3a]">
-              <Users className="text-[#3F72AF]" size={20} />
-            </div>
-            <div>
-              <p className="text-xs text-[#3F72AF] dark:text-[#DBE2EF]">
-                Tutor
-              </p>
-              <p className="text-sm font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
-                {tutorName}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-5 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-[#DBE2EF] dark:bg-[#0a1f3a]">
-              <CalendarDays className="text-[#3F72AF]" size={20} />
-            </div>
-            <div>
-              <p className="text-xs text-[#3F72AF] dark:text-[#DBE2EF]">
-                Weekly Classes
-              </p>
-              <p className="text-sm font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
-                {tableLoading ? "Loading..." : weeklyClassCount}
-              </p>
-            </div>
-          </div>
-        </div>
+          );
+        })}
       </div>
 
-      {/* PROFILE + TODAY */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
-        {/* Profile */}
-        <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-6 shadow-sm">
-          <h2 className="text-base font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
+        <div className="neu-panel rounded-[32px] p-6">
+          <h2 className="text-base font-semibold text-[var(--lms-text)]">
             My Profile
           </h2>
 
           <div className="mt-4 space-y-3 text-sm">
-            <div className="flex justify-between gap-4">
-              <span className="text-[#3F72AF] dark:text-[#DBE2EF]">Name</span>
-              <span className="font-medium text-[#112D4E] dark:text-[#DBE2EF]">
-                {studentName}
-              </span>
-            </div>
-
-            <div className="flex justify-between gap-4">
-              <span className="text-[#3F72AF] dark:text-[#DBE2EF]">Email</span>
-              <span className="font-medium text-[#112D4E] dark:text-[#DBE2EF]">
-                {studentEmail}
-              </span>
-            </div>
-
-            <div className="flex justify-between gap-4">
-              <span className="text-[#3F72AF] dark:text-[#DBE2EF]">Phone</span>
-              <span className="font-medium text-[#112D4E] dark:text-[#DBE2EF]">
-                {studentPhone}
-              </span>
-            </div>
-
-            <div className="flex justify-between gap-4">
-              <span className="text-[#3F72AF] dark:text-[#DBE2EF]">Course</span>
-              <span className="font-medium text-[#112D4E] dark:text-[#DBE2EF] text-right">
-                {courseTitle}
-              </span>
-            </div>
-
-            {(courseCategory || courseLevel) && (
-              <div className="flex justify-between gap-4">
-                <span className="text-[#3F72AF] dark:text-[#DBE2EF]">
-                  Category / Level
-                </span>
-                <span className="font-medium text-[#112D4E] dark:text-[#DBE2EF] text-right">
-                  {courseCategory} {courseLevel ? `• ${courseLevel}` : ""}
+            {[
+              ["Name", studentName],
+              ["Email", studentEmail],
+              ["Phone", studentPhone],
+              ["Course", courseTitle],
+            ].map(([label, value]) => (
+              <div key={label} className="flex justify-between gap-4">
+                <span className="text-[var(--lms-text-soft)]">{label}</span>
+                <span className="text-right font-medium text-[var(--lms-text)]">
+                  {value}
                 </span>
               </div>
-            )}
+            ))}
 
-            {typeof coursePrice === "number" && (
+            {courseCategory || courseLevel ? (
               <div className="flex justify-between gap-4">
-                <span className="text-[#3F72AF] dark:text-[#DBE2EF]">
-                  Course Fees
+                <span className="text-[var(--lms-text-soft)]">
+                  Category / Level
                 </span>
-                <span className="font-medium text-[#112D4E] dark:text-[#DBE2EF]">
+                <span className="text-right font-medium text-[var(--lms-text)]">
+                  {[courseCategory, courseLevel].filter(Boolean).join(" • ")}
+                </span>
+              </div>
+            ) : null}
+
+            {typeof coursePrice === "number" ? (
+              <div className="flex justify-between gap-4">
+                <span className="text-[var(--lms-text-soft)]">Course Fees</span>
+                <span className="font-medium text-[var(--lms-text)]">
                   ₹{coursePrice}
                 </span>
               </div>
-            )}
+            ) : null}
           </div>
         </div>
 
-        {/* Today's classes */}
-        <div className="xl:col-span-2 bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-6 shadow-sm">
+        <div className="neu-panel rounded-[32px] p-6 xl:col-span-2">
           <div className="flex items-center justify-between gap-4">
-            <h2 className="text-base font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
-              Today’s Classes ({dayLabelMap[todayKey]})
+            <h2 className="text-base font-semibold text-[var(--lms-text)]">
+              Today&apos;s Classes ({dayLabelMap[todayKey]})
             </h2>
 
-            <div className="flex items-center gap-2 text-xs text-[#3F72AF] dark:text-[#DBE2EF]">
+            <div className="flex items-center gap-2 text-xs text-[var(--lms-text-soft)]">
               <Clock size={14} />
               {tableLoading ? "Loading..." : `${todaySlots.length} class(es)`}
             </div>
@@ -308,65 +227,65 @@ const StudentDashboard = () => {
 
           <div className="mt-4">
             {tableLoading ? (
-              <div className="p-6 text-center text-sm text-[#3F72AF] dark:text-[#DBE2EF]">
-                Loading timetable...
+              <div className="neu-panel-soft rounded-[26px] px-5 py-4">
+                <PageLoader
+                  compact
+                  label="Loading"
+                  detail="Refreshing today's timetable"
+                />
               </div>
             ) : todaySlots.length === 0 ? (
-              <div className="p-6 text-center text-sm text-[#3F72AF] dark:text-[#DBE2EF]">
-                No classes scheduled for today 🎉
+              <div className="neu-empty-state p-8 text-sm">
+                No classes scheduled for today.
               </div>
             ) : (
               <div className="space-y-3">
-                {todaySlots.map((s) => (
+                {todaySlots.map((slot) => (
                   <div
-                    key={s._id}
-                    className="flex items-start justify-between gap-4 p-4 rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] bg-[#F9F7F7] dark:bg-[#0a1f3a]"
+                    key={slot._id}
+                    className="neu-inset flex items-start justify-between gap-4 rounded-[24px] p-4"
                   >
                     <div>
-                      <p className="text-sm font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
-                        {minutesToTime(s.startMinutes)} -{" "}
-                        {minutesToTime(s.endMinutes)}
+                      <p className="text-sm font-semibold text-[var(--lms-text)]">
+                        {minutesToTime(slot.startMinutes)} -{" "}
+                        {minutesToTime(slot.endMinutes)}
                       </p>
-
-                      <p className="text-xs text-[#3F72AF] dark:text-[#DBE2EF] mt-1">
-                        {s.course?.title || courseTitle}
+                      <p className="mt-1 text-xs text-[var(--lms-text-soft)]">
+                        {slot.course?.title || courseTitle}
                       </p>
-
-                      <p className="text-xs text-[#3F72AF] dark:text-[#DBE2EF]">
+                      <p className="text-xs text-[var(--lms-text-soft)]">
                         Tutor:{" "}
-                        {s.tutor?.employee?.name || s.tutor?.name || tutorName}
+                        {slot.tutor?.employee?.name || slot.tutor?.name || tutorName}
                       </p>
                     </div>
 
-                    {s.room ? (
-                      <div className="text-xs text-[#3F72AF] dark:text-[#DBE2EF]">
-                        Room: <span className="font-medium">{s.room}</span>
-                      </div>
-                    ) : (
-                      <div className="text-xs text-[#3F72AF] dark:text-[#DBE2EF]">
-                        —
-                      </div>
-                    )}
+                    <div className="text-xs text-[var(--lms-text-soft)]">
+                      {slot.room ? (
+                        <>
+                          Room: <span className="font-medium">{slot.room}</span>
+                        </>
+                      ) : (
+                        "—"
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
             )}
           </div>
 
-          {/* NEXT CLASS QUICK VIEW */}
-          {!tableLoading && upcomingToday && (
-            <div className="mt-5 p-4 rounded-xl border border-[#3F72AF] bg-[#DBE2EF] dark:bg-[#0a1f3a]">
-              <p className="text-sm font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
+          {!tableLoading && upcomingToday ? (
+            <div className="neu-panel-soft mt-5 rounded-[24px] p-4">
+              <p className="text-sm font-semibold text-[var(--lms-text)]">
                 Next Class Today
               </p>
-
-              <p className="text-xs text-[#3F72AF] dark:text-[#DBE2EF] mt-1">
+              <p className="mt-1 text-xs text-[var(--lms-text-soft)]">
                 {minutesToTime(upcomingToday.startMinutes)} -{" "}
                 {minutesToTime(upcomingToday.endMinutes)} •{" "}
                 {upcomingToday.course?.title || courseTitle}
               </p>
             </div>
-          )}
+          ) : null}
         </div>
       </div>
     </div>

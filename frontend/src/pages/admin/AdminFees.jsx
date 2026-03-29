@@ -39,9 +39,6 @@ const SortArrow = ({ field, sortBy, sortOrder }) => {
 const selectCls =
   "w-full text-sm px-3 py-2.5 rounded-xl border border-[#DBE2EF] dark:border-slate-700 bg-white dark:bg-[#1a1a1a] text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-[#3F72AF]/40 transition";
 
-const inputCls =
-  "w-full text-sm px-3 py-2.5 rounded-xl border border-[#DBE2EF] dark:border-slate-700 bg-white dark:bg-[#1a1a1a] text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-[#3F72AF]/40 transition";
-
 const AdminFees = () => {
   // ── Data states ───────────────────────────────────────────
   const [fees, setFees] = useState([]);

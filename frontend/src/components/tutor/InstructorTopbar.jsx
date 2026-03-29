@@ -11,11 +11,10 @@ const InstructorTopbar = () => {
     document.documentElement.classList.toggle("dark", nextTheme === "dark");
   };
 
-  const getSystemTheme = () => {
-    return window.matchMedia("(prefers-color-scheme: dark)").matches
+  const getSystemTheme = () =>
+    window.matchMedia("(prefers-color-scheme: dark)").matches
       ? "dark"
       : "light";
-  };
 
   useEffect(() => {
     const initTheme = async () => {
@@ -59,77 +58,65 @@ const InstructorTopbar = () => {
   };
 
   return (
-    <header className="h-16 bg-white dark:bg-[#112D4E] border-b dark:border-[#3F72AF] flex items-center justify-between px-6 shadow-sm">
-      <h1 className="text-lg font-medium text-[#112D4E] dark:text-[#DBE2EF]">
-        Tutor Panel
-      </h1>
+    <header className="sticky top-0 z-30 px-4 pt-4 sm:px-6">
+      <div className="neu-panel mx-auto flex h-16 w-full max-w-[1500px] items-center justify-between rounded-[28px] px-4 sm:px-6">
+        <div>
+          <h1 className="text-lg font-semibold text-[var(--lms-text)]">
+            Tutor Panel
+          </h1>
+          <p className="text-xs uppercase tracking-[0.18em] text-[var(--lms-text-soft)]">
+            Teaching Workspace
+          </p>
+        </div>
 
-      <div className="flex items-center gap-4">
-        <nav className="hidden md:flex items-center gap-2">
-          <NavLink
-            to="/instructor"
-            end
-            className={({ isActive }) =>
-              `px-3 py-1 text-sm rounded-md ${
-                isActive
-                  ? "bg-[#DBE2EF] dark:bg-[#3F72AF] text-[#112D4E] dark:text-[#DBE2EF]"
-                  : "text-[#3F72AF] dark:text-[#DBE2EF]"
-              }`
-            }
+        <div className="flex items-center gap-2 sm:gap-3">
+          <nav className="hidden items-center gap-2 md:flex">
+            {[
+              { to: "/instructor", label: "Dashboard", end: true },
+              { to: "/instructor/students", label: "Students" },
+              { to: "/instructor/assignments", label: "Assignments" },
+            ].map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                className={({ isActive }) =>
+                  `rounded-2xl px-4 py-3 text-sm font-medium transition-all ${
+                    isActive
+                      ? "neu-button neu-button-primary text-white"
+                      : "neu-button text-[var(--lms-text-soft)] hover:text-[var(--lms-text)]"
+                  }`
+                }
+              >
+                {item.label}
+              </NavLink>
+            ))}
+          </nav>
+
+          <button
+            onClick={toggleTheme}
+            className="neu-button rounded-2xl p-3 text-[var(--lms-text)]"
+            title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
           >
-            Dashboard
-          </NavLink>
-          <NavLink
-            to="/instructor/students"
-            className={({ isActive }) =>
-              `px-3 py-1 text-sm rounded-md ${
-                isActive
-                  ? "bg-[#DBE2EF] dark:bg-[#3F72AF] text-[#112D4E] dark:text-[#DBE2EF]"
-                  : "text-[#3F72AF] dark:text-[#DBE2EF]"
-              }`
-            }
+            {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+
+          <Link
+            to="/instructor/profile"
+            className="neu-button hidden items-center gap-2 rounded-2xl px-4 py-3 text-sm font-medium text-[var(--lms-text)] sm:inline-flex"
           >
-            Students
-          </NavLink>
-          <NavLink
-            to="/instructor/assignments"
-            className={({ isActive }) =>
-              `px-3 py-1 text-sm rounded-md ${
-                isActive
-                  ? "bg-[#DBE2EF] dark:bg-[#3F72AF] text-[#112D4E] dark:text-[#DBE2EF]"
-                  : "text-[#3F72AF] dark:text-[#DBE2EF]"
-              }`
-            }
+            <User size={16} />
+            Profile
+          </Link>
+
+          <button
+            onClick={handleLogout}
+            className="neu-button inline-flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-medium text-[var(--lms-text)]"
           >
-            Assignments
-          </NavLink>
-        </nav>
-
-        <button
-          onClick={toggleTheme}
-          className="p-2 rounded-lg hover:bg-[#DBE2EF] dark:hover:bg-[#3F72AF] text-[#3F72AF] dark:text-[#DBE2EF] transition-colors"
-          title={
-            theme === "dark" ? "Switch to light mode" : "Switch to dark mode"
-          }
-        >
-          {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
-        </button>
-
-        <Link
-          to="/instructor/profile"
-          className="flex items-center gap-2 px-3 py-1 text-sm rounded-md border dark:border-[#3F72AF] hover:bg-[#DBE2EF] dark:hover:bg-[#3F72AF] text-[#3F72AF] dark:text-[#DBE2EF] transition-colors"
-        >
-          <User size={16} />
-          Profile
-        </Link>
-
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-2 px-3 py-1 text-sm rounded-md border dark:border-[#3F72AF] hover:bg-[#DBE2EF] dark:hover:bg-[#3F72AF] text-[#3F72AF] dark:text-[#DBE2EF] transition-colors"
-        >
-          <LogOut size={16} />
-          Logout
-        </button>
+            <LogOut size={16} />
+            Logout
+          </button>
+        </div>
       </div>
     </header>
   );

@@ -22,7 +22,9 @@ const TutorStudents = () => {
         const res = await tutorService.getMyDashboard();
         const d = res?.data ?? res;
         setBatches(d?.batches ?? []);
-      } catch {}
+      } catch (error) {
+        console.error("Load tutor batches error:", error);
+      }
     };
     load();
   }, []);

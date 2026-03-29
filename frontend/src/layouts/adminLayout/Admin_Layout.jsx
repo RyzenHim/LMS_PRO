@@ -5,14 +5,11 @@ import AdminTopbar from "./Admin_Topbar";
 
 const AdminLayout = () => {
   const [collapsed, setCollapsed] = useState(false);
-
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     const onResize = () => {
-      if (window.innerWidth >= 1024) {
-        setMobileOpen(false);
-      }
+      if (window.innerWidth >= 1024) setMobileOpen(false);
     };
 
     window.addEventListener("resize", onResize);
@@ -20,19 +17,18 @@ const AdminLayout = () => {
   }, []);
 
   return (
-    <div className="min-h-dvh bg-slate-50 dark:bg-[#181818]">
+    <div className="lms-app-shell min-h-dvh">
       <AdminSidebar
         collapsed={collapsed}
-        onToggleCollapse={() => setCollapsed((p) => !p)}
+        onToggleCollapse={() => setCollapsed((prev) => !prev)}
         mobileOpen={mobileOpen}
         onCloseMobile={() => setMobileOpen(false)}
       />
 
       <div
-        className={`
-          flex min-h-dvh flex-col transition-[margin] duration-300 ease-in-out
-          ${collapsed ? "lg:ml-20" : "lg:ml-64"}
-        `}
+        className={`flex min-h-dvh flex-col transition-[margin] duration-300 ease-in-out ${
+          collapsed ? "lg:ml-24" : "lg:ml-[18rem]"
+        }`}
       >
         <AdminTopbar onOpenMobileSidebar={() => setMobileOpen(true)} />
 

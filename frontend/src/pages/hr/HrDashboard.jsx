@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { Users, Briefcase, UserCheck, UserX } from "lucide-react";
 import axiosInstance from "../../api/axios";
+import PageLoader from "../../components/ui/PageLoader";
+
+const statCards = [
+  { key: "totalEmployees", title: "Employees", icon: Briefcase },
+  { key: "activeEmployees", title: "Active Employees", icon: UserCheck },
+  { key: "inactiveEmployees", title: "Inactive Employees", icon: UserX },
+  { key: "followUps", title: "Follow-Up Visitors", icon: Users },
+];
 
 const HrDashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -32,9 +40,10 @@ const HrDashboard = () => {
   }, []);
 
   const summary = useMemo(() => {
-    const activeEmployees = employees.filter((e) => e?.isActive).length;
-    const inactiveEmployees = employees.filter((e) => !e?.isActive).length;
-    const followUps = visitors.filter((v) => v?.status === "follow-up").length;
+    const activeEmployees = employees.filter((employee) => employee?.isActive).length;
+    const inactiveEmployees = employees.filter((employee) => !employee?.isActive).length;
+    const followUps = visitors.filter((visitor) => visitor?.status === "follow-up").length;
+
     return {
       totalEmployees: employees.length,
       activeEmployees,
@@ -44,95 +53,78 @@ const HrDashboard = () => {
     };
   }, [employees, visitors]);
 
+  if (loading) {
+    return (
+      <PageLoader
+        label="Loading"
+        detail="Preparing people operations insights"
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-6 shadow-sm">
-        <h1 className="text-2xl font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
+      <div className="neu-panel rounded-[32px] p-6">
+        <h1 className="text-2xl font-semibold text-[var(--lms-text)]">
           HR Dashboard
         </h1>
-        <p className="text-sm text-[#3F72AF] dark:text-[#DBE2EF] mt-1">
+        <p className="mt-2 text-sm text-[var(--lms-text-soft)]">
           Employee and visitor activity snapshot.
         </p>
-        {error && (
-          <div className="mt-3 p-3 rounded-lg border border-red-200 bg-red-50 text-red-700 text-sm">
-            {error}
-          </div>
-        )}
+        {error ? <div className="lms-status-error mt-4">{error}</div> : null}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-5">
-          <div className="flex items-center gap-3">
-            <Briefcase className="text-[#3F72AF]" size={18} />
-            <div>
-              <p className="text-xs text-[#3F72AF] dark:text-[#DBE2EF]">Employees</p>
-              <p className="text-xl font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
-                {loading ? "..." : summary.totalEmployees}
-              </p>
-            </div>
-          </div>
-        </div>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {statCards.map((card) => {
+          const Icon = card.icon;
 
-        <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-5">
-          <div className="flex items-center gap-3">
-            <UserCheck className="text-[#3F72AF]" size={18} />
-            <div>
-              <p className="text-xs text-[#3F72AF] dark:text-[#DBE2EF]">Active Employees</p>
-              <p className="text-xl font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
-                {loading ? "..." : summary.activeEmployees}
-              </p>
+          return (
+            <div key={card.key} className="neu-panel-soft rounded-[28px] p-5">
+              <div className="flex items-center gap-3">
+                <div className="neu-inset rounded-2xl p-3">
+                  <Icon className="text-[var(--lms-accent-strong)]" size={18} />
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-[0.16em] text-[var(--lms-text-soft)]">
+                    {card.title}
+                  </p>
+                  <p className="text-xl font-semibold text-[var(--lms-text)]">
+                    {summary[card.key]}
+                  </p>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-5">
-          <div className="flex items-center gap-3">
-            <UserX className="text-[#3F72AF]" size={18} />
-            <div>
-              <p className="text-xs text-[#3F72AF] dark:text-[#DBE2EF]">Inactive Employees</p>
-              <p className="text-xl font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
-                {loading ? "..." : summary.inactiveEmployees}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-5">
-          <div className="flex items-center gap-3">
-            <Users className="text-[#3F72AF]" size={18} />
-            <div>
-              <p className="text-xs text-[#3F72AF] dark:text-[#DBE2EF]">Follow-Up Visitors</p>
-              <p className="text-xl font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
-                {loading ? "..." : summary.followUps}
-              </p>
-            </div>
-          </div>
-        </div>
+          );
+        })}
       </div>
 
-      <div className="bg-white dark:bg-[#112D4E] rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] p-6">
-        <h2 className="text-base font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
+      <div className="neu-panel rounded-[32px] p-6">
+        <h2 className="text-base font-semibold text-[var(--lms-text)]">
           Recent Employees
         </h2>
         <div className="mt-4 space-y-3">
-          {(employees || []).slice(0, 8).map((emp) => (
-            <div key={emp?._id} className="p-3 rounded-lg border border-[#DBE2EF] dark:border-[#3F72AF] flex items-center justify-between">
+          {employees.slice(0, 8).map((emp) => (
+            <div
+              key={emp?._id}
+              className="neu-inset flex items-center justify-between rounded-[24px] p-4"
+            >
               <div>
-                <p className="text-sm font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
+                <p className="text-sm font-semibold text-[var(--lms-text)]">
                   {emp?.name || "-"}
                 </p>
-                <p className="text-xs text-[#3F72AF] dark:text-[#DBE2EF]">
-                  {emp?.department || "-"} • {emp?.designation || "-"}
+                <p className="text-xs text-[var(--lms-text-soft)]">
+                  {[emp?.department || "-", emp?.designation || "-"].join(" • ")}
                 </p>
               </div>
-              <span className="text-xs text-[#3F72AF] dark:text-[#DBE2EF]">
+              <span className="neu-badge rounded-full px-3 py-1 text-xs font-medium">
                 {emp?.isActive ? "Active" : "Inactive"}
               </span>
             </div>
           ))}
-          {!loading && employees.length === 0 && (
-            <p className="text-sm text-[#3F72AF] dark:text-[#DBE2EF]">No employees found.</p>
-          )}
+
+          {employees.length === 0 ? (
+            <p className="neu-empty-state text-sm">No employees found.</p>
+          ) : null}
         </div>
       </div>
     </div>

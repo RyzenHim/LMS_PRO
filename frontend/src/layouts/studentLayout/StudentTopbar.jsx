@@ -1,24 +1,18 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Menu, LogOut, Sun, Moon, User } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import axiosInstance from "../../api/axios";
-import { Link } from "react-router-dom";
 
 const StudentTopbar = ({ sidebarOpen, setSidebarOpen }) => {
   const navigate = useNavigate();
-
   const [me, setMe] = useState(null);
   const [loading, setLoading] = useState(true);
-
-  // Theme
   const [dark, setDark] = useState(false);
 
   const toggleTheme = async () => {
     const next = !dark;
     setDark(next);
-
-    if (next) document.documentElement.classList.add("dark");
-    else document.documentElement.classList.remove("dark");
+    document.documentElement.classList.toggle("dark", next);
 
     try {
       await axiosInstance.patch("/user/profile", {
@@ -29,7 +23,6 @@ const StudentTopbar = ({ sidebarOpen, setSidebarOpen }) => {
     }
   };
 
-  // Fetch student info
   useEffect(() => {
     const fetchMe = async () => {
       try {
@@ -56,73 +49,65 @@ const StudentTopbar = ({ sidebarOpen, setSidebarOpen }) => {
   };
 
   return (
-    <header className="sticky top-0 z-30 h-16 w-full bg-white dark:bg-[#112D4E] border-b border-[#DBE2EF] dark:border-[#3F72AF] shadow-sm">
-      <div className="h-full px-4 md:px-6 flex items-center justify-between">
-        {/* Left */}
+    <header className="sticky top-0 z-30 px-4 pt-4 md:px-6">
+      <div className="neu-panel mx-auto flex h-16 w-full max-w-[1500px] items-center justify-between rounded-[28px] px-4 md:px-6">
         <div className="flex items-center gap-3">
-          {/* Mobile menu */}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="md:hidden p-2 rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] hover:bg-[#DBE2EF] dark:hover:bg-[#0a1f3a] transition"
+            className="neu-button rounded-2xl p-3 md:hidden"
           >
-            <Menu size={18} className="text-[#112D4E] dark:text-[#DBE2EF]" />
+            <Menu size={18} className="text-[var(--lms-text)]" />
           </button>
 
-          {/* Title */}
           <div>
-            <h1 className="text-lg font-semibold text-[#112D4E] dark:text-[#DBE2EF] leading-tight">
+            <h1 className="text-lg font-semibold leading-tight text-[var(--lms-text)]">
               Student Dashboard
             </h1>
-            <p className="text-xs text-[#3F72AF] dark:text-[#DBE2EF]">
-              Welcome back 👋
+            <p className="text-xs uppercase tracking-[0.18em] text-[var(--lms-text-soft)]">
+              Welcome back
             </p>
           </div>
         </div>
 
-        {/* Right */}
         <div className="flex items-center gap-3">
-          {/* Theme */}
           <button
             onClick={toggleTheme}
-            className="p-2 rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] hover:bg-[#DBE2EF] dark:hover:bg-[#0a1f3a] transition"
+            className="neu-button rounded-2xl p-3"
             title="Toggle theme"
           >
             {dark ? (
-              <Sun size={18} className="text-[#DBE2EF]" />
+              <Sun size={18} className="text-[var(--lms-text)]" />
             ) : (
-              <Moon size={18} className="text-[#112D4E]" />
+              <Moon size={18} className="text-[var(--lms-text)]" />
             )}
           </button>
 
           <Link
             to="/student/profile"
-            className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] hover:bg-[#DBE2EF] dark:hover:bg-[#0a1f3a] transition text-[#112D4E] dark:text-[#DBE2EF] text-sm font-medium"
+            className="neu-button hidden items-center gap-2 rounded-2xl px-4 py-3 text-sm font-medium text-[var(--lms-text)] sm:inline-flex"
           >
             <User size={16} />
-            <span className="hidden sm:block">Profile</span>
+            <span>Profile</span>
           </Link>
 
-          {/* Student Info */}
-          <div className="hidden sm:flex items-center gap-3 px-3 py-2 rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF] bg-[#F9F7F7] dark:bg-[#0a1f3a]">
-            {/* Avatar */}
-            <div className="w-9 h-9 rounded-full bg-[#3F72AF] flex items-center justify-center text-white font-semibold">
+          <div className="neu-panel-soft hidden items-center gap-3 rounded-[24px] px-3 py-2 sm:flex">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--lms-accent-soft)] font-semibold text-[var(--lms-accent-strong)]">
               {me?.name ? me.name.charAt(0).toUpperCase() : "S"}
             </div>
 
             <div className="leading-tight">
-              <p className="text-sm font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
+              <p className="text-sm font-semibold text-[var(--lms-text)]">
                 {loading ? "Loading..." : me?.name || "Student"}
               </p>
-              <p className="text-xs text-[#3F72AF] dark:text-[#DBE2EF] truncate max-w-[160px]">
+              <p className="max-w-[160px] truncate text-xs text-[var(--lms-text-soft)]">
                 {me?.email || ""}
               </p>
             </div>
           </div>
 
-          {/* Logout */}
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#3F72AF] hover:bg-[#112D4E] text-white text-sm font-medium transition"
+            className="neu-button neu-button-primary flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-medium"
           >
             <LogOut size={16} />
             <span className="hidden sm:block">Logout</span>

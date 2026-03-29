@@ -1,104 +1,80 @@
-import React from "react";
 import { NavLink } from "react-router-dom";
 import { LayoutDashboard, CalendarDays, User, X } from "lucide-react";
 
 const links = [
-  {
-    label: "Dashboard",
-    to: "/student",
-    icon: LayoutDashboard,
-  },
-  {
-    label: "Timetable",
-    to: "/student/timetable",
-    icon: CalendarDays,
-  },
-  {
-    label: "Profile",
-    to: "/student/profile",
-    icon: User,
-  },
+  { label: "Dashboard", to: "/student", icon: LayoutDashboard },
+  { label: "Timetable", to: "/student/timetable", icon: CalendarDays },
+  { label: "Profile", to: "/student/profile", icon: User },
 ];
 
 const StudentSidebar = ({ open, onClose }) => {
   return (
     <>
-      {open && (
+      {open ? (
         <button
           type="button"
           onClick={onClose}
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          className="lms-modal-backdrop fixed inset-0 z-40 md:hidden"
           aria-label="Close sidebar"
         />
-      )}
+      ) : null}
 
       <aside
-        className={`fixed top-0 left-0 h-full w-[260px] z-50 md:z-30 
-        bg-white dark:bg-[#112D4E] border-r border-[#DBE2EF] dark:border-[#3F72AF]
-        shadow-xl md:shadow-none transition-transform duration-300
-        ${open ? "translate-x-0" : "-translate-x-full"} md:translate-x-0`}
+        className={`fixed left-0 top-0 z-50 h-full w-[280px] transition-transform duration-300 md:z-30 ${
+          open ? "translate-x-0" : "-translate-x-full"
+        } md:translate-x-0`}
       >
-        <div className="h-16 px-5 flex items-center justify-between border-b border-[#DBE2EF] dark:border-[#3F72AF]">
-          <div>
-            <p className="text-lg font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
-              Student Panel
-            </p>
-            <p className="text-xs text-[#3F72AF] dark:text-[#DBE2EF]">
-              LMS Dashboard
-            </p>
+        <div className="neu-panel flex h-full flex-col rounded-r-[34px] rounded-l-none px-4 py-4">
+          <div className="flex h-16 items-center justify-between border-b border-white/10 px-2">
+            <div>
+              <p className="text-lg font-semibold text-[var(--lms-text)]">
+                Student Panel
+              </p>
+              <p className="text-xs uppercase tracking-[0.18em] text-[var(--lms-text-soft)]">
+                LMS Dashboard
+              </p>
+            </div>
+
+            <button
+              onClick={onClose}
+              className="neu-button rounded-2xl p-3 md:hidden"
+            >
+              <X size={18} className="text-[var(--lms-text)]" />
+            </button>
           </div>
 
-          <button
-            onClick={onClose}
-            className="md:hidden p-2 rounded-xl border border-[#DBE2EF] dark:border-[#3F72AF]"
-          >
-            <X size={18} className="text-[#112D4E] dark:text-[#DBE2EF]" />
-          </button>
-        </div>
+          <nav className="space-y-2 p-2 pt-5">
+            {links.map((item) => {
+              const Icon = item.icon;
 
-        <nav className="p-4 space-y-2">
-          {links.map((item) => {
-            const Icon = item.icon;
+              return (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.to === "/student"}
+                  onClick={() => {
+                    if (window.innerWidth < 768) onClose?.();
+                  }}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 rounded-[24px] px-4 py-3 text-sm font-medium transition-all ${
+                      isActive
+                        ? "neu-button neu-button-primary text-white"
+                        : "neu-button text-[var(--lms-text-soft)] hover:text-[var(--lms-text)]"
+                    }`
+                  }
+                >
+                  <Icon size={18} />
+                  <span>{item.label}</span>
+                </NavLink>
+              );
+            })}
+          </nav>
 
-            return (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.to === "/student"}
-                onClick={() => {
-                  if (window.innerWidth < 768) onClose?.();
-                }}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-4 py-3 rounded-xl transition-all
-                  ${
-                    isActive
-                      ? "bg-[#3F72AF] text-white shadow-md"
-                      : "text-[#112D4E] dark:text-[#DBE2EF] hover:bg-[#DBE2EF] dark:hover:bg-[#0a1f3a]"
-                  }`
-                }
-              >
-                {({ isActive }) => (
-                  <>
-                    <Icon
-                      size={18}
-                      className={
-                        isActive
-                          ? "text-white"
-                          : "text-[#3F72AF] dark:text-[#DBE2EF]"
-                      }
-                    />
-                    <span className="text-sm font-medium">{item.label}</span>
-                  </>
-                )}
-              </NavLink>
-            );
-          })}
-        </nav>
-
-        <div className="absolute bottom-0 left-0 w-full p-4 border-t border-[#DBE2EF] dark:border-[#3F72AF]">
-          <p className="text-xs text-[#3F72AF] dark:text-[#DBE2EF]">
-            © {new Date().getFullYear()} LMS
-          </p>
+          <div className="mt-auto border-t border-white/10 p-4">
+            <p className="text-xs text-[var(--lms-text-soft)]">
+              © {new Date().getFullYear()} LMS
+            </p>
+          </div>
         </div>
       </aside>
     </>

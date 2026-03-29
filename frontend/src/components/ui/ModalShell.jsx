@@ -15,31 +15,31 @@ const ModalShell = ({
       <button
         type="button"
         onClick={onClose}
-        className="absolute inset-0 bg-slate-900/45 backdrop-blur-md"
+        className="lms-modal-backdrop absolute inset-0"
         aria-label="Close modal backdrop"
       />
 
       <div
-        className={`relative w-full ${maxWidth} rounded-3xl border border-white/50 dark:border-slate-700 bg-white/85 dark:bg-slate-900/80 backdrop-blur-2xl shadow-2xl`}
+        className={`neu-panel relative z-10 w-full ${maxWidth} overflow-hidden rounded-[34px]`}
       >
-        <div className="px-6 py-5 border-b border-[#DBE2EF] dark:border-slate-700 flex items-start justify-between gap-4">
+        <div className="flex items-start justify-between gap-4 border-b border-white/10 px-6 py-5">
           <div>
-            <h2 className="text-lg font-semibold text-[#112D4E] dark:text-[#DBE2EF]">
+            <h2 className="text-lg font-semibold text-[var(--lms-text)]">
               {title}
             </h2>
             {subtitle ? (
-              <p className="text-sm text-[#3F72AF] dark:text-slate-300 mt-1">
+              <p className="mt-1 text-sm text-[var(--lms-text-soft)]">
                 {subtitle}
               </p>
             ) : null}
           </div>
-          {/* <h1>hey lets see what is this</h1> */}
+
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-xl border border-[#DBE2EF] dark:border-slate-700 hover:bg-[#DBE2EF]/60 dark:hover:bg-slate-800 transition"
+            className="neu-button h-11 w-11 rounded-2xl"
           >
-            <X size={18} className="text-[#112D4E] dark:text-[#DBE2EF]" />
+            <X size={18} className="mx-auto text-[var(--lms-text)]" />
           </button>
         </div>
 

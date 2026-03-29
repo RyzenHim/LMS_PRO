@@ -17,7 +17,7 @@ const AddCourseModal = ({ open, onClose, onSubmit }) => {
     endDate: "",
     skills: [],
   });
-  // const [tutors, setTutors] = useState([]);
+  const [tutors, setTutors] = useState([]);
   const [skills, setSkills] = useState([]);
 
   useEffect(() => {

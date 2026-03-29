@@ -24,10 +24,10 @@ const App = () => {
   }, []);
 
   return (
-    <>
+    <div className="lms-app-shell">
       <SessionExpiredModal open={sessionExpired} />
       <Outlet />
-    </>
+    </div>
   );
 };
 
