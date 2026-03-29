@@ -31,7 +31,7 @@ const Login = () => {
       if (!data?.token || !data?.user) {
         setError("Invalid login response from server");
         return;
-      } 
+      }
 
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
@@ -137,7 +137,7 @@ const Login = () => {
         </button>
       </form>
 
-      <p className="text-sm text-center text-gray-600 dark:text-gray-400">
+      {/* <p className="text-sm text-center text-gray-600 dark:text-gray-400">
         New here?{" "}
         <Link
           to="/auth/signup"
@@ -145,7 +145,7 @@ const Login = () => {
         >
           Send enquiry
         </Link>
-      </p>
+      </p> */}
     </div>
   );
 };

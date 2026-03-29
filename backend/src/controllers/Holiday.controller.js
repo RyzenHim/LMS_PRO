@@ -1,10 +1,6 @@
 const Holiday = require("../models/Holiday.model");
 const Batch = require("../models/batch.model");
 
-// ─────────────────────────────────────────────
-// GET all holidays for a batch
-// GET /holidays/batch/:batchId
-// ─────────────────────────────────────────────
 exports.getHolidaysByBatch = async (req, res) => {
     try {
         const { batchId } = req.params;

@@ -13,16 +13,11 @@ const Landing = () => {
                 <div className="flex items-center gap-6">
                     <Link
                         to="/auth/login"
-                        className="text-gray-600 dark:text-gray-300 hover:text-indigo-600"
+                        className="px-5 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 shadow"
                     >
                         Login
                     </Link>
-                    <Link
-                        to="/auth/signup"
-                        className="px-5 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 shadow"
-                    >
-                        Get Started
-                    </Link>
+
                 </div>
             </header>
 
@@ -44,16 +39,10 @@ const Landing = () => {
                 </p>
 
                 <div className="flex flex-col sm:flex-row gap-4">
-                    <Link
-                        to="/auth/signup"
-                        className="px-8 py-4 rounded-xl bg-indigo-600 text-white font-medium hover:bg-indigo-700 shadow-lg shadow-indigo-600/30"
-                    >
-                        Start Free Trial
-                    </Link>
 
                     <Link
                         to="/auth/login"
-                        className="px-8 py-4 rounded-xl border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-slate-800"
+                        className="px-8 py-4 rounded-xl bg-indigo-600 text-white font-medium hover:bg-indigo-700 shadow-lg shadow-indigo-600/30"
                     >
                         Login to Dashboard
                     </Link>
@@ -175,12 +164,6 @@ const Landing = () => {
                     Join thousands of institutions and enterprises already managing learning smarter.
                 </p>
 
-                <Link
-                    to="/auth/signup"
-                    className="px-10 py-4 rounded-xl bg-white text-indigo-600 font-semibold hover:bg-gray-100 shadow-lg"
-                >
-                    Create Free Account
-                </Link>
 
             </section>
 
