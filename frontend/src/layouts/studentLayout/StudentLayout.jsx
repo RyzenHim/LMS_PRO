@@ -5,6 +5,7 @@ import StudentSidebar from "./StudentSidebar";
 
 const StudentLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
 
   return (
     <div className="lms-app-shell min-h-dvh">
@@ -17,9 +18,15 @@ const StudentLayout = () => {
         <StudentSidebar
           open={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
+          collapsed={collapsed}
+          onToggleCollapse={() => setCollapsed((prev) => !prev)}
         />
 
-        <main className="flex-1 p-4 md:ml-[280px] md:p-6">
+        <main
+          className={`flex-1 p-4 transition-[margin] duration-300 md:p-6 ${
+            collapsed ? "md:ml-24" : "md:ml-[280px]"
+          }`}
+        >
           <div className="mx-auto w-full max-w-[1500px]">
             <Outlet />
           </div>

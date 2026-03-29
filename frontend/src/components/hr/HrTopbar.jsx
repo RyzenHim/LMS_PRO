@@ -1,9 +1,9 @@
 import { useNavigate, Link } from "react-router-dom";
-import { User, LogOut, Moon, Sun, Building2 } from "lucide-react";
+import { User, LogOut, Moon, Sun, Menu } from "lucide-react";
 import { useEffect, useState } from "react";
 import axiosInstance from "../../api/axios";
 
-const HrTopbar = () => {
+const HrTopbar = ({ onOpenMobileSidebar }) => {
   const navigate = useNavigate();
   const [theme, setTheme] = useState("light");
 
@@ -71,20 +71,20 @@ const HrTopbar = () => {
 
         <div className="flex items-center gap-2 sm:gap-3">
           <button
+            onClick={onOpenMobileSidebar}
+            className="neu-button inline-flex h-11 w-11 items-center justify-center rounded-2xl text-[var(--lms-text)] lg:hidden"
+            title="Open Sidebar"
+          >
+            <Menu size={18} />
+          </button>
+
+          <button
             onClick={toggleTheme}
             className="neu-button rounded-2xl p-3 text-[var(--lms-text)]"
             title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
           >
             {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
           </button>
-
-          <Link
-            to="/hr/rooms"
-            className="neu-button hidden items-center gap-2 rounded-2xl px-4 py-3 text-sm font-medium text-[var(--lms-text)] sm:inline-flex"
-          >
-            <Building2 size={16} />
-            Rooms
-          </Link>
 
           <Link
             to="/hr/profile"

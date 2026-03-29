@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { useNavigate, Link, NavLink } from "react-router-dom";
-import { Moon, Sun, User, LogOut } from "lucide-react";
+import { useNavigate, Link } from "react-router-dom";
+import { Moon, Sun, User, LogOut, Menu } from "lucide-react";
 import axiosInstance from "../../api/axios";
 
-const InstructorTopbar = () => {
+const InstructorTopbar = ({ onOpenMobileSidebar }) => {
   const navigate = useNavigate();
   const [theme, setTheme] = useState("light");
 
@@ -62,7 +62,7 @@ const InstructorTopbar = () => {
       <div className="neu-panel mx-auto flex h-16 w-full max-w-[1500px] items-center justify-between rounded-[28px] px-4 sm:px-6">
         <div>
           <h1 className="text-lg font-semibold text-[var(--lms-text)]">
-            Tutor Panel
+            Instructor Panel
           </h1>
           <p className="text-xs uppercase tracking-[0.18em] text-[var(--lms-text-soft)]">
             Teaching Workspace
@@ -70,28 +70,13 @@ const InstructorTopbar = () => {
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          <nav className="hidden items-center gap-2 md:flex">
-            {[
-              { to: "/instructor", label: "Dashboard", end: true },
-              { to: "/instructor/students", label: "Students" },
-              { to: "/instructor/assignments", label: "Assignments" },
-            ].map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                className={({ isActive }) =>
-                  `rounded-2xl px-4 py-3 text-sm font-medium transition-all ${
-                    isActive
-                      ? "neu-button neu-button-primary text-white"
-                      : "neu-button text-[var(--lms-text-soft)] hover:text-[var(--lms-text)]"
-                  }`
-                }
-              >
-                {item.label}
-              </NavLink>
-            ))}
-          </nav>
+          <button
+            onClick={onOpenMobileSidebar}
+            className="neu-button inline-flex h-11 w-11 items-center justify-center rounded-2xl text-[var(--lms-text)] lg:hidden"
+            title="Open Sidebar"
+          >
+            <Menu size={18} />
+          </button>
 
           <button
             onClick={toggleTheme}
@@ -114,7 +99,7 @@ const InstructorTopbar = () => {
             className="neu-button inline-flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-medium text-[var(--lms-text)]"
           >
             <LogOut size={16} />
-            Logout
+            <span className="hidden sm:inline">Logout</span>
           </button>
         </div>
       </div>

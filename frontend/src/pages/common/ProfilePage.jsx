@@ -3,6 +3,25 @@ import { User, Mail, Shield, Calendar, Save } from "lucide-react";
 import axiosInstance from "../../api/axios";
 import PageLoader from "../../components/ui/PageLoader";
 
+const ROLE_COPY = {
+  admin: {
+    title: "Admin Profile",
+    subtitle: "Manage your account details and security settings.",
+  },
+  hr: {
+    title: "HR Profile",
+    subtitle: "Manage your people-operations account details and security settings.",
+  },
+  tutor: {
+    title: "Instructor Profile",
+    subtitle: "Manage your teaching account details and security settings.",
+  },
+  student: {
+    title: "Student Profile",
+    subtitle: "Manage your account details and keep your login secure.",
+  },
+};
+
 const ProfilePage = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -111,14 +130,19 @@ const ProfilePage = () => {
     return <div className="lms-status-error">Unable to load profile data.</div>;
   }
 
+  const copy = ROLE_COPY[user.role] || {
+    title: "My Profile",
+    subtitle: "Update your account details and security settings.",
+  };
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold text-[var(--lms-text)]">
-          My Profile
+          {copy.title}
         </h1>
         <p className="text-sm text-[var(--lms-text-soft)]">
-          Update your name and password. Email is read-only.
+          {copy.subtitle} Email is read-only.
         </p>
       </div>
 

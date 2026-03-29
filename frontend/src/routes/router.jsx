@@ -27,13 +27,18 @@ import AdminTimetable from "../pages/admin/AdminTimetable";
 
 import HrLayout from "../layouts/hrLayout/HrLayout";
 import HrDashboard from "../pages/hr/HrDashboard";
+import HrProfile from "../pages/hr/HrProfile";
+import HrRooms from "../pages/hr/HrRooms";
 
 import StudentLayout from "../layouts/studentLayout/StudentLayout";
 import StudentDashboard from "../pages/students/StudentDashboard";
 import StudentTimetable from "../pages/students/StudentTimetable";
+import StudentProfile from "../pages/students/StudentProfile";
 
 import InstructorLayout from "../layouts/instructorLayout/InstructorLayout";
 import InstructorDashboard from "../pages/tutor/InstructorDashboard";
+import InstructorAssignments from "../pages/tutor/InstructorAssignments";
+import InstructorProfile from "../pages/tutor/InstructorProfile";
 
 import AdminReports from "../pages/admin/report/AdminReports";
 import BatchReport from "../pages/admin/report/BatchReport";
@@ -113,7 +118,11 @@ const router = createBrowserRouter([
             </RoleRoute>
           </ProtectedRoute>
         ),
-        children: [{ index: true, element: <HrDashboard /> }],
+        children: [
+          { index: true, element: <HrDashboard /> },
+          { path: "rooms", element: <HrRooms /> },
+          { path: "profile", element: <HrProfile /> },
+        ],
       },
 
       {
@@ -128,6 +137,7 @@ const router = createBrowserRouter([
         children: [
           { index: true, element: <StudentDashboard /> },
           { path: "timetable", element: <StudentTimetable /> },
+          { path: "profile", element: <StudentProfile /> },
         ],
       },
 
@@ -142,7 +152,8 @@ const router = createBrowserRouter([
         ),
         children: [
           { index: true, element: <InstructorDashboard /> },
-
+          { path: "profile", element: <InstructorProfile /> },
+          { path: "assignments", element: <InstructorAssignments /> },
           { path: "students", element: <TutorStudents /> },
         ],
       },
