@@ -9,11 +9,7 @@ const PORT = process.env.PORT || 5000;
 app.use(express.json());
 app.use(
   cors({
-    origin: [
-      "https://proprolms.netlify.app",
-      "http://localhost:5173",
-      "http://localhost:5174",
-    ],
+    origin: ["https://proprolms.netlify.app", "http://localhost:5173"],
     credentials: true,
   }),
 );

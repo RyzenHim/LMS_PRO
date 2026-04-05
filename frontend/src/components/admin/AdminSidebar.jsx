@@ -16,8 +16,8 @@ const AdminSidebar = () => {
       path: "/admin",
     },
     {
-      name: "Students",
       icon: GraduationCap,
+      name: "Students",
       path: "/admin/students",
     },
     {
