@@ -3,8 +3,7 @@ import { triggerSessionExpired } from "../utils/authEvents";
 
 const axiosInstance = axios.create({
   baseURL:
-    import.meta.env.VITE_API_BASE_URL ||
-    "https://lmspro-production.up.railway.app",
+    import.meta.env.VITE_API_BASE_URL || "https://lms-pro-4q44.onrender.com",
   withCredentials: true,
 });
 

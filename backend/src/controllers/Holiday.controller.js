@@ -19,11 +19,6 @@ exports.getHolidaysByBatch = async (req, res) => {
     }
 };
 
-// ─────────────────────────────────────────────
-// ADD a holiday for a batch+date
-// POST /holidays/batch/:batchId
-// Body: { date, label, type }
-// ─────────────────────────────────────────────
 exports.addHoliday = async (req, res) => {
     try {
         const { batchId } = req.params;
